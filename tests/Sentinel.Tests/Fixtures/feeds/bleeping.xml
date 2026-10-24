@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="utf-8"?>
+<rss version="2.0"
+        xmlns:content="http://purl.org/rss/1.0/modules/content/"
+        xmlns:wfw="http://wellformedweb.org/CommentAPI/"
+        xmlns:dc="http://purl.org/dc/elements/1.1/"
+        xmlns:atom="http://www.w3.org/2005/Atom"
+        >
+
+<channel>
+        <title>BleepingComputer</title>
+
+        <link>https://www.bleepingcomputer.com/</link>
+        <description>BleepingComputer - All Stories</description>
+        <pubDate>Sat, 24 Oct 2026 10:03:32 GMT</pubDate>
+        <generator>https://www.bleepingcomputer.com/</generator>
+        <language>en</language>
+        <atom:link href="https://www.bleepingcomputer.com/feed/" rel="self" type="application/rss+xml" />
+        
+ <item>
+        <title>Abandoned Popcorn Time app exposed millions of devices to RCE attacks</title>
+        <link>https://www.bleepingcomputer.com/news/security/abandoned-popcorn-time-app-exposed-millions-of-device-to-rce-attacks/</link>
+        <pubDate>Fri, 23 Oct 2026 16:55:05 -0400</pubDate>
+        <dc:creator>Bill Toulas</dc:creator>
+        
+        <category><![CDATA[Security]]></category>
+
+        <guid>https://www.bleepingcomputer.com/news/security/abandoned-popcorn-time-app-exposed-millions-of-device-to-rce-attacks/</guid>
+        <description><![CDATA[Researchers remotely disabled a vulnerable updater in the abandoned Time4Popcorn app, a fork of the Popcorn Time BitTorrent client, closing a security flaw that could have allowed attackers to execute malicious code with elevated privileges on millions of computers. [...]]]></description>
+ </item>
+
+ <item>
+        <title>Microsoft Teams to get AI-powered, context-aware phishing detection</title>
+        <link>https://www.bleepingcomputer.com/news/microsoft/microsoft-teams-to-get-ai-powered-context-aware-phishing-detection/</link>
+        <pubDate>Fri, 23 Oct 2026 14:54:41 -0400</pubDate>
+        <dc:creator>Sergiu Gatlan</dc:creator>
+        
+        <category><![CDATA[Microsoft]]></category>
+
+        <category><![CDATA[Security]]></category>
+
+        <guid>https://www.bleepingcomputer.com/news/microsoft/microsoft-teams-to-get-ai-powered-context-aware-phishing-detection/</guid>
+        <description><![CDATA[Microsoft has announced plans to add AI-powered phishing detection to Teams messages starting in early November 2026. [...]]]></description>
+ </item>
+
+ <item>
+        <title>Microsoft: Windows Server 2016 reaches end of support in January</title>
+        <link>https://www.bleepingcomputer.com/news/microsoft/microsoft-windows-server-2016-reaches-end-of-support-in-january/</link>
+        <pubDate>Fri, 23 Oct 2026 13:05:07 -0400</pubDate>
+        <dc:creator>Sergiu Gatlan</dc:creator>
+        
+        <category><![CDATA[Microsoft]]></category>
+
+        <guid>https://www.bleepingcomputer.com/news/microsoft/microsoft-windows-server-2016-reaches-end-of-support-in-january/</guid>
+        <description><![CDATA[Microsoft says Windows Server 2016 will stop receiving security updates after it reaches the end of support in January 2027. [...]]]></description>
+ </item>
+
+</channel>
+</rss>

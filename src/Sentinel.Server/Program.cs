@@ -1,0 +1,169 @@
+using System.Text.Json.Serialization;
+using System.Threading.RateLimiting;
+using Microsoft.AspNetCore.DataProtection;
+using Microsoft.AspNetCore.HttpOverrides;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.FileProviders;
+using Microsoft.Extensions.Options;
+using Sentinel.Core.Contracts;
+using Sentinel.Server;
+using Sentinel.Server.Auth;
+using Sentinel.Server.Data;
+using Sentinel.Server.Endpoints;
+using Sentinel.Server.Hubs;
+using Sentinel.Server.Services;
+using Sentinel.Server.Services.ThreatFeed;
+using Sentinel.Server.Workers;
+using Serilog;
+
+Log.Logger = new LoggerConfiguration().WriteTo.Console().CreateBootstrapLogger();
+
+var builder = WebApplication.CreateBuilder(args);
+
+// SENTINEL_DATADIR, SENTINEL_ADMINPASSWORD, ... map onto SentinelOptions. So does the "Sentinel" section of appsettings.json.
+builder.Configuration.AddEnvironmentVariables("SENTINEL_");
+var options = new SentinelOptions();
+builder.Configuration.GetSection(SentinelOptions.Section).Bind(options);
+builder.Configuration.Bind(options);
+if (options.Validate() is { Count: > 0 } configErrors)
+{
+    foreach (var e in configErrors) Log.Fatal("Invalid configuration: {Error}", e);
+    return 1;
+}
+// The data dir holds the database, JWT key and data-protection keys: owner-only.
+if (OperatingSystem.IsWindows()) Directory.CreateDirectory(options.DataDir);
+else Directory.CreateDirectory(options.DataDir, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
+builder.Services.AddSingleton(Options.Create(options));
+
+if (string.IsNullOrEmpty(builder.Configuration["urls"]) && string.IsNullOrEmpty(Environment.GetEnvironmentVariable("ASPNETCORE_URLS")))
+    builder.WebHost.UseUrls("http://0.0.0.0:8080");
+
+builder.Host.UseSerilog((ctx, lc) => lc
+    // Sensible defaults baked in so the single binary needs no appsettings.json. Serilog config keys still override.
+    .MinimumLevel.Information()
+    .MinimumLevel.Override("Microsoft.AspNetCore", Serilog.Events.LogEventLevel.Warning)
+    .MinimumLevel.Override("Microsoft.EntityFrameworkCore", Serilog.Events.LogEventLevel.Warning)
+    .MinimumLevel.Override("System.Net.Http.HttpClient", Serilog.Events.LogEventLevel.Warning)
+    // Keys are stored in the owner-only data dir; the "unencrypted at rest" warning is expected on Linux.
+    .MinimumLevel.Override("Microsoft.AspNetCore.DataProtection", Serilog.Events.LogEventLevel.Error)
+    .ReadFrom.Configuration(ctx.Configuration)
+    .Enrich.FromLogContext()
+    .WriteTo.Console(outputTemplate: "[{Timestamp:HH:mm:ss} {Level:u3}] {SourceContext}: {Message:lj}{NewLine}{Exception}"));
+
+builder.Services.AddSingleton(TimeProvider.System);
+builder.Services.AddDataProtection()
+    .SetApplicationName("sentinel-vps")
+    .PersistKeysToFileSystem(new DirectoryInfo(Path.Combine(options.DataDir, "keys")));
+
+if (options.DatabaseProvider.Equals("postgres", StringComparison.OrdinalIgnoreCase))
+{
+    var cs = options.ConnectionString ?? throw new InvalidOperationException("SENTINEL_CONNECTIONSTRING is required for PostgreSQL.");
+    builder.Services.AddDbContext<SentinelDbContext, PostgresSentinelDbContext>(o => o.UseNpgsql(cs));
+}
+else
+{
+    var cs = options.ConnectionString ?? $"Data Source={Path.Combine(options.DataDir, "sentinel.db")}";
+    builder.Services.AddDbContext<SentinelDbContext, SqliteSentinelDbContext>(o => o.UseSqlite(cs));
+}
+
+builder.Services.AddSentinelAuth(new JwtIssuer(JwtIssuer.LoadOrCreateKey(options.DataDir, builder.Configuration["JWTKEY"]), options.SessionLifetimeValue));
+builder.Services.AddRateLimiter(o =>
+{
+    o.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    o.AddPolicy("auth", ctx => RateLimitPartition.GetFixedWindowLimiter(
+        ctx.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+        _ => new FixedWindowRateLimiterOptions { PermitLimit = options.AuthRateLimitPerMinute, Window = TimeSpan.FromMinutes(1) }));
+});
+
+builder.Services.ConfigureHttpJsonOptions(o =>
+{
+    o.SerializerOptions.Converters.Add(new JsonStringEnumConverter());
+    o.SerializerOptions.TypeInfoResolverChain.Insert(0, AgentJsonContext.Default);
+});
+builder.Services.AddSignalR().AddJsonProtocol(o => o.PayloadSerializerOptions.Converters.Add(new JsonStringEnumConverter()));
+builder.Services.AddOpenApi();
+builder.Services.AddProblemDetails();
+builder.Services.Configure<ForwardedHeadersOptions>(o =>
+{
+    // Trust X-Forwarded-* from loopback only (Caddy/nginx on the same box). The remote IP feeds the self-ban guard.
+    o.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+});
+
+builder.Services.AddScoped<PolicyService>();
+builder.Services.AddScoped<CommandService>();
+builder.Services.AddScoped<EventIngestService>();
+builder.Services.AddSingleton<DashboardNotifier>();
+builder.Services.AddHostedService<PresenceWorker>();
+builder.Services.AddHostedService<RetentionWorker>();
+builder.Services.AddScoped<ThreatFeedService>();
+builder.Services.AddHttpClient(ThreatFeedService.HttpClientName, c =>
+{
+    c.Timeout = TimeSpan.FromSeconds(90); // NVD pages of 2000 CVEs can be slow
+    c.MaxResponseContentBufferSize = 64 * 1024 * 1024;
+    c.DefaultRequestHeaders.UserAgent.ParseAdd($"SentinelVPS/{typeof(Program).Assembly.GetName().Version?.ToString(3) ?? "dev"} (self-hosted; threat feed)");
+}).ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler { AutomaticDecompression = System.Net.DecompressionMethods.All });
+if (options.ThreatFeedEnabled) builder.Services.AddHostedService<ThreatFeedWorker>();
+
+var app = builder.Build();
+
+await Bootstrap.RunAsync(app.Services);
+
+app.UseForwardedHeaders();
+app.UseExceptionHandler();
+app.UseSerilogRequestLogging(o => o.GetLevel = (ctx, _, ex) =>
+    ex is not null || ctx.Response.StatusCode >= 500 ? Serilog.Events.LogEventLevel.Error
+    : ctx.Request.Path.StartsWithSegments("/api/agent") ? Serilog.Events.LogEventLevel.Verbose
+    : Serilog.Events.LogEventLevel.Debug);
+
+// The SPA is embedded in the binary (see Sentinel.Server.csproj), so the server ships as one file.
+var web = new ManifestEmbeddedFileProvider(typeof(Program).Assembly, "wwwroot");
+app.UseDefaultFiles(new DefaultFilesOptions { FileProvider = web });
+app.UseStaticFiles(new StaticFileOptions
+{
+    FileProvider = web,
+    OnPrepareResponse = ctx =>
+    {
+        // Vite emits content-hashed file names under /assets, so they can be cached forever.
+        if (ctx.Context.Request.Path.StartsWithSegments("/assets"))
+            ctx.Context.Response.Headers.CacheControl = "public, max-age=31536000, immutable";
+    },
+});
+
+app.UseRateLimiter();
+app.UseAuthentication();
+app.UseCsrfHeaderCheck();
+app.UseAuthorization();
+
+app.MapOpenApi("/openapi/{documentName}.json");
+app.MapMetaEndpoints();
+app.MapAuthEndpoints();
+app.MapAgentEndpoints();
+app.MapHostEndpoints();
+app.MapAdminEndpoints();
+app.MapBanEndpoints();
+app.MapPolicyEndpoints();
+app.MapEventEndpoints();
+app.MapFeedEndpoints();
+app.MapHub<AgentHub>("/hubs/agent");
+app.MapHub<DashboardHub>("/hubs/dashboard");
+app.MapInstallScripts();
+
+// Client-side routing: unknown non-API paths serve index.html.
+app.MapFallback(async ctx =>
+{
+    if (ctx.Request.Path.StartsWithSegments("/api") || ctx.Request.Path.StartsWithSegments("/hubs"))
+    {
+        ctx.Response.StatusCode = StatusCodes.Status404NotFound;
+        return;
+    }
+    var index = web.GetFileInfo("index.html");
+    ctx.Response.ContentType = "text/html; charset=utf-8";
+    ctx.Response.Headers.CacheControl = "no-cache";
+    await using var s = index.CreateReadStream();
+    await s.CopyToAsync(ctx.Response.Body);
+});
+
+app.Run();
+return 0;
+
+public partial class Program;

@@ -1,0 +1,284 @@
+# SentinelVPS architecture
+
+SentinelVPS is an orchestrator and control plane, not a security engine. Each capability is provided by an
+established open-source tool (fail2ban, CrowdSec, Trivy, Lynis, …). SentinelVPS installs or adopts the
+tool, owns a clearly marked slice of its configuration, reads the tool's own structured output, and
+normalizes everything into one event model, one policy model and one dashboard.
+
+```
+          ┌──────────────── sentinel-server (one binary) ───────────────────────┐
+browser ──┤ Svelte SPA (embedded) · REST /api · SignalR /hubs/dashboard          │
+          │ EF Core → SQLite (WAL) | PostgreSQL · workers (presence, retention,  │
+          │ threat feed ← NVD, CISA KEV, security news RSS)                      │
+          └──────────▲───────────────────────────────▲──────────────────────────┘
+                     │ HTTPS REST (pull)             │ SignalR /hubs/agent ("wake" only)
+          ┌──────────┴───────────── sentinel-agent (per host) ───────────────────┐
+          │ Supervisor: heartbeat → reconcile → commands      EventPump (5 s)     │
+          │      │ IToolIntegration                                                │
+          │      ├── Fail2BanIntegration ── fail2ban-client, jail.d/sentinel-vps.local, fail2ban.log
+          │      ├── (CrowdSec, nftables, unattended-upgrades, Trivy, Lynis, … later)
+          └───────────────────────────────────────────────────────────────────────┘
+```
+
+## 1. The normalized Event model
+
+`src/Sentinel.Core/Events/SecurityEvent.cs`. Every tool's output becomes this shape **on the agent**, so the
+server's pipeline, storage and UI contain no tool-specific code.
+
+```csharp
+public sealed record SecurityEvent
+{
+    Guid       Id          // agent-generated; content-derived for log lines → re-delivery is idempotent
+    DateTime   OccurredAt  // UTC, the tool's timestamp (not read time)
+    Capability Capability  // Agent | Banning | Blocklist | Firewall | Updates | Vulnerabilities | Hardening | Network | Malware
+    Severity   Severity    // Info < Low < Medium < High < Critical (stored as int so >= filters work)
+    string     SourceTool  // "fail2ban", "trivy", "sentinel-agent", "sentinel-server"
+    string     Kind        // dotted, tool-independent: ban.added, auth.failures, tool.error, config.drift, vuln.found …
+    string?    Subject     // primary entity: IP/CIDR, CVE id, package, check id
+    string     Message     // one human-readable line
+    string?    Raw         // verbatim tool output line(s), for forensics
+    IReadOnlyDictionary<string,string> Metadata   // jail, count, firstSeen, cvss, version …
+    string     DedupKey    // leaky-bucket key for the alert pipeline (default tool:kind:subject)
+}
+```
+
+The host is **not** a field the agent can set. The server stamps it from the authenticated agent identity,
+so one agent cannot forge events for another host.
+
+**fail2ban mapping** (`Fail2BanEventNormalizer`, tested against a real fail2ban 1.1.0 log):
+
+| fail2ban output | Kind | Severity | Notes |
+|---|---|---|---|
+| `NOTICE [jail] Ban ip` | `ban.added` | Low (Info for `sentinel-manual`) | `metadata.manual` |
+| `NOTICE [jail] Increase Ban ip (…)` | `ban.increased` | Medium | repeat offender |
+| `NOTICE [jail] Restore Ban ip` | `ban.restored` | Info | after fail2ban restart |
+| `NOTICE [jail] Unban ip` | `ban.removed` | Info | |
+| `INFO [jail] Found ip - …` | `auth.failures` | Info | **aggregated** per (jail, IP) per 5 s batch with `count`, never one event per line |
+| `ERROR Failed to execute ban jail … action …` | `tool.error` | High | the ban was recorded but **not enforced** |
+| `ERROR` (other) | `tool.error` | Medium | `fail2ban.utils` stderr detail lines are folded into the summary above |
+| config apply/drift/conflict/rejection | `config.*` | Info/Medium/High | from the reconcile loop |
+
+## 2. The integration interface
+
+`src/Sentinel.Core/Integrations/IToolIntegration.cs`. The supervisor only ever talks to tools through it.
+
+```csharp
+public interface IToolIntegration
+{
+    ToolDescriptor Descriptor { get; }                    // id, capability, license, distro packages
+    Task<ToolStatus>      DetectAsync(ct);                // read-only: installed? version? running? ownership? config state?
+    Task<ToolStatus>      EnsureInstalledAsync(req, ct);  // adopt if present, else install from distro repos (if policy allows)
+    bool                  IsWanted(PolicyDocument);       // does the effective policy want this tool?
+    Task<ReconcilePlan>   PlanAsync(req, ct);             // PURE diff desired vs actual; unit-testable, previewable
+    Task<ReconcileResult> ApplyAsync(plan, ct);           // validate → atomic swap → reload → verify → roll back on failure
+    IAsyncEnumerable<SecurityEvent> CollectEventsAsync(ct); // drain normalized events since last call (every 5 s)
+    Task<ReconcileResult> RemoveManagedStateAsync(ct);    // uninstall: remove only what we own
+}
+
+public interface IBanProvider      // optional capability (fail2ban, CrowdSec, nftables blocklist)
+{
+    Task<IReadOnlyList<BanEntry>> ListBansAsync(ct);
+    Task<CommandOutcome> BanAsync(IpTarget target, string? reason, ct);
+    Task<CommandOutcome> UnbanAsync(IpTarget target, ct);
+}
+```
+
+Rules every implementation follows:
+
+* **Structured output first.** fail2ban uses `fail2ban-client status`, `get <jail> banip --with-time`,
+  `get logtarget`, `-t`, `ping`, `--version`. The log file (whose path comes from `get logtarget`) is read only
+  for real-time ban/failure events, which the client cannot stream. That is fail2ban's documented log format.
+* **Ownership.** Files we write carry a header with `sentinel-revision` and a `sentinel-sha256` of the body
+  (`ManagedFile`). A hand edit makes the file *Drifted*: it is reported and **not** overwritten until the
+  operator clicks *Reclaim*. A file at our path without the marker is *Foreign* and is never touched. A jail the
+  admin defines in `jail.local` / `jail.d/*.local` is skipped and reported as a *Conflict*, unless the policy
+  sets `takeover: true`.
+* **All-or-nothing apply.** Back up, write atomically (temp file + rename), run `fail2ban-client -t`, reload,
+  then verify the `sentinel-manual` jail is up. Any failure restores the backups and reloads.
+* **Never fail silently.** Missing tool, missing package (for example EPEL needed on RHEL), unsupported distro: all
+  become `Availability.Unavailable` with a human-readable reason, shown in the capability matrix.
+* **Side effects behind seams.** `ICommandRunner`, `IFileSystem`, `IPackageManager` (apt/dnf/apk),
+  `IServiceManager` (systemd/OpenRC) and `IStateStore` are all faked in tests.
+
+What the fail2ban integration owns:
+
+| Artifact | Purpose |
+|---|---|
+| `/etc/fail2ban/jail.d/sentinel-vps.local` | Only the jails the policy names, plus `[sentinel-manual]`. Never a `[DEFAULT]` section. |
+| `/etc/fail2ban/filter.d/sentinel-manual.conf` | Empty filter: the manual jail only holds dashboard bans. |
+| `[sentinel-manual]` jail | `logpath=/dev/null`, `bantime` = `banning.manualBantime` (default permanent); bans persist in fail2ban's own DB. |
+
+## 3. API surface
+
+Live OpenAPI document: `GET /openapi/v1.json`. Auth columns: **R** = signed-in user *or* read-only API key
+(`X-Api-Key`); **A** = signed-in admin only; **Ag** = agent credential; **–** = anonymous.
+Cookie-authenticated writes must also send `X-Sentinel-Request: 1` (CSRF guard on top of `SameSite=Strict`).
+
+| Method & path | Auth | Purpose |
+|---|---|---|
+| `POST /api/auth/login` · `POST /api/auth/logout` | – | JWT in httpOnly `sentinel_session` cookie (rate-limited) |
+| `GET /api/auth/me` · `POST /api/auth/password` | R · A | |
+| `GET /api/overview` | R | fleet cards, recent alerts, top offenders |
+| `GET /api/hosts` · `GET /api/hosts/{id}` | R | summaries · detail with capability matrix and policy report |
+| `GET /api/hosts/{id}/metrics?hours=` | R | downsampled CPU/mem/disk/load history |
+| `GET /api/hosts/{id}/effective-policy` · `/commands` | R | merged YAML and revision · command history |
+| `PATCH /api/hosts/{id}` · `DELETE /api/hosts/{id}` | A | rename, group, tags · remove (revokes the agent) |
+| `POST /api/hosts/{id}/actions/{reconcile\|reclaim\|refresh-bans}` | A | operator actions |
+| `GET/POST/PUT/DELETE /api/groups[/{id}]` | R/A | host groups |
+| `GET/POST/DELETE /api/enrollment-tokens[/{id}]` | A | single-use tokens; POST returns the secret once plus the install command |
+| `GET/POST/DELETE /api/api-keys[/{id}]` | A | read-only API keys (secret shown once) |
+| `GET /api/events?hostId&minSeverity&capability&ip&kind&q&from&before&limit` | R | alert timeline, cursor-paged |
+| `GET /api/feed?type&minSeverity&exploited&tag&source&q&sort&order&page&pageSize` | R | threat feed (CVEs + news), offset-paged with `total` |
+| `GET /api/feed/sources` · `GET /api/feed/tags?limit` | R | per-source fetch health · most common tags of the last 7 days |
+| `GET /api/bans?hostId&q&manual` | R | active bans across the fleet |
+| `POST /api/bans` `{target, hostIds?, reason}` | A | manual ban (IP/CIDR) → per-host agent commands |
+| `POST /api/bans/unban` `{target, hostIds?}` | A | manual unban |
+| `GET/POST/DELETE /api/allowlist[/{id}]` | R/A | global allowlist → fail2ban `ignoreip` on every host, and unbans covered IPs |
+| `GET /api/policies` | R | all layers |
+| `GET/PUT /api/policies/global` · `/group/{id}` · `/host/{id}` | R/A | current YAML + version list · save new version (422 with issues if invalid) |
+| `POST /api/policies/preview` `{scope, targetId, yaml}` | R | validation issues, merged result, rendered fail2ban fragment |
+| `GET /api/policies/layers/{layerId}/versions/{v}` · `POST …/revert/{v}` | R · A | history · revert (creates a new version) |
+| `GET /api/audit` | A | audit log |
+| `GET /api/about` · `GET /healthz` · `GET /install/{agent.sh,server.sh}` | – | licenses · liveness · installers |
+| `POST /api/agent/enroll` | – (token) | consume single-use token → `{agentId, agentSecret}` |
+| `POST /api/agent/heartbeat` | Ag | metrics + tool statuses + last apply report → `{desiredRevision, pendingCommands}` |
+| `GET /api/agent/desired-state` | Ag | effective policy + revision |
+| `POST /api/agent/events` | Ag | batch of `SecurityEvent` (≤1000), idempotent |
+| `POST /api/agent/bans` | Ag | full ban snapshot per tool (server replaces that host's active set) |
+| `GET /api/agent/commands` · `POST /api/agent/commands/{id}/result` | Ag | pull pending commands · report outcome |
+| `/hubs/agent` · `/hubs/dashboard` | Ag · R | SignalR: `Wake(reason)` to agents · `hostUpdated`, `eventsCreated`, `bansChanged`, `policyChanged`, `commandUpdated`, `feedUpdated` to browsers |
+
+### Agent ↔ server protocol
+
+All data moves over REST and is **pulled** by the agent. SignalR only carries a `Wake` nudge, so if WebSockets,
+SSE and long polling are all blocked, everything still works, only later (60 s heartbeat):
+
+1. `heartbeat` → the response says the desired policy revision and whether commands are waiting.
+2. If the revision differs (or 5 minutes passed, as a drift check): `desired-state` → plan/apply per tool → the
+   next heartbeat carries the `PolicyApplyReport`.
+3. If commands are pending: `commands` → execute → `result`, then a fresh ban snapshot.
+4. Every 5 s, independently: drain `CollectEventsAsync` from each tool → `events`; push a ban snapshot if it
+   changed (or every 5 minutes). Unsent events wait in a bounded in-memory outbox (20k) and are retried.
+
+## 4. Policy model
+
+YAML layers **global → group → host**, each versioned and immutable (`PolicyLayer` / `PolicyVersion`). The
+effective policy is the merge of the layers, plus the server's global allowlist. Its revision is a content hash
+of a canonical JSON form, so key order never matters. Reverting creates a new version. Validation rejects
+unknown keys (with line numbers), bad durations, reserved jail names, and any value that could inject INI lines
+into the rendered fail2ban config. It warns about lockout risks (empty allowlist, `maxretry < 3` on sshd).
+The default template is `policy/default.yaml`.
+
+### Timings and schedules
+
+**Rule: every recurring or time-based action is configurable.** Nothing user-visible is a hardcoded interval.
+There are two places for timings:
+
+* **Per host (policy):** anything that may reasonably differ between groups or hosts. Edited in the dashboard,
+  versioned, and overridable per group or host like any other policy key.
+* **Per server (env vars):** server-internal housekeeping.
+
+Recurring jobs use one shared type, `Schedule` (`src/Sentinel.Core/Policy/Schedule.cs`). Features never parse
+times themselves. A schedule is `every 6h` (interval since the last run), a 5-field cron such as `0 3 * * *`
+(evaluated in the **host's local time zone**, DST-safe), or `off`. A missed cron run (host down at 03:00)
+catches up once when the agent comes back. Each host gets a stable offset in `[0, agent.scheduleSpread)`, so a
+fleet doesn't run heavy scans in the same minute. Every key has a built-in default (`ScheduleDefaults`,
+`AgentTimings.Default`), so a server whose stored policy predates a key still behaves sensibly. A test keeps
+`policy/default.yaml` identical to those defaults. The policy preview returns each schedule's next three run
+times, so the editor can show `0 4 * * 1-5` as "Mon 04:00, Tue 04:00, …".
+
+| Policy key | Default | Bounds | Used by |
+|---|---|---|---|
+| `agent.heartbeatInterval` | `60s` | 10s–1h | heartbeat/poll. Offline detection scales with it per host |
+| `agent.driftCheckInterval` | `5m` | 1m–1d | re-verify tool config/daemons without a policy change |
+| `agent.eventFlushInterval` | `5s` | 1s–10m | ship tool events to the server |
+| `agent.banSnapshotInterval` | `5m` | 30s–1d | full ban-list resync |
+| `agent.scheduleSpread` | `30m` | 0–12h | per-host offset for scheduled jobs |
+| `agent.offlineGracePeriod` | `24h` | any, or `permanent` | release server-pushed firewall state |
+| `updates.checkSchedule` | `every 6h` | ≥1m | pending security update count (D6) |
+| `updates.applySchedule` | `off` | ≥1m | auto-apply security updates (D6) |
+| `vulnerabilities.scanSchedule` | `0 3 * * *` | ≥1m | Trivy/Grype (D7) |
+| `hardening.auditSchedule` | `0 5 * * 0` | ≥1m | Lynis (D8) |
+| `malware.scanSchedule` | `off` | ≥1m | ClamAV, opt-in (D10) |
+| *notification digest* | `0 8 * * *` (planned) | | daily digest (D4). Fleet-wide, set on the Settings page, same `Schedule` type |
+
+| Server env var | Default | |
+|---|---|---|
+| `SENTINEL_HEARTBEATINTERVAL` | `60s` | fallback when no policy sets `agent.heartbeatInterval` |
+| `SENTINEL_OFFLINEAFTERMISSEDHEARTBEATS` | `3` | |
+| `SENTINEL_PRESENCECHECKINTERVAL` | `30s` | offline sweep |
+| `SENTINEL_RETENTIONRUNINTERVAL` | `1h` | pruning job |
+| `SENTINEL_METRICRETENTION` / `SENTINEL_EVENTRETENTION` | `7d` / `90d` | |
+| `SENTINEL_ENROLLMENTTOKENTTL` | `24h` | default; overridable per token |
+| `SENTINEL_COMMANDREDELIVERAFTER` / `SENTINEL_COMMANDMAXATTEMPTS` | `5m` / `3` | unacknowledged agent commands |
+| `SENTINEL_PENDINGCOMMANDTTL` | `24h` | commands for hosts that stay offline |
+| `SENTINEL_SESSIONLIFETIME` | `12h` | dashboard login |
+| `SENTINEL_AUTHRATELIMITPERMINUTE` | `10` | login/enroll attempts per IP |
+| `SENTINEL_THREATFEEDENABLED` | `true` | fetch NVD, CISA KEV and news RSS (§5) |
+| `SENTINEL_THREATFEEDINTERVAL` | `20m` | per-source refetch after a success (5m–1d) |
+| `SENTINEL_THREATFEEDRETENTION` | `30d` | feed items older than this are pruned and not fetched |
+| `SENTINEL_NVDAPIKEY` | – | optional; raises NVD's rate limit from 5 to 50 requests / 30 s |
+
+All values are validated: an invalid policy is rejected with the key's path, and invalid server config stops
+startup with a message naming the variable. Deliberately **not** knobs: retry backoffs, tool command timeouts
+and internal caches. These are failure handling, not scheduled actions.
+
+## 5. Threat feed
+
+The server, not the agents, aggregates public threat intelligence into one timeline (`/api/feed`, the dashboard's
+*Threat feed* page). Code: `src/Sentinel.Server/Services/ThreatFeed/`, driven by `ThreatFeedWorker`.
+
+| Source | Kind | Notes |
+|---|---|---|
+| NVD CVE API 2.0 | `cve` | first run: CVEs published in the last 7 days, plus CVEs added to KEV within the retention window (so they get CVSS); afterwards everything `lastModified` since the stored cursor (5 min overlap), which also picks up late CVSS scores |
+| CISA KEV catalog | flags | conditional GET; falls back to CISA's GitHub mirror when cisa.gov's CDN refuses the server's IP (common on VPS ranges) |
+| The Hacker News, BleepingComputer, Krebs on Security, SecurityWeek, Dark Reading | `news` | RSS 2.0 / RDF / Atom, conditional GET, DTDs never processed |
+
+**Item model** (`FeedItem`): `id, source, type (cve\|news), title, url, publishedAt, summary, severity, cvssScore,
+exploited, tags, products`. Dedup is by id, derived from the source's own item id: the CVE id, or
+`{source}:{sha256(guid)}` for articles. A CVE is **one row** whether NVD or KEV saw it first; the other source
+merges into it. `severity` is the CVSS base severity (v4.0 > v3.1 > v3.0 > v2, NVD's primary score within a
+version); news has none. `exploited` means the CVE, or a CVE an article mentions, is in KEV. KEV is
+authoritative: removals unflag, and a catalog less than half the stored size is refused rather than applied.
+A CVE added to KEV after publication is dated by its KEV addition, because that is when it became news.
+HTML is reduced to plain text and only absolute `http(s)` links are stored.
+
+**Scheduling and failure handling.** Every source has its own row in `FeedSources`: after a success the next
+fetch is `ThreatFeedInterval` ±10 % jitter; after a failure it backs off 1, 2, 4 … minutes (max 2 h), or the
+server's `Retry-After` if longer. 429/502/503/504 (and NVD's rate-limit 403) are retried in-run up to 3 times
+when the wait is short. NVD pages are paced at 6 s without an API key, as NVD asks. A response that arrived
+but couldn't be applied doesn't keep its ETag, so it's fetched in full next time. Sources are independent, and
+the worker runs off the request path starting right after startup: the API only reads stored rows, so a slow
+or failing source never delays the dashboard. The SPA shows per-source health and gets a `feedUpdated`
+SignalR hint when new items arrive.
+
+## 6. Security model
+
+| Secret | At rest |
+|---|---|
+| Admin password | PBKDF2 (`PasswordHasher`), dummy-hash timing equalization on unknown users |
+| Enrollment tokens (`sve_…`, 256-bit) | SHA-256; consumed by an atomic conditional `UPDATE` (single use), 24 h TTL |
+| Agent credentials (`{hostId}.sva_…`) | SHA-256; constant-time compare; deleting a host revokes it |
+| API keys (`svk_…`) | SHA-256; reader role only. Writes return 403 |
+| JWT signing key | `data/jwt.key` (0600) or `SENTINEL_JWTKEY` |
+
+Agents refuse plain HTTP unless enrolled with `--insecure`, and support certificate pinning (`--pin <sha256>`)
+for self-signed servers. Manual bans refuse ranges wider than /8 (v4) or /32 (v6), anything overlapping the
+allowlist, and the operator's own address.
+
+## 7. Measured footprint (this repo, linux-x64)
+
+| | Size | Idle memory |
+|---|---|---|
+| `sentinel-agent` (Native AOT, default) | 11 MB | ~37 MB RSS, ~16 MB private |
+| `sentinel-agent` (`-p:AgentAot=false`, trimmed single-file JIT) | 20 MB | ~54 MB RSS, ~29 MB private |
+| `sentinel-server` (single file, SPA embedded) | 56 MB | – |
+| fail2ban 1.1.0 itself | – | ~18 MB |
+
+## 8. Why some pieces are built rather than bundled
+
+* **Supervisor, policy engine, event normalization.** This *is* the product: no existing tool unifies these
+  engines.
+* **Ban snapshots and manual-ban jail.** These use fail2ban's own mechanisms (`banip`, jail DB). We add no
+  firewall code for banning.
+* **Metrics from /proc.** Five files are cheaper than shipping node_exporter for four numbers.
