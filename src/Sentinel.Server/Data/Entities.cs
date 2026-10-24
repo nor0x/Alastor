@@ -91,6 +91,28 @@ public sealed class ManagedHost
     public string? PolicyReportJson { get; set; }
 
     public List<HostToolStatus> Tools { get; set; } = [];
+
+    // Latest security baseline run, denormalized for list views. Null until the agent reports one.
+    public int? BaselineScore { get; set; }
+    public DateTime? BaselineCheckedAt { get; set; }
+    public string? BaselineRevision { get; set; }
+}
+
+/// <summary>The latest result of one security baseline check on one host. Replaced as a set on every agent report.</summary>
+public sealed class HostBaselineCheck
+{
+    public Guid HostId { get; set; }
+    public required string CheckId { get; set; }
+    public Sentinel.Core.Baseline.CheckStatus Status { get; set; }
+    public string Actual { get; set; } = "";
+    public string? Detail { get; set; }
+    public List<string> Commands { get; set; } = [];
+    public bool Enforced { get; set; }
+    public bool Accepted { get; set; }
+    public DateTime UpdatedAt { get; set; }
+
+    /// <summary>When the check last went from passing (or unknown) to failing; null while it passes.</summary>
+    public DateTime? FailingSince { get; set; }
 }
 
 public sealed class HostToolStatus

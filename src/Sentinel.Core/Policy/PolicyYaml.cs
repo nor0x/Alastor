@@ -67,6 +67,8 @@ public static partial class PolicyYaml
             if (b.Jails is not null) b.Jails = b.Jails.OrderBy(kv => kv.Key, StringComparer.Ordinal).ToDictionary(StringComparer.Ordinal);
             if (b.Allowlist is not null) b.Allowlist = b.Allowlist.Order(StringComparer.Ordinal).ToList();
         }
+        if (canonical.Baseline?.Mitigations is { } m)
+            canonical.Baseline.Mitigations = m.OrderBy(kv => kv.Key, StringComparer.Ordinal).ToDictionary(StringComparer.Ordinal);
         var json = JsonSerializer.SerializeToUtf8Bytes(canonical, PolicyJsonContext.Default.PolicyDocument);
         return Convert.ToHexStringLower(SHA256.HashData(json))[..16];
     }
@@ -103,6 +105,20 @@ public static partial class PolicyYaml
         CheckSchedule("vulnerabilities.scanSchedule", doc.Vulnerabilities?.ScanSchedule);
         CheckSchedule("hardening.auditSchedule", doc.Hardening?.AuditSchedule);
         CheckSchedule("malware.scanSchedule", doc.Malware?.ScanSchedule);
+        CheckSchedule("baseline.checkSchedule", doc.Baseline?.CheckSchedule);
+        foreach (var (id, value) in doc.Baseline?.Mitigations ?? [])
+        {
+            var path = $"baseline.mitigations.{id}";
+            var check = Sentinel.Core.Baseline.BaselineCatalog.Find(id);
+            if (check is null)
+                Error(path, $"Unknown baseline check '{id}'. See the Baseline page for the list.");
+            else if (value is not (Sentinel.Core.Baseline.BaselineMitigationValues.Apply or Sentinel.Core.Baseline.BaselineMitigationValues.Ignore or Sentinel.Core.Baseline.BaselineMitigationValues.Report))
+                Error(path, "Use 'apply' (the agent enforces the fix), 'ignore' (accepted risk) or 'report' (only report).");
+            else if (value == Sentinel.Core.Baseline.BaselineMitigationValues.Apply && !check.PolicyPath.SequenceEqual(["baseline", "mitigations", id]))
+                Error(path, $"'{id}' is fixed with {string.Join('.', check.PolicyPath)}: {check.PolicyValue}, not here.");
+            else if (value == Sentinel.Core.Baseline.BaselineMitigationValues.Apply && check.Fix == Sentinel.Core.Baseline.FixKind.Manual)
+                Error(path, $"'{id}' can't be applied automatically. Fix it with the commands on the Baseline page, or set 'ignore' to accept the risk.");
+        }
 
         var b = doc.Banning;
         if (b is null) return issues;

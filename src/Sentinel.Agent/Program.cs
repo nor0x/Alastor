@@ -1,3 +1,4 @@
+using Sentinel.Core.Baseline;
 using Microsoft.Extensions.Logging.Abstractions;
 using Sentinel.Agent;
 using Sentinel.Core.Contracts;
@@ -65,6 +66,7 @@ builder.Services.AddSingleton<IStateStore>(platform.State);
 builder.Services.AddSingleton(new ServerClient(ServerClient.CreateHttpClient(config.ServerUrl, config.Credential, config.CertificatePin)));
 builder.Services.AddSingleton<HostMetricsCollector>();
 builder.Services.AddSingleton<IToolIntegration>(sp => platform.CreateFail2Ban(sp.GetRequiredService<ILogger<Fail2BanIntegration>>()));
+builder.Services.AddSingleton<IToolIntegration>(sp => platform.CreateBaseline(sp.GetRequiredService<ILogger<BaselineIntegration>>()));
 builder.Services.AddSingleton<Supervisor>();
 builder.Services.AddHostedService(sp => sp.GetRequiredService<Supervisor>());
 builder.Services.AddHostedService<HubListener>();
@@ -133,7 +135,7 @@ async Task<int> StatusAsync()
 async Task<int> UninstallAsync()
 {
     var platform = await PlatformServices.CreateAsync(stateDir);
-    IToolIntegration[] tools = [platform.CreateFail2Ban(NullLogger<Fail2BanIntegration>.Instance)];
+    IToolIntegration[] tools = [platform.CreateFail2Ban(NullLogger<Fail2BanIntegration>.Instance), platform.CreateBaseline(NullLogger<BaselineIntegration>.Instance)];
     foreach (var t in tools)
     {
         var r = await t.RemoveManagedStateAsync(CancellationToken.None);
@@ -156,4 +158,7 @@ internal sealed record PlatformServices(OsInfo Os, ICommandRunner Runner, IFileS
 
     public Fail2BanIntegration CreateFail2Ban(ILogger<Fail2BanIntegration> logger) =>
         new(Runner, Fs, PackageManagers.For(Os.Family, Runner), ServiceManagers.For(Runner), State, logger, TimeProvider.System);
+
+    public BaselineIntegration CreateBaseline(ILogger<BaselineIntegration> logger) =>
+        new(Runner, Fs, ServiceManagers.For(Runner), State, Os, logger, TimeProvider.System);
 }

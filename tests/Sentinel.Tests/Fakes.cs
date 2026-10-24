@@ -58,6 +58,9 @@ public sealed class FakeFileSystem : IFileSystem
     public long GetFileLength(string path) => Encoding.UTF8.GetByteCount(Files[path]);
     public Stream OpenRead(string path) => new MemoryStream(Encoding.UTF8.GetBytes(Files[path]));
     public string? GetFileIdentity(string path) => Files.TryGetValue(path, out var c) ? Convert.ToHexString(Encoding.UTF8.GetBytes(c[..Math.Min(32, c.Length)])) : null;
+
+    public Dictionary<string, UnixFileMode> Modes { get; } = new(StringComparer.Ordinal);
+    public UnixFileMode? GetUnixFileMode(string path) => Modes.TryGetValue(path, out var m) ? m : Files.ContainsKey(path) ? (UnixFileMode)0b110_100_100 : null;
 }
 
 public static class Fixture

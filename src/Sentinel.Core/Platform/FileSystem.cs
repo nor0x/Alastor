@@ -17,6 +17,9 @@ public interface IFileSystem
 
     /// <summary>A value that changes when a file is replaced: a hex prefix of its first bytes, which grows while the file is young. Used to detect log rotation.</summary>
     string? GetFileIdentity(string path);
+
+    /// <summary>Permission bits of a file, or null if it doesn't exist.</summary>
+    UnixFileMode? GetUnixFileMode(string path);
 }
 
 public sealed class PhysicalFileSystem : IFileSystem
@@ -68,4 +71,7 @@ public sealed class PhysicalFileSystem : IFileSystem
         using (var s = OpenRead(path)) read = s.Read(head);
         return Convert.ToHexString(head[..read]);
     }
+
+    public UnixFileMode? GetUnixFileMode(string path) =>
+        File.Exists(path) && !OperatingSystem.IsWindows() ? File.GetUnixFileMode(path) : null;
 }

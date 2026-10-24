@@ -334,6 +334,50 @@ namespace Sentinel.Server.Data.Migrations.Postgres
                     b.ToTable("FeedSources");
                 });
 
+            modelBuilder.Entity("Sentinel.Server.Data.HostBaselineCheck", b =>
+                {
+                    b.Property<Guid>("HostId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("CheckId")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<bool>("Accepted")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Actual")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("Commands")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("Detail")
+                        .HasColumnType("text");
+
+                    b.Property<bool>("Enforced")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateTime?>("FailingSince")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("HostId", "CheckId");
+
+                    b.HasIndex("CheckId", "Status");
+
+                    b.ToTable("BaselineChecks");
+                });
+
             modelBuilder.Entity("Sentinel.Server.Data.HostCommand", b =>
                 {
                     b.Property<Guid>("Id")
@@ -557,6 +601,15 @@ namespace Sentinel.Server.Data.Migrations.Postgres
                     b.Property<string>("Architecture")
                         .IsRequired()
                         .HasColumnType("text");
+
+                    b.Property<DateTime?>("BaselineCheckedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("BaselineRevision")
+                        .HasColumnType("text");
+
+                    b.Property<int?>("BaselineScore")
+                        .HasColumnType("integer");
 
                     b.Property<double>("CpuPercent")
                         .HasColumnType("double precision");
@@ -811,6 +864,15 @@ namespace Sentinel.Server.Data.Migrations.Postgres
                 });
 
             modelBuilder.Entity("Sentinel.Server.Data.ActiveBan", b =>
+                {
+                    b.HasOne("Sentinel.Server.Data.ManagedHost", null)
+                        .WithMany()
+                        .HasForeignKey("HostId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Sentinel.Server.Data.HostBaselineCheck", b =>
                 {
                     b.HasOne("Sentinel.Server.Data.ManagedHost", null)
                         .WithMany()

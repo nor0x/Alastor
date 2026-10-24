@@ -9,7 +9,8 @@ configuration declaratively, and turns their output into one normalized alert pi
 fail2ban integration end to end), threat feed (NVD CVEs, CISA KEV, security news), and the Svelte dashboard for
 all of it: overview, hosts and host detail (live metrics, capability matrix, bans, events, commands), event
 timeline, bans and allowlist, policy editor (form and YAML views with live validation, schedule preview, rendered
-fail2ban config, version history and revert), threat feed, settings (groups, enrollment tokens, API keys, server
+fail2ban config, version history and revert), security baseline (21 common hardening checks per host with
+one-click, reversible fixes applied by the agent, accepted risks, and host-specific commands for manual fixes), threat feed, settings (groups, enrollment tokens, API keys, server
 configuration, audit log) and About/licenses. Live updates over SignalR, with polling when the hub is unreachable.
 See [docs/architecture.md](docs/architecture.md) for the event model, integration interface and API surface.
 

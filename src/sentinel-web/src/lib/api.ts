@@ -118,6 +118,8 @@ export interface HostSummary {
   policySync: PolicySync;
   toolsRunning: number;
   toolsWithProblems: number;
+  baselineScore: number | null;
+  baselineFailing: number;
 }
 
 export interface ToolStatus {
@@ -214,6 +216,8 @@ export interface Overview {
   hostsWithPendingSecurityUpdates: number | null;
   hostsWithHighCves: number | null;
   averageHardeningIndex: number | null;
+  averageBaselineScore: number | null;
+  hostsFailingBaselineHigh: number;
   recentAlerts: SecurityEvent[];
   topOffenders: { target: string; events: number; hosts: number }[];
 }

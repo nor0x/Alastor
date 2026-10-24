@@ -89,7 +89,7 @@ public static class HostEndpoints
             return Results.NoContent();
         }).RequireAuthorization(AuthPolicies.Admin);
 
-        // Operator actions: re-run reconcile, reclaim hand-edited files, refresh ban list.
+        // Operator actions: re-run reconcile, reclaim hand-edited files, refresh ban list, re-run the security baseline.
         g.MapPost("/{id:guid}/actions/{action}", async (Guid id, string action, ClaimsPrincipal user, SentinelDbContext db, CommandService commands, CancellationToken ct) =>
         {
             var type = action switch
@@ -97,6 +97,7 @@ public static class HostEndpoints
                 "reconcile" => AgentCommandTypes.Reconcile,
                 "reclaim" => AgentCommandTypes.Reclaim,
                 "refresh-bans" => AgentCommandTypes.RefreshBans,
+                "recheck" => AgentCommandTypes.BaselineCheck,
                 _ => null,
             };
             if (type is null) return Results.Problem($"Unknown action '{action}'.", statusCode: 400);
@@ -111,6 +112,7 @@ public static class HostEndpoints
     {
         var h = await db.Hosts.AsNoTracking().Include(x => x.Group).Include(x => x.Tools).FirstAsync(x => x.Id == id, ct);
         var bans = await db.Bans.CountAsync(b => b.HostId == id, ct);
+        var baselineFailing = await db.BaselineChecks.CountAsync(c => c.HostId == id && c.Status == Sentinel.Core.Baseline.CheckStatus.Fail && !c.Accepted, ct);
         var sync = h.AppliedRevision is null ? "pending"
             : h.PolicyApplySuccess == false ? "failed"
             : h.AppliedRevision == desiredRevision ? "in-sync"
@@ -119,6 +121,7 @@ public static class HostEndpoints
                                           t.ConfigState is ConfigState.Drifted or ConfigState.Conflict or ConfigState.Rejected);
         return new HostSummaryDto(h.Id, h.Name, h.Hostname, h.OsPrettyName, h.Architecture, h.AgentVersion, h.IsOnline, h.LastSeenAt,
             h.CpuPercent, Dto.Percent(h.MemoryUsedBytes, h.MemoryTotalBytes), Dto.Percent(h.DiskUsedBytes, h.DiskTotalBytes), h.Load1,
-            h.GroupId, h.Group?.Name, h.Tags, bans, sync, h.Tools.Count(t => t.Running), problems);
+            h.GroupId, h.Group?.Name, h.Tags, bans, sync, h.Tools.Count(t => t.Running), problems,
+            h.BaselineScore, baselineFailing);
     }
 }

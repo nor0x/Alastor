@@ -47,3 +47,12 @@ hardening:
 
 malware:
   scanSchedule: "off"        # ClamAV is opt-in, e.g. "0 2 * * 6"
+
+# ---- Security baseline ----
+
+baseline:
+  checkSchedule: every 1h    # run the baseline checks (SSH, firewall, updates, kernel, accounts); takes a second
+  # Check id -> "apply" (the agent enforces the fix with a managed drop-in), "ignore" (accepted risk)
+  # or "report" (the default; lets a group/host undo a lower layer's apply).
+  # Unlisted checks are only reported. Use the Baseline page to apply fixes per host, group or fleet.
+  mitigations: {}

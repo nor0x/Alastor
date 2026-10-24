@@ -102,6 +102,11 @@ public static class EventKinds
     public const string HostOnline = "host.online";
     public const string HostEnrolled = "host.enrolled";
 
+    // Security baseline
+    public const string BaselineFailed = "baseline.failed";
+    public const string BaselineResolved = "baseline.resolved";
+    public const string BaselineSummary = "baseline.summary";
+
     // Reserved for later deliverables.
     public const string VulnerabilityFound = "vuln.found";
     public const string UpdatesPending = "updates.pending";

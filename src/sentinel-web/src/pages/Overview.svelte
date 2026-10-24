@@ -78,6 +78,13 @@
       <span class="big">{data.hostsPolicyPending}</span>
       <span class="foot muted">hosts pending or failed</span>
     </a>
+    <a class="tile" href="/baseline">
+      <span class="label">Security baseline</span>
+      <span class="big">{data.averageBaselineScore ?? '—'}{#if data.averageBaselineScore !== null}<span class="of">/ 100</span>{/if}</span>
+      {#if data.averageBaselineScore === null}<span class="foot muted">no host checked yet</span>
+      {:else if data.hostsFailingBaselineHigh > 0}<span class="foot warn">{data.hostsFailingBaselineHigh} host{data.hostsFailingBaselineHigh > 1 ? 's' : ''} failing high-severity checks</span>
+      {:else}<span class="foot muted">no high-severity failures</span>{/if}
+    </a>
     <div class="tile later" title="Arrives with the update-agent integration (deliverable 6)">
       <span class="label">Pending security updates</span>
       <span class="big">{data.hostsWithPendingSecurityUpdates ?? '—'}</span>

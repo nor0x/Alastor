@@ -14,6 +14,7 @@ public sealed class PolicyDocument
     public VulnerabilitiesPolicy? Vulnerabilities { get; set; }
     public HardeningPolicy? Hardening { get; set; }
     public MalwarePolicy? Malware { get; set; }
+    public BaselinePolicy? Baseline { get; set; }
 
     public PolicyDocument Clone() => PolicyMerger.Merge(new PolicyDocument(), this);
 }
@@ -78,6 +79,19 @@ public sealed class MalwarePolicy
 {
     /// <summary>ClamAV scan of web roots and upload directories (opt-in, so off by default).</summary>
     public string? ScanSchedule { get; set; }
+}
+
+public sealed class BaselinePolicy
+{
+    /// <summary>How often the agent runs the security baseline checks. They take a second or two.</summary>
+    public string? CheckSchedule { get; set; }
+
+    /// <summary>
+    /// Check id → <c>apply</c> (the agent enforces the fix with a managed drop-in) or <c>ignore</c> (accepted risk:
+    /// still checked, not scored or alerted) or <c>report</c> (the default: only report). Maps merge key by key, so a
+    /// host can set <c>report</c> to opt out of a fix the global policy applies.
+    /// </summary>
+    public Dictionary<string, string>? Mitigations { get; set; }
 }
 
 public sealed class BanningPolicy

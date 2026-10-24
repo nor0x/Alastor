@@ -139,6 +139,7 @@ app.MapMetaEndpoints();
 app.MapAuthEndpoints();
 app.MapAgentEndpoints();
 app.MapHostEndpoints();
+app.MapBaselineEndpoints();
 app.MapAdminEndpoints();
 app.MapBanEndpoints();
 app.MapPolicyEndpoints();

@@ -27,7 +27,24 @@ public static class PolicyMerger
         {
             ScanSchedule = overlay.Malware?.ScanSchedule ?? baseDoc.Malware?.ScanSchedule,
         },
+        Baseline = Merge(baseDoc.Baseline, overlay.Baseline),
     };
+
+    private static BaselinePolicy? Merge(BaselinePolicy? b, BaselinePolicy? o)
+    {
+        if (b is null && o is null) return null;
+        Dictionary<string, string>? mitigations = null;
+        if (b?.Mitigations is not null || o?.Mitigations is not null)
+        {
+            mitigations = new Dictionary<string, string>(b?.Mitigations ?? [], StringComparer.Ordinal);
+            foreach (var (id, value) in o?.Mitigations ?? []) mitigations[id] = value;
+        }
+        return new BaselinePolicy
+        {
+            CheckSchedule = o?.CheckSchedule ?? b?.CheckSchedule,
+            Mitigations = mitigations,
+        };
+    }
 
     private static AgentPolicy? Merge(AgentPolicy? b, AgentPolicy? o)
     {
