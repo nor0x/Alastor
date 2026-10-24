@@ -1,0 +1,4 @@
+2026-10-24 08:23:02,838 fail2ban.configreader   [2308]: ERROR   Found no accessible config files for 'filter.d/nope' under /etc/fail2ban
+2026-10-24 08:23:02,838 fail2ban.jailreader     [2308]: ERROR   Unable to read the filter 'nope'
+2026-10-24 08:23:02,838 fail2ban.jailsreader    [2308]: ERROR   Errors in jail 'x'.
+2026-10-24 08:23:02,848 fail2ban                [2308]: ERROR   ERROR: test configuration failed
