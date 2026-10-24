@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="UTF-8"?><rss version="2.0"
+	xmlns:content="http://purl.org/rss/1.0/modules/content/"
+	xmlns:wfw="http://wellformedweb.org/CommentAPI/"
+	xmlns:dc="http://purl.org/dc/elements/1.1/"
+	xmlns:atom="http://www.w3.org/2005/Atom"
+	xmlns:sy="http://purl.org/rss/1.0/modules/syndication/"
+	xmlns:slash="http://purl.org/rss/1.0/modules/slash/"
+	>
+
+<channel>
+	<title>SecurityWeek</title>
+	<atom:link href="https://www.securityweek.com/feed/" rel="self" type="application/rss+xml" />
+	<link>https://www.securityweek.com/</link>
+	<description>Cybersecurity News, Insights &#38; Analysis</description>
+	<lastBuildDate>Fri, 23 Oct 2026 14:31:34 +0000</lastBuildDate>
+	<language>en-US</language>
+	<sy:updatePeriod>
+	hourly	</sy:updatePeriod>
+	<sy:updateFrequency>
+	1	</sy:updateFrequency>
+	<generator>https://wordpress.org/?v=7.1.3</generator>
+
+<image>
+	<url>https://www.securityweek.com/wp-content/uploads/2023/01/cropped-SecurityWeek-Icon-32x32.jpeg</url>
+	<title>SecurityWeek</title>
+	<link>https://www.securityweek.com/</link>
+	<width>32</width>
+	<height>32</height>
+</image> 
+	<item>
+		<title>In Other News: Tor Exit Relays Hijacked, Banks Spot Rogue AI Agents, Self-Rebuilding macOS Ransomware</title>
+		<link>https://www.securityweek.com/in-other-news-tor-exit-relays-hijacked-banks-spot-rogue-ai-agents-self-rebuilding-macos-ransomware/</link>
+		
+		<dc:creator><![CDATA[SecurityWeek News]]></dc:creator>
+		<pubDate>Fri, 23 Oct 2026 14:23:37 +0000</pubDate>
+				<category><![CDATA[Malware & Threats]]></category>
+		<category><![CDATA[In Other News]]></category>
+		<guid isPermaLink="false">https://www.securityweek.com/?p=50277</guid>
+
+					<description><![CDATA[<p>Noteworthy stories that might have slipped under the radar: Russia’s APT28 hit NATO defense firms, PingCAP source code stolen, ShinyHunters negotiator probe.</p>
+<p>The post <a href="https://www.securityweek.com/in-other-news-tor-exit-relays-hijacked-banks-spot-rogue-ai-agents-self-rebuilding-macos-ransomware/">In Other News: Tor Exit Relays Hijacked, Banks Spot Rogue AI Agents, Self-Rebuilding macOS Ransomware</a> appeared first on <a href="https://www.securityweek.com">SecurityWeek</a>.</p>
+]]></description>
+		
+		
+		
+			</item>
+		<item>
+		<title>Mirai Botnet Operators Join PHP2Shell Attacks as ASLR Bypass Exploits Emerge</title>
+		<link>https://www.securityweek.com/mirai-botnet-operators-join-php2shell-attacks-as-aslr-bypass-exploits-emerge/</link>
+		
+		<dc:creator><![CDATA[Eduard Kovacs]]></dc:creator>
+		<pubDate>Fri, 23 Oct 2026 12:45:52 +0000</pubDate>
+				<category><![CDATA[Vulnerabilities]]></category>
+		<category><![CDATA[exploited]]></category>
+		<category><![CDATA[Mirai]]></category>
+		<category><![CDATA[PHP]]></category>
+		<category><![CDATA[PHP2Shell]]></category>
+		<category><![CDATA[vulnerability]]></category>
+		<guid isPermaLink="false">https://www.securityweek.com/?p=50273</guid>
+
+					<description><![CDATA[<p>Researchers tie PHP2Shell attempts to a Mirai botnet and show an ASLR bypass, but no successful compromise has been confirmed yet.</p>
+<p>The post <a href="https://www.securityweek.com/mirai-botnet-operators-join-php2shell-attacks-as-aslr-bypass-exploits-emerge/">Mirai Botnet Operators Join PHP2Shell Attacks as ASLR Bypass Exploits Emerge</a> appeared first on <a href="https://www.securityweek.com">SecurityWeek</a>.</p>
+]]></description>
+		
+		
+		
+			</item>
+		<item>
+		<title>China APT Uses AI Pentest Tool Artex in ConnectWise Attacks</title>
+		<link>https://www.securityweek.com/china-apt-uses-ai-pentest-tool-artex-in-connectwise-attacks/</link>
+		
+		<dc:creator><![CDATA[Ionut Arghire]]></dc:creator>
+		<pubDate>Fri, 23 Oct 2026 10:31:16 +0000</pubDate>
+				<category><![CDATA[Artificial Intelligence]]></category>
+		<category><![CDATA[Malware & Threats]]></category>
+		<category><![CDATA[AI]]></category>
+		<category><![CDATA[China]]></category>
+		<category><![CDATA[China APT]]></category>
+		<category><![CDATA[ConnectWise]]></category>
+		<category><![CDATA[Microsoft]]></category>
+		<guid isPermaLink="false">https://www.securityweek.com/?p=50267</guid>
+
+					<description><![CDATA[<p>The state-sponsored hackers targeted hundreds of organizations and gained privileged access to some environments.</p>
+<p>The post <a href="https://www.securityweek.com/china-apt-uses-ai-pentest-tool-artex-in-connectwise-attacks/">China APT Uses AI Pentest Tool Artex in ConnectWise Attacks</a> appeared first on <a href="https://www.securityweek.com">SecurityWeek</a>.</p>
+]]></description>
+		
+		
+		
+			</item>
+	</channel>
+</rss>
