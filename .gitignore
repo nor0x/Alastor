@@ -1,0 +1,13 @@
+bin/
+obj/
+*.user
+.vs/
+.idea/
+node_modules/
+src/sentinel-web/dist/
+src/Sentinel.Server/wwwroot/assets/
+/data/
+/artifacts/
+*.db
+*.db-wal
+*.db-shm

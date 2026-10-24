@@ -1,0 +1,2591 @@
+{
+ "resultsPerPage": 20,
+ "startIndex": 0,
+ "totalResults": 20,
+ "format": "NVD_CVE",
+ "version": "2.0",
+ "timestamp": "2026-10-24T10:09:27.379",
+ "vulnerabilities": [
+  {
+   "cve": {
+    "id": "CVE-2026-103515",
+    "sourceIdentifier": "cve@gitlab.com",
+    "published": "2026-10-22T01:16:57.197",
+    "lastModified": "2026-10-22T16:18:19.040",
+    "vulnStatus": "Undergoing Analysis",
+    "cveTags": [],
+    "descriptions": [
+     {
+      "lang": "en",
+      "value": "GitLab has remediated an issue in GitLab EE affecting all versions from 19.2 before 19.3.6, 19.4 before 19.4.3, and 19.5 before 19.5.1 that, when an instance administrator locked a group's Duo availability, an authenticated user with group Owner permissions could have re-enabled AI-backed data egress to a third-party service for that group and its descendant projects, due to insufficient granularity of the admin-lock enforcement controls."
+     }
+    ],
+    "affected": [
+     {
+      "source": "cve@gitlab.com",
+      "affectedData": [
+       {
+        "vendor": "GitLab",
+        "product": "GitLab",
+        "defaultStatus": "unaffected",
+        "cpes": [
+         "cpe:2.3:a:gitlab:gitlab:*:*:*:*:*:*:*:*"
+        ],
+        "repo": "https://gitlab.com/gitlab-org/gitlab",
+        "versions": [
+         {
+          "version": "19.2",
+          "lessThan": "19.3.6",
+          "versionType": "semver",
+          "status": "affected"
+         },
+         {
+          "version": "19.4",
+          "lessThan": "19.4.3",
+          "versionType": "semver",
+          "status": "affected"
+         },
+         {
+          "version": "19.5",
+          "lessThan": "19.5.1",
+          "versionType": "semver",
+          "status": "affected"
+         }
+        ]
+       }
+      ]
+     }
+    ],
+    "metrics": {
+     "cvssMetricV31": [
+      {
+       "source": "cve@gitlab.com",
+       "type": "Secondary",
+       "cvssData": {
+        "version": "3.1",
+        "vectorString": "CVSS:3.1/AV:N/AC:L/PR:H/UI:N/S:U/C:N/I:L/A:N",
+        "baseScore": 2.7,
+        "baseSeverity": "LOW",
+        "attackVector": "NETWORK",
+        "attackComplexity": "LOW",
+        "privilegesRequired": "HIGH",
+        "userInteraction": "NONE",
+        "scope": "UNCHANGED",
+        "confidentialityImpact": "NONE",
+        "integrityImpact": "LOW",
+        "availabilityImpact": "NONE"
+       },
+       "exploitabilityScore": 1.2,
+       "impactScore": 1.4
+      }
+     ]
+    },
+    "weaknesses": [
+     {
+      "source": "cve@gitlab.com",
+      "type": "Primary",
+      "description": [
+       {
+        "lang": "en",
+        "value": "CWE-863"
+       }
+      ]
+     }
+    ],
+    "references": [
+     {
+      "url": "https://docs.gitlab.com/releases/patches/patch-release-gitlab-19-5-1-released/",
+      "source": "cve@gitlab.com"
+     },
+     {
+      "url": "https://gitlab.com/gitlab-org/gitlab/-/work_items/631564",
+      "source": "cve@gitlab.com"
+     },
+     {
+      "url": "https://hackerone.com/reports/3871692",
+      "source": "cve@gitlab.com"
+     }
+    ]
+   }
+  },
+  {
+   "cve": {
+    "id": "CVE-2026-105711",
+    "sourceIdentifier": "cve@gitlab.com",
+    "published": "2026-10-22T01:16:57.340",
+    "lastModified": "2026-10-22T16:18:19.040",
+    "vulnStatus": "Undergoing Analysis",
+    "cveTags": [],
+    "descriptions": [
+     {
+      "lang": "en",
+      "value": "GitLab has remediated an issue in GitLab CE/EE affecting all versions from 15.0 before 19.3.6, 19.4 before 19.4.3, and 19.5 before 19.5.1 that, when a merge request in a public project referenced a confidential issue from a private project, an authenticated user with no project membership could have read the confidential issue's title, due to a viewer-independent fragment cache key that incorrectly shared per-user-redacted rendered content across all users."
+     }
+    ],
+    "affected": [
+     {
+      "source": "cve@gitlab.com",
+      "affectedData": [
+       {
+        "vendor": "GitLab",
+        "product": "GitLab",
+        "defaultStatus": "unaffected",
+        "cpes": [
+         "cpe:2.3:a:gitlab:gitlab:*:*:*:*:*:*:*:*"
+        ],
+        "repo": "https://gitlab.com/gitlab-org/gitlab",
+        "versions": [
+         {
+          "version": "15.0",
+          "lessThan": "19.3.6",
+          "versionType": "semver",
+          "status": "affected"
+         },
+         {
+          "version": "19.4",
+          "lessThan": "19.4.3",
+          "versionType": "semver",
+          "status": "affected"
+         },
+         {
+          "version": "19.5",
+          "lessThan": "19.5.1",
+          "versionType": "semver",
+          "status": "affected"
+         }
+        ]
+       }
+      ]
+     }
+    ],
+    "metrics": {
+     "cvssMetricV31": [
+      {
+       "source": "cve@gitlab.com",
+       "type": "Secondary",
+       "cvssData": {
+        "version": "3.1",
+        "vectorString": "CVSS:3.1/AV:N/AC:L/PR:L/UI:R/S:U/C:L/I:N/A:N",
+        "baseScore": 3.5,
+        "baseSeverity": "LOW",
+        "attackVector": "NETWORK",
+        "attackComplexity": "LOW",
+        "privilegesRequired": "LOW",
+        "userInteraction": "REQUIRED",
+        "scope": "UNCHANGED",
+        "confidentialityImpact": "LOW",
+        "integrityImpact": "NONE",
+        "availabilityImpact": "NONE"
+       },
+       "exploitabilityScore": 2.1,
+       "impactScore": 1.4
+      }
+     ]
+    },
+    "weaknesses": [
+     {
+      "source": "cve@gitlab.com",
+      "type": "Primary",
+      "description": [
+       {
+        "lang": "en",
+        "value": "CWE-524"
+       }
+      ]
+     }
+    ],
+    "references": [
+     {
+      "url": "https://docs.gitlab.com/releases/patches/patch-release-gitlab-19-5-1-released/",
+      "source": "cve@gitlab.com"
+     },
+     {
+      "url": "https://gitlab.com/gitlab-org/gitlab/-/work_items/632207",
+      "source": "cve@gitlab.com"
+     },
+     {
+      "url": "https://hackerone.com/reports/3963293",
+      "source": "cve@gitlab.com"
+     }
+    ]
+   }
+  },
+  {
+   "cve": {
+    "id": "CVE-2026-105777",
+    "sourceIdentifier": "cve@gitlab.com",
+    "published": "2026-10-22T01:16:57.467",
+    "lastModified": "2026-10-22T16:18:19.040",
+    "vulnStatus": "Undergoing Analysis",
+    "cveTags": [],
+    "descriptions": [
+     {
+      "lang": "en",
+      "value": "GitLab has remediated an issue in GitLab CE/EE affecting all versions from 17.6.5 before 19.3.6, 19.4 before 19.4.3, and 19.5 before 19.5.1 that, under certain conditions, an unauthenticated user could have retrieved sensitive internal server credentials due to improper filtering of internal response headers."
+     }
+    ],
+    "affected": [
+     {
+      "source": "cve@gitlab.com",
+      "affectedData": [
+       {
+        "vendor": "GitLab",
+        "product": "GitLab",
+        "defaultStatus": "unaffected",
+        "cpes": [
+         "cpe:2.3:a:gitlab:gitlab:*:*:*:*:*:*:*:*"
+        ],
+        "repo": "https://gitlab.com/gitlab-org/gitlab",
+        "versions": [
+         {
+          "version": "17.6.5",
+          "lessThan": "19.3.6",
+          "versionType": "semver",
+          "status": "affected"
+         },
+         {
+          "version": "19.4",
+          "lessThan": "19.4.3",
+          "versionType": "semver",
+          "status": "affected"
+         },
+         {
+          "version": "19.5",
+          "lessThan": "19.5.1",
+          "versionType": "semver",
+          "status": "affected"
+         }
+        ]
+       }
+      ]
+     }
+    ],
+    "metrics": {
+     "cvssMetricV31": [
+      {
+       "source": "cve@gitlab.com",
+       "type": "Secondary",
+       "cvssData": {
+        "version": "3.1",
+        "vectorString": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:L/I:N/A:N",
+        "baseScore": 4.3,
+        "baseSeverity": "MEDIUM",
+        "attackVector": "NETWORK",
+        "attackComplexity": "LOW",
+        "privilegesRequired": "LOW",
+        "userInteraction": "NONE",
+        "scope": "UNCHANGED",
+        "confidentialityImpact": "LOW",
+        "integrityImpact": "NONE",
+        "availabilityImpact": "NONE"
+       },
+       "exploitabilityScore": 2.8,
+       "impactScore": 1.4
+      }
+     ]
+    },
+    "weaknesses": [
+     {
+      "source": "cve@gitlab.com",
+      "type": "Primary",
+      "description": [
+       {
+        "lang": "en",
+        "value": "CWE-201"
+       }
+      ]
+     }
+    ],
+    "references": [
+     {
+      "url": "https://docs.gitlab.com/releases/patches/patch-release-gitlab-19-5-1-released/",
+      "source": "cve@gitlab.com"
+     },
+     {
+      "url": "https://gitlab.com/gitlab-org/gitlab/-/work_items/597022",
+      "source": "cve@gitlab.com"
+     },
+     {
+      "url": "https://hackerone.com/reports/3657282",
+      "source": "cve@gitlab.com"
+     }
+    ]
+   }
+  },
+  {
+   "cve": {
+    "id": "CVE-2026-110264",
+    "sourceIdentifier": "cve@gitlab.com",
+    "published": "2026-10-22T01:16:57.603",
+    "lastModified": "2026-10-22T23:18:22.670",
+    "vulnStatus": "Undergoing Analysis",
+    "cveTags": [],
+    "descriptions": [
+     {
+      "lang": "en",
+      "value": "An issue has been discovered in GitLab CE/EE affecting all versions from 7.0 before 18.11.13, 19.0 before 19.0.10, 19.1 before 19.1.9, 19.2 before 19.2.9, 19.3 before 19.3.6, 19.4 before 19.4.3, and 19.5 before 19.5.1 that, under certain conditions, could have allowed an unauthenticated user to execute arbitrary code on the GitLab server due to integer overflow when compiling a specially crafted regular expression."
+     }
+    ],
+    "affected": [
+     {
+      "source": "cve@gitlab.com",
+      "affectedData": [
+       {
+        "vendor": "GitLab",
+        "product": "GitLab",
+        "defaultStatus": "unaffected",
+        "cpes": [
+         "cpe:2.3:a:gitlab:gitlab:*:*:*:*:*:*:*:*"
+        ],
+        "repo": "https://gitlab.com/gitlab-org/gitlab",
+        "versions": [
+         {
+          "version": "7.0",
+          "lessThan": "18.11.13",
+          "versionType": "semver",
+          "status": "affected"
+         },
+         {
+          "version": "19.0",
+          "lessThan": "19.0.10",
+          "versionType": "semver",
+          "status": "affected"
+         },
+         {
+          "version": "19.1",
+          "lessThan": "19.1.9",
+          "versionType": "semver",
+          "status": "affected"
+         },
+         {
+          "version": "19.2",
+          "lessThan": "19.2.9",
+          "versionType": "semver",
+          "status": "affected"
+         },
+         {
+          "version": "19.3",
+          "lessThan": "19.3.6",
+          "versionType": "semver",
+          "status": "affected"
+         },
+         {
+          "version": "19.4",
+          "lessThan": "19.4.3",
+          "versionType": "semver",
+          "status": "affected"
+         },
+         {
+          "version": "19.5",
+          "lessThan": "19.5.1",
+          "versionType": "semver",
+          "status": "affected"
+         }
+        ]
+       }
+      ]
+     }
+    ],
+    "metrics": {
+     "cvssMetricV31": [
+      {
+       "source": "cve@gitlab.com",
+       "type": "Secondary",
+       "cvssData": {
+        "version": "3.1",
+        "vectorString": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:C/C:H/I:H/A:H",
+        "baseScore": 10.0,
+        "baseSeverity": "CRITICAL",
+        "attackVector": "NETWORK",
+        "attackComplexity": "LOW",
+        "privilegesRequired": "NONE",
+        "userInteraction": "NONE",
+        "scope": "CHANGED",
+        "confidentialityImpact": "HIGH",
+        "integrityImpact": "HIGH",
+        "availabilityImpact": "HIGH"
+       },
+       "exploitabilityScore": 3.9,
+       "impactScore": 6.0
+      }
+     ],
+     "ssvcV203": [
+      {
+       "source": "134c704f-9b21-4f2e-91b3-4a467353bcc0",
+       "ssvcData": {
+        "timestamp": "2026-10-21T00:00:00+00:00",
+        "id": "CVE-2026-110264",
+        "options": [
+         {
+          "exploitation": "none"
+         },
+         {
+          "automatable": "yes"
+         },
+         {
+          "technicalImpact": "total"
+         }
+        ],
+        "role": "CISA Coordinator",
+        "version": "2.0.3"
+       }
+      }
+     ]
+    },
+    "weaknesses": [
+     {
+      "source": "cve@gitlab.com",
+      "type": "Secondary",
+      "description": [
+       {
+        "lang": "en",
+        "value": "CWE-190"
+       }
+      ]
+     }
+    ],
+    "references": [
+     {
+      "url": "https://docs.gitlab.com/releases/patches/patch-release-gitlab-19-5-1-released/",
+      "source": "cve@gitlab.com"
+     },
+     {
+      "url": "https://gitlab.com/gitlab-org/gitlab/-/work_items/633633",
+      "source": "cve@gitlab.com"
+     },
+     {
+      "url": "https://hackerone.com/reports/4093475",
+      "source": "cve@gitlab.com"
+     }
+    ]
+   }
+  },
+  {
+   "cve": {
+    "id": "CVE-2026-112212",
+    "sourceIdentifier": "cve@gitlab.com",
+    "published": "2026-10-22T01:16:57.740",
+    "lastModified": "2026-10-22T16:18:19.040",
+    "vulnStatus": "Undergoing Analysis",
+    "cveTags": [],
+    "descriptions": [
+     {
+      "lang": "en",
+      "value": "GitLab has remediated an issue in GitLab CE/EE affecting all versions from 18.3 before 19.3.6, 19.4 before 19.4.3, and 19.5 before 19.5.1 that, under certain conditions, an unauthenticated user could have poisoned a shared cache's OAuth/OIDC discovery document to redirect certain flows to an externally controlled server, due to improper trust of user-supplied values when constructing endpoint URLs in cached discovery responses."
+     }
+    ],
+    "affected": [
+     {
+      "source": "cve@gitlab.com",
+      "affectedData": [
+       {
+        "vendor": "GitLab",
+        "product": "GitLab",
+        "defaultStatus": "unaffected",
+        "cpes": [
+         "cpe:2.3:a:gitlab:gitlab:*:*:*:*:*:*:*:*"
+        ],
+        "repo": "https://gitlab.com/gitlab-org/gitlab",
+        "versions": [
+         {
+          "version": "18.3",
+          "lessThan": "19.3.6",
+          "versionType": "semver",
+          "status": "affected"
+         },
+         {
+          "version": "19.4",
+          "lessThan": "19.4.3",
+          "versionType": "semver",
+          "status": "affected"
+         },
+         {
+          "version": "19.5",
+          "lessThan": "19.5.1",
+          "versionType": "semver",
+          "status": "affected"
+         }
+        ]
+       }
+      ]
+     }
+    ],
+    "metrics": {
+     "cvssMetricV31": [
+      {
+       "source": "cve@gitlab.com",
+       "type": "Secondary",
+       "cvssData": {
+        "version": "3.1",
+        "vectorString": "CVSS:3.1/AV:N/AC:H/PR:N/UI:R/S:C/C:H/I:L/A:L",
+        "baseScore": 7.5,
+        "baseSeverity": "HIGH",
+        "attackVector": "NETWORK",
+        "attackComplexity": "HIGH",
+        "privilegesRequired": "NONE",
+        "userInteraction": "REQUIRED",
+        "scope": "CHANGED",
+        "confidentialityImpact": "HIGH",
+        "integrityImpact": "LOW",
+        "availabilityImpact": "LOW"
+       },
+       "exploitabilityScore": 1.6,
+       "impactScore": 5.3
+      }
+     ]
+    },
+    "weaknesses": [
+     {
+      "source": "cve@gitlab.com",
+      "type": "Primary",
+      "description": [
+       {
+        "lang": "en",
+        "value": "CWE-444"
+       }
+      ]
+     }
+    ],
+    "references": [
+     {
+      "url": "https://docs.gitlab.com/releases/patches/patch-release-gitlab-19-5-1-released/",
+      "source": "cve@gitlab.com"
+     },
+     {
+      "url": "https://gitlab.com/gitlab-org/gitlab/-/work_items/627499",
+      "source": "cve@gitlab.com"
+     }
+    ]
+   }
+  },
+  {
+   "cve": {
+    "id": "CVE-2026-112326",
+    "sourceIdentifier": "cve@gitlab.com",
+    "published": "2026-10-22T01:16:57.873",
+    "lastModified": "2026-10-22T16:18:19.040",
+    "vulnStatus": "Undergoing Analysis",
+    "cveTags": [],
+    "descriptions": [
+     {
+      "lang": "en",
+      "value": "GitLab has remediated an issue in GitLab EE affecting all versions from 17.8 before 19.3.6, 19.4 before 19.4.3, and 19.5 before 19.5.1 that, under certain conditions, could have allowed an authenticated user with read-only permissions to permanently delete existing vulnerability records due to improper cleanup logic that failed to distinguish between pre-existing records from newly created ones during error handling."
+     }
+    ],
+    "affected": [
+     {
+      "source": "cve@gitlab.com",
+      "affectedData": [
+       {
+        "vendor": "GitLab",
+        "product": "GitLab",
+        "defaultStatus": "unaffected",
+        "cpes": [
+         "cpe:2.3:a:gitlab:gitlab:*:*:*:*:*:*:*:*"
+        ],
+        "repo": "https://gitlab.com/gitlab-org/gitlab",
+        "versions": [
+         {
+          "version": "17.8",
+          "lessThan": "19.3.6",
+          "versionType": "semver",
+          "status": "affected"
+         },
+         {
+          "version": "19.4",
+          "lessThan": "19.4.3",
+          "versionType": "semver",
+          "status": "affected"
+         },
+         {
+          "version": "19.5",
+          "lessThan": "19.5.1",
+          "versionType": "semver",
+          "status": "affected"
+         }
+        ]
+       }
+      ]
+     }
+    ],
+    "metrics": {
+     "cvssMetricV31": [
+      {
+       "source": "cve@gitlab.com",
+       "type": "Secondary",
+       "cvssData": {
+        "version": "3.1",
+        "vectorString": "CVSS:3.1/AV:N/AC:H/PR:L/UI:N/S:U/C:N/I:L/A:N",
+        "baseScore": 3.1,
+        "baseSeverity": "LOW",
+        "attackVector": "NETWORK",
+        "attackComplexity": "HIGH",
+        "privilegesRequired": "LOW",
+        "userInteraction": "NONE",
+        "scope": "UNCHANGED",
+        "confidentialityImpact": "NONE",
+        "integrityImpact": "LOW",
+        "availabilityImpact": "NONE"
+       },
+       "exploitabilityScore": 1.6,
+       "impactScore": 1.4
+      }
+     ]
+    },
+    "weaknesses": [
+     {
+      "source": "cve@gitlab.com",
+      "type": "Primary",
+      "description": [
+       {
+        "lang": "en",
+        "value": "CWE-460"
+       }
+      ]
+     }
+    ],
+    "references": [
+     {
+      "url": "https://docs.gitlab.com/releases/patches/patch-release-gitlab-19-5-1-released/",
+      "source": "cve@gitlab.com"
+     },
+     {
+      "url": "https://gitlab.com/gitlab-org/gitlab/-/work_items/633147",
+      "source": "cve@gitlab.com"
+     }
+    ]
+   }
+  },
+  {
+   "cve": {
+    "id": "CVE-2026-112378",
+    "sourceIdentifier": "cve@gitlab.com",
+    "published": "2026-10-22T01:16:58.000",
+    "lastModified": "2026-10-22T16:18:19.040",
+    "vulnStatus": "Undergoing Analysis",
+    "cveTags": [],
+    "descriptions": [
+     {
+      "lang": "en",
+      "value": "GitLab has remediated an issue in GitLab EE affecting all versions from 17.8 before 19.3.6, 19.4 before 19.4.3, and 19.5 before 19.5.1 that under certain conditions could have allowed an authenticated user to access paid AI features without a valid subscription due to insufficient server-side validation in billing eligibility checks."
+     }
+    ],
+    "affected": [
+     {
+      "source": "cve@gitlab.com",
+      "affectedData": [
+       {
+        "vendor": "GitLab",
+        "product": "GitLab",
+        "defaultStatus": "unaffected",
+        "cpes": [
+         "cpe:2.3:a:gitlab:gitlab:*:*:*:*:*:*:*:*"
+        ],
+        "repo": "https://gitlab.com/gitlab-org/gitlab",
+        "versions": [
+         {
+          "version": "17.8",
+          "lessThan": "19.3.6",
+          "versionType": "semver",
+          "status": "affected"
+         },
+         {
+          "version": "19.4",
+          "lessThan": "19.4.3",
+          "versionType": "semver",
+          "status": "affected"
+         },
+         {
+          "version": "19.5",
+          "lessThan": "19.5.1",
+          "versionType": "semver",
+          "status": "affected"
+         }
+        ]
+       }
+      ]
+     }
+    ],
+    "metrics": {
+     "cvssMetricV31": [
+      {
+       "source": "cve@gitlab.com",
+       "type": "Secondary",
+       "cvssData": {
+        "version": "3.1",
+        "vectorString": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:N/I:L/A:N",
+        "baseScore": 4.3,
+        "baseSeverity": "MEDIUM",
+        "attackVector": "NETWORK",
+        "attackComplexity": "LOW",
+        "privilegesRequired": "LOW",
+        "userInteraction": "NONE",
+        "scope": "UNCHANGED",
+        "confidentialityImpact": "NONE",
+        "integrityImpact": "LOW",
+        "availabilityImpact": "NONE"
+       },
+       "exploitabilityScore": 2.8,
+       "impactScore": 1.4
+      }
+     ]
+    },
+    "weaknesses": [
+     {
+      "source": "cve@gitlab.com",
+      "type": "Primary",
+      "description": [
+       {
+        "lang": "en",
+        "value": "CWE-348"
+       }
+      ]
+     }
+    ],
+    "references": [
+     {
+      "url": "https://docs.gitlab.com/releases/patches/patch-release-gitlab-19-5-1-released/",
+      "source": "cve@gitlab.com"
+     },
+     {
+      "url": "https://gitlab.com/gitlab-org/gitlab/-/work_items/634027",
+      "source": "cve@gitlab.com"
+     }
+    ]
+   }
+  },
+  {
+   "cve": {
+    "id": "CVE-2026-114574",
+    "sourceIdentifier": "cna@vuldb.com",
+    "published": "2026-10-22T01:16:58.337",
+    "lastModified": "2026-10-22T15:15:23.833",
+    "vulnStatus": "Deferred",
+    "cveTags": [],
+    "descriptions": [
+     {
+      "lang": "en",
+      "value": "A security vulnerability has been detected in massCodeIO massCode 5.10. Affected is an unknown function of the file src/main/api/index.ts of the component Local HTTP Service. Such manipulation leads to information disclosure. It is possible to launch the attack remotely. The exploit has been disclosed publicly and may be used. The name of the patch is d25d8fa3f5a1e34285c8634f18729650c0c05cda. It is advisable to implement a patch to correct this issue."
+     }
+    ],
+    "affected": [
+     {
+      "source": "cna@vuldb.com",
+      "affectedData": [
+       {
+        "vendor": "massCodeIO",
+        "product": "massCode",
+        "cpes": [
+         "cpe:2.3:a:masscode:masscode:*:*:*:*:*:*:*:*"
+        ],
+        "modules": [
+         "Local HTTP Service"
+        ],
+        "versions": [
+         {
+          "version": "5.10",
+          "status": "affected"
+         }
+        ]
+       }
+      ]
+     }
+    ],
+    "metrics": {
+     "cvssMetricV40": [
+      {
+       "source": "cna@vuldb.com",
+       "type": "Secondary",
+       "cvssData": {
+        "version": "4.0",
+        "vectorString": "CVSS:4.0/AV:N/AC:L/AT:N/PR:N/UI:P/VC:L/VI:N/VA:N/SC:N/SI:N/SA:N/E:P/CR:X/IR:X/AR:X/MAV:X/MAC:X/MAT:X/MPR:X/MUI:X/MVC:X/MVI:X/MVA:X/MSC:X/MSI:X/MSA:X/S:X/AU:X/R:X/V:X/RE:X/U:X",
+        "baseScore": 2.1,
+        "baseSeverity": "LOW",
+        "attackVector": "NETWORK",
+        "attackComplexity": "LOW",
+        "attackRequirements": "NONE",
+        "privilegesRequired": "NONE",
+        "userInteraction": "PASSIVE",
+        "vulnConfidentialityImpact": "LOW",
+        "vulnIntegrityImpact": "NONE",
+        "vulnAvailabilityImpact": "NONE",
+        "subConfidentialityImpact": "NONE",
+        "subIntegrityImpact": "NONE",
+        "subAvailabilityImpact": "NONE",
+        "exploitMaturity": "PROOF_OF_CONCEPT",
+        "confidentialityRequirement": "NOT_DEFINED",
+        "integrityRequirement": "NOT_DEFINED",
+        "availabilityRequirement": "NOT_DEFINED",
+        "modifiedAttackVector": "NOT_DEFINED",
+        "modifiedAttackComplexity": "NOT_DEFINED",
+        "modifiedAttackRequirements": "NOT_DEFINED",
+        "modifiedPrivilegesRequired": "NOT_DEFINED",
+        "modifiedUserInteraction": "NOT_DEFINED",
+        "modifiedVulnConfidentialityImpact": "NOT_DEFINED",
+        "modifiedVulnIntegrityImpact": "NOT_DEFINED",
+        "modifiedVulnAvailabilityImpact": "NOT_DEFINED",
+        "modifiedSubConfidentialityImpact": "NOT_DEFINED",
+        "modifiedSubIntegrityImpact": "NOT_DEFINED",
+        "modifiedSubAvailabilityImpact": "NOT_DEFINED",
+        "Safety": "NOT_DEFINED",
+        "Automatable": "NOT_DEFINED",
+        "Recovery": "NOT_DEFINED",
+        "valueDensity": "NOT_DEFINED",
+        "vulnerabilityResponseEffort": "NOT_DEFINED",
+        "providerUrgency": "NOT_DEFINED"
+       }
+      }
+     ],
+     "cvssMetricV31": [
+      {
+       "source": "cna@vuldb.com",
+       "type": "Primary",
+       "cvssData": {
+        "version": "3.1",
+        "vectorString": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:L/I:N/A:N",
+        "baseScore": 4.3,
+        "baseSeverity": "MEDIUM",
+        "attackVector": "NETWORK",
+        "attackComplexity": "LOW",
+        "privilegesRequired": "NONE",
+        "userInteraction": "REQUIRED",
+        "scope": "UNCHANGED",
+        "confidentialityImpact": "LOW",
+        "integrityImpact": "NONE",
+        "availabilityImpact": "NONE"
+       },
+       "exploitabilityScore": 2.8,
+       "impactScore": 1.4
+      }
+     ],
+     "cvssMetricV2": [
+      {
+       "source": "cna@vuldb.com",
+       "type": "Secondary",
+       "cvssData": {
+        "version": "2.0",
+        "vectorString": "AV:N/AC:L/Au:N/C:P/I:N/A:N",
+        "baseScore": 5.0,
+        "accessVector": "NETWORK",
+        "accessComplexity": "LOW",
+        "authentication": "NONE",
+        "confidentialityImpact": "PARTIAL",
+        "integrityImpact": "NONE",
+        "availabilityImpact": "NONE"
+       },
+       "baseSeverity": "MEDIUM",
+       "exploitabilityScore": 10.0,
+       "impactScore": 2.9,
+       "acInsufInfo": false,
+       "obtainAllPrivilege": false,
+       "obtainUserPrivilege": false,
+       "obtainOtherPrivilege": false,
+       "userInteractionRequired": false
+      }
+     ]
+    },
+    "weaknesses": [
+     {
+      "source": "cna@vuldb.com",
+      "type": "Primary",
+      "description": [
+       {
+        "lang": "en",
+        "value": "CWE-200"
+       },
+       {
+        "lang": "en",
+        "value": "CWE-284"
+       }
+      ]
+     }
+    ],
+    "references": [
+     {
+      "url": "https://github.com/massCodeIO/massCode/",
+      "source": "cna@vuldb.com"
+     },
+     {
+      "url": "https://github.com/massCodeIO/massCode/commit/d25d8fa3f5a1e34285c8634f18729650c0c05cda",
+      "source": "cna@vuldb.com"
+     },
+     {
+      "url": "https://github.com/massCodeIO/massCode/issues/966",
+      "source": "cna@vuldb.com"
+     },
+     {
+      "url": "https://github.com/massCodeIO/massCode/pull/912",
+      "source": "cna@vuldb.com"
+     },
+     {
+      "url": "https://vuldb.com/cve/CVE-2026-114574",
+      "source": "cna@vuldb.com"
+     },
+     {
+      "url": "https://vuldb.com/submit/1021288",
+      "source": "cna@vuldb.com"
+     },
+     {
+      "url": "https://vuldb.com/vuln/424941",
+      "source": "cna@vuldb.com"
+     },
+     {
+      "url": "https://vuldb.com/vuln/424941/cti",
+      "source": "cna@vuldb.com"
+     }
+    ]
+   }
+  },
+  {
+   "cve": {
+    "id": "CVE-2026-114575",
+    "sourceIdentifier": "cna@vuldb.com",
+    "published": "2026-10-22T01:16:58.533",
+    "lastModified": "2026-10-22T15:15:23.833",
+    "vulnStatus": "Deferred",
+    "cveTags": [],
+    "descriptions": [
+     {
+      "lang": "en",
+      "value": "A flaw has been found in TOTOLINK A950RG 4.1.2cu.5268_B20221104. Affected by this issue is the function UploadCustomModule of the file lib/cste_modules/product.so. Executing a manipulation of the argument FileMd5 can lead to command injection. The attack can be launched remotely. The exploit has been published and may be used."
+     }
+    ],
+    "affected": [
+     {
+      "source": "cna@vuldb.com",
+      "affectedData": [
+       {
+        "vendor": "TOTOLINK",
+        "product": "A950RG",
+        "cpes": [
+         "cpe:2.3:o:totolink:a950rg_firmware:*:*:*:*:*:*:*:*"
+        ],
+        "versions": [
+         {
+          "version": "4.1.2cu.5268_B20221104",
+          "status": "affected"
+         }
+        ]
+       }
+      ]
+     }
+    ],
+    "metrics": {
+     "cvssMetricV40": [
+      {
+       "source": "cna@vuldb.com",
+       "type": "Secondary",
+       "cvssData": {
+        "version": "4.0",
+        "vectorString": "CVSS:4.0/AV:N/AC:L/AT:N/PR:N/UI:N/VC:H/VI:H/VA:H/SC:H/SI:H/SA:H/E:P/CR:X/IR:X/AR:X/MAV:X/MAC:X/MAT:X/MPR:X/MUI:X/MVC:X/MVI:X/MVA:X/MSC:X/MSI:X/MSA:X/S:X/AU:X/R:X/V:X/RE:X/U:X",
+        "baseScore": 9.3,
+        "baseSeverity": "CRITICAL",
+        "attackVector": "NETWORK",
+        "attackComplexity": "LOW",
+        "attackRequirements": "NONE",
+        "privilegesRequired": "NONE",
+        "userInteraction": "NONE",
+        "vulnConfidentialityImpact": "HIGH",
+        "vulnIntegrityImpact": "HIGH",
+        "vulnAvailabilityImpact": "HIGH",
+        "subConfidentialityImpact": "HIGH",
+        "subIntegrityImpact": "HIGH",
+        "subAvailabilityImpact": "HIGH",
+        "exploitMaturity": "PROOF_OF_CONCEPT",
+        "confidentialityRequirement": "NOT_DEFINED",
+        "integrityRequirement": "NOT_DEFINED",
+        "availabilityRequirement": "NOT_DEFINED",
+        "modifiedAttackVector": "NOT_DEFINED",
+        "modifiedAttackComplexity": "NOT_DEFINED",
+        "modifiedAttackRequirements": "NOT_DEFINED",
+        "modifiedPrivilegesRequired": "NOT_DEFINED",
+        "modifiedUserInteraction": "NOT_DEFINED",
+        "modifiedVulnConfidentialityImpact": "NOT_DEFINED",
+        "modifiedVulnIntegrityImpact": "NOT_DEFINED",
+        "modifiedVulnAvailabilityImpact": "NOT_DEFINED",
+        "modifiedSubConfidentialityImpact": "NOT_DEFINED",
+        "modifiedSubIntegrityImpact": "NOT_DEFINED",
+        "modifiedSubAvailabilityImpact": "NOT_DEFINED",
+        "Safety": "NOT_DEFINED",
+        "Automatable": "NOT_DEFINED",
+        "Recovery": "NOT_DEFINED",
+        "valueDensity": "NOT_DEFINED",
+        "vulnerabilityResponseEffort": "NOT_DEFINED",
+        "providerUrgency": "NOT_DEFINED"
+       }
+      }
+     ],
+     "cvssMetricV31": [
+      {
+       "source": "cna@vuldb.com",
+       "type": "Primary",
+       "cvssData": {
+        "version": "3.1",
+        "vectorString": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:C/C:H/I:H/A:H",
+        "baseScore": 10.0,
+        "baseSeverity": "CRITICAL",
+        "attackVector": "NETWORK",
+        "attackComplexity": "LOW",
+        "privilegesRequired": "NONE",
+        "userInteraction": "NONE",
+        "scope": "CHANGED",
+        "confidentialityImpact": "HIGH",
+        "integrityImpact": "HIGH",
+        "availabilityImpact": "HIGH"
+       },
+       "exploitabilityScore": 3.9,
+       "impactScore": 6.0
+      }
+     ],
+     "cvssMetricV2": [
+      {
+       "source": "cna@vuldb.com",
+       "type": "Secondary",
+       "cvssData": {
+        "version": "2.0",
+        "vectorString": "AV:N/AC:L/Au:N/C:C/I:C/A:C",
+        "baseScore": 10.0,
+        "accessVector": "NETWORK",
+        "accessComplexity": "LOW",
+        "authentication": "NONE",
+        "confidentialityImpact": "COMPLETE",
+        "integrityImpact": "COMPLETE",
+        "availabilityImpact": "COMPLETE"
+       },
+       "baseSeverity": "HIGH",
+       "exploitabilityScore": 10.0,
+       "impactScore": 10.0,
+       "acInsufInfo": false,
+       "obtainAllPrivilege": false,
+       "obtainUserPrivilege": false,
+       "obtainOtherPrivilege": false,
+       "userInteractionRequired": false
+      }
+     ]
+    },
+    "weaknesses": [
+     {
+      "source": "cna@vuldb.com",
+      "type": "Primary",
+      "description": [
+       {
+        "lang": "en",
+        "value": "CWE-74"
+       },
+       {
+        "lang": "en",
+        "value": "CWE-77"
+       }
+      ]
+     }
+    ],
+    "references": [
+     {
+      "url": "https://gist.github.com/H3rmesk1t/3a629799af33425e07571182e539a794",
+      "source": "cna@vuldb.com"
+     },
+     {
+      "url": "https://vuldb.com/cve/CVE-2026-114575",
+      "source": "cna@vuldb.com"
+     },
+     {
+      "url": "https://vuldb.com/submit/1021292",
+      "source": "cna@vuldb.com"
+     },
+     {
+      "url": "https://vuldb.com/vuln/424943",
+      "source": "cna@vuldb.com"
+     },
+     {
+      "url": "https://vuldb.com/vuln/424943/cti",
+      "source": "cna@vuldb.com"
+     },
+     {
+      "url": "https://www.totolink.net/",
+      "source": "cna@vuldb.com"
+     }
+    ]
+   }
+  },
+  {
+   "cve": {
+    "id": "CVE-2026-114714",
+    "sourceIdentifier": "cve@mitre.org",
+    "published": "2026-10-22T01:16:58.717",
+    "lastModified": "2026-10-22T16:45:49.550",
+    "vulnStatus": "Awaiting Analysis",
+    "cveTags": [],
+    "descriptions": [
+     {
+      "lang": "en",
+      "value": "Roundcube Webmail before 1.6.20 and 1.7.x before 1.7.5 is affected by a path traversal vulnerability in the squirrelmail_usercopy plugin. With the file based backend, the source path was built from the login name without rejecting path separators, so a login name containing a slash could cause files outside the configured squirrelmail_data_dir to be read and imported. Upstream fixed this in the commit \u201cFix unsafe use of a login name in SquirrelMail import file path\u201d, which rejects login names containing a slash."
+     }
+    ],
+    "affected": [
+     {
+      "source": "cve@mitre.org",
+      "affectedData": [
+       {
+        "vendor": "Roundcube",
+        "product": "Webmail",
+        "defaultStatus": "unaffected",
+        "repo": "https://github.com/roundcube/roundcubemail/",
+        "versions": [
+         {
+          "version": "1.6.0",
+          "lessThan": "1.6.20",
+          "versionType": "semver",
+          "status": "affected"
+         },
+         {
+          "version": "1.7.0",
+          "lessThan": "1.7.5",
+          "versionType": "semver",
+          "status": "affected"
+         }
+        ]
+       }
+      ]
+     }
+    ],
+    "metrics": {
+     "cvssMetricV31": [
+      {
+       "source": "cve@mitre.org",
+       "type": "Secondary",
+       "cvssData": {
+        "version": "3.1",
+        "vectorString": "CVSS:3.1/AV:N/AC:H/PR:L/UI:N/S:U/C:H/I:N/A:N",
+        "baseScore": 5.3,
+        "baseSeverity": "MEDIUM",
+        "attackVector": "NETWORK",
+        "attackComplexity": "HIGH",
+        "privilegesRequired": "LOW",
+        "userInteraction": "NONE",
+        "scope": "UNCHANGED",
+        "confidentialityImpact": "HIGH",
+        "integrityImpact": "NONE",
+        "availabilityImpact": "NONE"
+       },
+       "exploitabilityScore": 1.6,
+       "impactScore": 3.6
+      }
+     ]
+    },
+    "weaknesses": [
+     {
+      "source": "cve@mitre.org",
+      "type": "Primary",
+      "description": [
+       {
+        "lang": "en",
+        "value": "CWE-23"
+       }
+      ]
+     }
+    ],
+    "references": [
+     {
+      "url": "https://bugs.debian.org/1151279",
+      "source": "cve@mitre.org"
+     },
+     {
+      "url": "https://github.com/roundcube/roundcubemail/commit/15fd175d154311ca7f59cf696c6cc39471611aa6",
+      "source": "cve@mitre.org"
+     },
+     {
+      "url": "https://github.com/roundcube/roundcubemail/commit/dbdfcac498164bcacb7ce273b6341678dd70c166",
+      "source": "cve@mitre.org"
+     },
+     {
+      "url": "https://github.com/roundcube/roundcubemail/releases/tag/1.6.20",
+      "source": "cve@mitre.org"
+     },
+     {
+      "url": "https://github.com/roundcube/roundcubemail/releases/tag/1.7.5",
+      "source": "cve@mitre.org"
+     },
+     {
+      "url": "https://roundcube.net/news/2026/10/19/security-updates-1.6.20-and-1.7.5",
+      "source": "cve@mitre.org"
+     }
+    ]
+   }
+  },
+  {
+   "cve": {
+    "id": "CVE-2026-12664",
+    "sourceIdentifier": "cve@gitlab.com",
+    "published": "2026-10-22T01:16:59.070",
+    "lastModified": "2026-10-23T12:18:13.713",
+    "vulnStatus": "Undergoing Analysis",
+    "cveTags": [],
+    "descriptions": [
+     {
+      "lang": "en",
+      "value": "GitLab has remediated an issue in GitLab CE/EE affecting all versions from 18.2 before 19.3.6, 19.4 before 19.4.3, and 19.5 before 19.5.1 that, under certain conditions, could have allowed an authenticated user with a read_api-scoped token to retrieve a project's incoming email address and create work items, bypassing the token's restrictions, due to insufficient scope enforcement on a GraphQL field."
+     }
+    ],
+    "affected": [
+     {
+      "source": "cve@gitlab.com",
+      "affectedData": [
+       {
+        "vendor": "GitLab",
+        "product": "GitLab",
+        "defaultStatus": "unaffected",
+        "cpes": [
+         "cpe:2.3:a:gitlab:gitlab:*:*:*:*:*:*:*:*"
+        ],
+        "repo": "https://gitlab.com/gitlab-org/gitlab",
+        "versions": [
+         {
+          "version": "18.2",
+          "lessThan": "19.3.6",
+          "versionType": "semver",
+          "status": "affected"
+         },
+         {
+          "version": "19.4",
+          "lessThan": "19.4.3",
+          "versionType": "semver",
+          "status": "affected"
+         },
+         {
+          "version": "19.5",
+          "lessThan": "19.5.1",
+          "versionType": "semver",
+          "status": "affected"
+         }
+        ]
+       }
+      ]
+     }
+    ],
+    "metrics": {
+     "cvssMetricV31": [
+      {
+       "source": "cve@gitlab.com",
+       "type": "Secondary",
+       "cvssData": {
+        "version": "3.1",
+        "vectorString": "CVSS:3.1/AV:N/AC:H/PR:L/UI:N/S:U/C:H/I:H/A:N",
+        "baseScore": 6.8,
+        "baseSeverity": "MEDIUM",
+        "attackVector": "NETWORK",
+        "attackComplexity": "HIGH",
+        "privilegesRequired": "LOW",
+        "userInteraction": "NONE",
+        "scope": "UNCHANGED",
+        "confidentialityImpact": "HIGH",
+        "integrityImpact": "HIGH",
+        "availabilityImpact": "NONE"
+       },
+       "exploitabilityScore": 1.6,
+       "impactScore": 5.2
+      }
+     ],
+     "ssvcV203": [
+      {
+       "source": "134c704f-9b21-4f2e-91b3-4a467353bcc0",
+       "ssvcData": {
+        "timestamp": "2026-10-23T03:55:19.309171Z",
+        "id": "CVE-2026-12664",
+        "options": [
+         {
+          "exploitation": "none"
+         },
+         {
+          "automatable": "no"
+         },
+         {
+          "technicalImpact": "total"
+         }
+        ],
+        "role": "CISA Coordinator",
+        "version": "2.0.3"
+       }
+      }
+     ]
+    },
+    "weaknesses": [
+     {
+      "source": "cve@gitlab.com",
+      "type": "Secondary",
+      "description": [
+       {
+        "lang": "en",
+        "value": "CWE-863"
+       }
+      ]
+     }
+    ],
+    "references": [
+     {
+      "url": "https://docs.gitlab.com/releases/patches/patch-release-gitlab-19-5-1-released/",
+      "source": "cve@gitlab.com"
+     },
+     {
+      "url": "https://gitlab.com/gitlab-org/gitlab/-/work_items/603510",
+      "source": "cve@gitlab.com"
+     },
+     {
+      "url": "https://hackerone.com/reports/3735499",
+      "source": "cve@gitlab.com"
+     }
+    ]
+   }
+  },
+  {
+   "cve": {
+    "id": "CVE-2026-13319",
+    "sourceIdentifier": "cve@gitlab.com",
+    "published": "2026-10-22T01:16:59.203",
+    "lastModified": "2026-10-22T16:18:19.040",
+    "vulnStatus": "Undergoing Analysis",
+    "cveTags": [],
+    "descriptions": [
+     {
+      "lang": "en",
+      "value": "GitLab has remediated an issue in GitLab CE/EE affecting all versions from 15.10 before 19.3.6, 19.4 before 19.4.3, and 19.5 before 19.5.1 that, could have allowed an authenticated to read milestone metadata, including titles, descriptions, and full project paths, from arbitrary private projects across the instance without any project membership, due to missing authorization checks on a user-supplied project filter parameter in the group milestones API."
+     }
+    ],
+    "affected": [
+     {
+      "source": "cve@gitlab.com",
+      "affectedData": [
+       {
+        "vendor": "GitLab",
+        "product": "GitLab",
+        "defaultStatus": "unaffected",
+        "cpes": [
+         "cpe:2.3:a:gitlab:gitlab:*:*:*:*:*:*:*:*"
+        ],
+        "repo": "https://gitlab.com/gitlab-org/gitlab",
+        "versions": [
+         {
+          "version": "15.10",
+          "lessThan": "19.3.6",
+          "versionType": "semver",
+          "status": "affected"
+         },
+         {
+          "version": "19.4",
+          "lessThan": "19.4.3",
+          "versionType": "semver",
+          "status": "affected"
+         },
+         {
+          "version": "19.5",
+          "lessThan": "19.5.1",
+          "versionType": "semver",
+          "status": "affected"
+         }
+        ]
+       }
+      ]
+     }
+    ],
+    "metrics": {
+     "cvssMetricV31": [
+      {
+       "source": "cve@gitlab.com",
+       "type": "Secondary",
+       "cvssData": {
+        "version": "3.1",
+        "vectorString": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:L/I:N/A:N",
+        "baseScore": 4.3,
+        "baseSeverity": "MEDIUM",
+        "attackVector": "NETWORK",
+        "attackComplexity": "LOW",
+        "privilegesRequired": "LOW",
+        "userInteraction": "NONE",
+        "scope": "UNCHANGED",
+        "confidentialityImpact": "LOW",
+        "integrityImpact": "NONE",
+        "availabilityImpact": "NONE"
+       },
+       "exploitabilityScore": 2.8,
+       "impactScore": 1.4
+      }
+     ]
+    },
+    "weaknesses": [
+     {
+      "source": "cve@gitlab.com",
+      "type": "Primary",
+      "description": [
+       {
+        "lang": "en",
+        "value": "CWE-639"
+       }
+      ]
+     }
+    ],
+    "references": [
+     {
+      "url": "https://docs.gitlab.com/releases/patches/patch-release-gitlab-19-5-1-released/",
+      "source": "cve@gitlab.com"
+     },
+     {
+      "url": "https://gitlab.com/gitlab-org/gitlab/-/work_items/604064",
+      "source": "cve@gitlab.com"
+     },
+     {
+      "url": "https://hackerone.com/reports/3792168",
+      "source": "cve@gitlab.com"
+     }
+    ]
+   }
+  },
+  {
+   "cve": {
+    "id": "CVE-2026-14288",
+    "sourceIdentifier": "cve@gitlab.com",
+    "published": "2026-10-22T01:16:59.340",
+    "lastModified": "2026-10-22T16:18:19.040",
+    "vulnStatus": "Undergoing Analysis",
+    "cveTags": [],
+    "descriptions": [
+     {
+      "lang": "en",
+      "value": "GitLab has remediated an issue in GitLab EE affecting all versions from 17.4 before 19.3.6, 19.4 before 19.4.3, and 19.5 before 19.5.1 that under certain conditions could have allowed an authenticated to bypass a required merge request approval policy on a protected branch due to improper access control during approval rule synchronization."
+     }
+    ],
+    "affected": [
+     {
+      "source": "cve@gitlab.com",
+      "affectedData": [
+       {
+        "vendor": "GitLab",
+        "product": "GitLab",
+        "defaultStatus": "unaffected",
+        "cpes": [
+         "cpe:2.3:a:gitlab:gitlab:*:*:*:*:*:*:*:*"
+        ],
+        "repo": "https://gitlab.com/gitlab-org/gitlab",
+        "versions": [
+         {
+          "version": "17.4",
+          "lessThan": "19.3.6",
+          "versionType": "semver",
+          "status": "affected"
+         },
+         {
+          "version": "19.4",
+          "lessThan": "19.4.3",
+          "versionType": "semver",
+          "status": "affected"
+         },
+         {
+          "version": "19.5",
+          "lessThan": "19.5.1",
+          "versionType": "semver",
+          "status": "affected"
+         }
+        ]
+       }
+      ]
+     }
+    ],
+    "metrics": {
+     "cvssMetricV31": [
+      {
+       "source": "cve@gitlab.com",
+       "type": "Secondary",
+       "cvssData": {
+        "version": "3.1",
+        "vectorString": "CVSS:3.1/AV:N/AC:H/PR:L/UI:N/S:U/C:N/I:L/A:N",
+        "baseScore": 3.1,
+        "baseSeverity": "LOW",
+        "attackVector": "NETWORK",
+        "attackComplexity": "HIGH",
+        "privilegesRequired": "LOW",
+        "userInteraction": "NONE",
+        "scope": "UNCHANGED",
+        "confidentialityImpact": "NONE",
+        "integrityImpact": "LOW",
+        "availabilityImpact": "NONE"
+       },
+       "exploitabilityScore": 1.6,
+       "impactScore": 1.4
+      }
+     ]
+    },
+    "weaknesses": [
+     {
+      "source": "cve@gitlab.com",
+      "type": "Primary",
+      "description": [
+       {
+        "lang": "en",
+        "value": "CWE-706"
+       }
+      ]
+     }
+    ],
+    "references": [
+     {
+      "url": "https://docs.gitlab.com/releases/patches/patch-release-gitlab-19-5-1-released/",
+      "source": "cve@gitlab.com"
+     },
+     {
+      "url": "https://gitlab.com/gitlab-org/gitlab/-/work_items/604630",
+      "source": "cve@gitlab.com"
+     },
+     {
+      "url": "https://hackerone.com/reports/3797008",
+      "source": "cve@gitlab.com"
+     }
+    ]
+   }
+  },
+  {
+   "cve": {
+    "id": "CVE-2026-15723",
+    "sourceIdentifier": "cve@gitlab.com",
+    "published": "2026-10-22T01:16:59.477",
+    "lastModified": "2026-10-23T12:18:13.843",
+    "vulnStatus": "Undergoing Analysis",
+    "cveTags": [],
+    "descriptions": [
+     {
+      "lang": "en",
+      "value": "GitLab has remediated an issue in GitLab CE/EE affecting all versions from 10.1 before 19.3.6, 19.4 before 19.4.3, and 19.5 before 19.5.1 that, when OmniAuth SAML and LDAP auto-linking were both enabled, an authenticated user could have taken over an existing LDAP-backed account without any interaction from the targeted user, due to improper input sanitization in the LDAP email lookup path used during OmniAuth identity linking."
+     }
+    ],
+    "affected": [
+     {
+      "source": "cve@gitlab.com",
+      "affectedData": [
+       {
+        "vendor": "GitLab",
+        "product": "GitLab",
+        "defaultStatus": "unaffected",
+        "cpes": [
+         "cpe:2.3:a:gitlab:gitlab:*:*:*:*:*:*:*:*"
+        ],
+        "repo": "https://gitlab.com/gitlab-org/gitlab",
+        "versions": [
+         {
+          "version": "10.1",
+          "lessThan": "19.3.6",
+          "versionType": "semver",
+          "status": "affected"
+         },
+         {
+          "version": "19.4",
+          "lessThan": "19.4.3",
+          "versionType": "semver",
+          "status": "affected"
+         },
+         {
+          "version": "19.5",
+          "lessThan": "19.5.1",
+          "versionType": "semver",
+          "status": "affected"
+         }
+        ]
+       }
+      ]
+     }
+    ],
+    "metrics": {
+     "cvssMetricV31": [
+      {
+       "source": "cve@gitlab.com",
+       "type": "Secondary",
+       "cvssData": {
+        "version": "3.1",
+        "vectorString": "CVSS:3.1/AV:N/AC:H/PR:L/UI:N/S:C/C:H/I:H/A:N",
+        "baseScore": 8.2,
+        "baseSeverity": "HIGH",
+        "attackVector": "NETWORK",
+        "attackComplexity": "HIGH",
+        "privilegesRequired": "LOW",
+        "userInteraction": "NONE",
+        "scope": "CHANGED",
+        "confidentialityImpact": "HIGH",
+        "integrityImpact": "HIGH",
+        "availabilityImpact": "NONE"
+       },
+       "exploitabilityScore": 1.8,
+       "impactScore": 5.8
+      }
+     ],
+     "ssvcV203": [
+      {
+       "source": "134c704f-9b21-4f2e-91b3-4a467353bcc0",
+       "ssvcData": {
+        "timestamp": "2026-10-23T03:55:20.114357Z",
+        "id": "CVE-2026-15723",
+        "options": [
+         {
+          "exploitation": "none"
+         },
+         {
+          "automatable": "no"
+         },
+         {
+          "technicalImpact": "total"
+         }
+        ],
+        "role": "CISA Coordinator",
+        "version": "2.0.3"
+       }
+      }
+     ]
+    },
+    "weaknesses": [
+     {
+      "source": "cve@gitlab.com",
+      "type": "Secondary",
+      "description": [
+       {
+        "lang": "en",
+        "value": "CWE-90"
+       }
+      ]
+     }
+    ],
+    "references": [
+     {
+      "url": "https://docs.gitlab.com/releases/patches/patch-release-gitlab-19-5-1-released/",
+      "source": "cve@gitlab.com"
+     },
+     {
+      "url": "https://gitlab.com/gitlab-org/gitlab/-/work_items/605977",
+      "source": "cve@gitlab.com"
+     },
+     {
+      "url": "https://hackerone.com/reports/3852192",
+      "source": "cve@gitlab.com"
+     }
+    ]
+   }
+  },
+  {
+   "cve": {
+    "id": "CVE-2026-16255",
+    "sourceIdentifier": "cve@gitlab.com",
+    "published": "2026-10-22T01:16:59.613",
+    "lastModified": "2026-10-22T16:18:19.040",
+    "vulnStatus": "Undergoing Analysis",
+    "cveTags": [],
+    "descriptions": [
+     {
+      "lang": "en",
+      "value": "GitLab has remediated an issue in GitLab EE affecting all versions from 12.0 before 19.3.6, 19.4 before 19.4.3, and 19.5 before 19.5.1 that, when the instance-wide SAML or LDAP membership lock was enabled, an authenticated user could have granted or accepted project and group membership outside the identity provider's control, due to incomplete enforcement of the membership lock on requests created before the lock was enabled."
+     }
+    ],
+    "affected": [
+     {
+      "source": "cve@gitlab.com",
+      "affectedData": [
+       {
+        "vendor": "GitLab",
+        "product": "GitLab",
+        "defaultStatus": "unaffected",
+        "cpes": [
+         "cpe:2.3:a:gitlab:gitlab:*:*:*:*:*:*:*:*"
+        ],
+        "repo": "https://gitlab.com/gitlab-org/gitlab",
+        "versions": [
+         {
+          "version": "12.0",
+          "lessThan": "19.3.6",
+          "versionType": "semver",
+          "status": "affected"
+         },
+         {
+          "version": "19.4",
+          "lessThan": "19.4.3",
+          "versionType": "semver",
+          "status": "affected"
+         },
+         {
+          "version": "19.5",
+          "lessThan": "19.5.1",
+          "versionType": "semver",
+          "status": "affected"
+         }
+        ]
+       }
+      ]
+     }
+    ],
+    "metrics": {
+     "cvssMetricV31": [
+      {
+       "source": "cve@gitlab.com",
+       "type": "Secondary",
+       "cvssData": {
+        "version": "3.1",
+        "vectorString": "CVSS:3.1/AV:N/AC:H/PR:L/UI:N/S:U/C:H/I:L/A:N",
+        "baseScore": 5.9,
+        "baseSeverity": "MEDIUM",
+        "attackVector": "NETWORK",
+        "attackComplexity": "HIGH",
+        "privilegesRequired": "LOW",
+        "userInteraction": "NONE",
+        "scope": "UNCHANGED",
+        "confidentialityImpact": "HIGH",
+        "integrityImpact": "LOW",
+        "availabilityImpact": "NONE"
+       },
+       "exploitabilityScore": 1.6,
+       "impactScore": 4.2
+      }
+     ]
+    },
+    "weaknesses": [
+     {
+      "source": "cve@gitlab.com",
+      "type": "Primary",
+      "description": [
+       {
+        "lang": "en",
+        "value": "CWE-863"
+       }
+      ]
+     }
+    ],
+    "references": [
+     {
+      "url": "https://docs.gitlab.com/releases/patches/patch-release-gitlab-19-5-1-released/",
+      "source": "cve@gitlab.com"
+     },
+     {
+      "url": "https://gitlab.com/gitlab-org/gitlab/-/work_items/606479",
+      "source": "cve@gitlab.com"
+     },
+     {
+      "url": "https://hackerone.com/reports/3809350",
+      "source": "cve@gitlab.com"
+     }
+    ]
+   }
+  },
+  {
+   "cve": {
+    "id": "CVE-2026-114576",
+    "sourceIdentifier": "cna@vuldb.com",
+    "published": "2026-10-22T02:16:55.440",
+    "lastModified": "2026-10-23T22:16:57.337",
+    "vulnStatus": "Deferred",
+    "cveTags": [],
+    "descriptions": [
+     {
+      "lang": "en",
+      "value": "A vulnerability has been found in Linksys RE6250 1.0.04.001. This affects the function strcmp of the component Web Management Interface. The manipulation of the argument session_id leads to insufficiently random values. The attack may be initiated remotely. The complexity of an attack is rather high. It is indicated that the exploitability is difficult. The exploit has been disclosed to the public and may be used."
+     }
+    ],
+    "affected": [
+     {
+      "source": "cna@vuldb.com",
+      "affectedData": [
+       {
+        "vendor": "Linksys",
+        "product": "RE6250",
+        "cpes": [
+         "cpe:2.3:o:linksys:re6250_firmware:*:*:*:*:*:*:*:*"
+        ],
+        "modules": [
+         "Web Management Interface"
+        ],
+        "versions": [
+         {
+          "version": "1.0.04.001",
+          "status": "affected"
+         }
+        ]
+       }
+      ]
+     }
+    ],
+    "metrics": {
+     "cvssMetricV40": [
+      {
+       "source": "cna@vuldb.com",
+       "type": "Secondary",
+       "cvssData": {
+        "version": "4.0",
+        "vectorString": "CVSS:4.0/AV:N/AC:H/AT:N/PR:N/UI:N/VC:L/VI:N/VA:N/SC:N/SI:N/SA:N/E:P/CR:X/IR:X/AR:X/MAV:X/MAC:X/MAT:X/MPR:X/MUI:X/MVC:X/MVI:X/MVA:X/MSC:X/MSI:X/MSA:X/S:X/AU:X/R:X/V:X/RE:X/U:X",
+        "baseScore": 2.9,
+        "baseSeverity": "LOW",
+        "attackVector": "NETWORK",
+        "attackComplexity": "HIGH",
+        "attackRequirements": "NONE",
+        "privilegesRequired": "NONE",
+        "userInteraction": "NONE",
+        "vulnConfidentialityImpact": "LOW",
+        "vulnIntegrityImpact": "NONE",
+        "vulnAvailabilityImpact": "NONE",
+        "subConfidentialityImpact": "NONE",
+        "subIntegrityImpact": "NONE",
+        "subAvailabilityImpact": "NONE",
+        "exploitMaturity": "PROOF_OF_CONCEPT",
+        "confidentialityRequirement": "NOT_DEFINED",
+        "integrityRequirement": "NOT_DEFINED",
+        "availabilityRequirement": "NOT_DEFINED",
+        "modifiedAttackVector": "NOT_DEFINED",
+        "modifiedAttackComplexity": "NOT_DEFINED",
+        "modifiedAttackRequirements": "NOT_DEFINED",
+        "modifiedPrivilegesRequired": "NOT_DEFINED",
+        "modifiedUserInteraction": "NOT_DEFINED",
+        "modifiedVulnConfidentialityImpact": "NOT_DEFINED",
+        "modifiedVulnIntegrityImpact": "NOT_DEFINED",
+        "modifiedVulnAvailabilityImpact": "NOT_DEFINED",
+        "modifiedSubConfidentialityImpact": "NOT_DEFINED",
+        "modifiedSubIntegrityImpact": "NOT_DEFINED",
+        "modifiedSubAvailabilityImpact": "NOT_DEFINED",
+        "Safety": "NOT_DEFINED",
+        "Automatable": "NOT_DEFINED",
+        "Recovery": "NOT_DEFINED",
+        "valueDensity": "NOT_DEFINED",
+        "vulnerabilityResponseEffort": "NOT_DEFINED",
+        "providerUrgency": "NOT_DEFINED"
+       }
+      }
+     ],
+     "cvssMetricV31": [
+      {
+       "source": "cna@vuldb.com",
+       "type": "Secondary",
+       "cvssData": {
+        "version": "3.1",
+        "vectorString": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:L/I:N/A:N",
+        "baseScore": 3.7,
+        "baseSeverity": "LOW",
+        "attackVector": "NETWORK",
+        "attackComplexity": "HIGH",
+        "privilegesRequired": "NONE",
+        "userInteraction": "NONE",
+        "scope": "UNCHANGED",
+        "confidentialityImpact": "LOW",
+        "integrityImpact": "NONE",
+        "availabilityImpact": "NONE"
+       },
+       "exploitabilityScore": 2.2,
+       "impactScore": 1.4
+      }
+     ],
+     "cvssMetricV2": [
+      {
+       "source": "cna@vuldb.com",
+       "type": "Secondary",
+       "cvssData": {
+        "version": "2.0",
+        "vectorString": "AV:N/AC:H/Au:N/C:P/I:N/A:N",
+        "baseScore": 2.6,
+        "accessVector": "NETWORK",
+        "accessComplexity": "HIGH",
+        "authentication": "NONE",
+        "confidentialityImpact": "PARTIAL",
+        "integrityImpact": "NONE",
+        "availabilityImpact": "NONE"
+       },
+       "baseSeverity": "LOW",
+       "exploitabilityScore": 4.9,
+       "impactScore": 2.9,
+       "acInsufInfo": false,
+       "obtainAllPrivilege": false,
+       "obtainUserPrivilege": false,
+       "obtainOtherPrivilege": false,
+       "userInteractionRequired": false
+      }
+     ],
+     "ssvcV203": [
+      {
+       "source": "134c704f-9b21-4f2e-91b3-4a467353bcc0",
+       "ssvcData": {
+        "timestamp": "2026-10-23T18:00:49.882386Z",
+        "id": "CVE-2026-114576",
+        "options": [
+         {
+          "exploitation": "poc"
+         },
+         {
+          "automatable": "no"
+         },
+         {
+          "technicalImpact": "partial"
+         }
+        ],
+        "role": "CISA Coordinator",
+        "version": "2.0.3"
+       }
+      }
+     ]
+    },
+    "weaknesses": [
+     {
+      "source": "cna@vuldb.com",
+      "type": "Secondary",
+      "description": [
+       {
+        "lang": "en",
+        "value": "CWE-310"
+       },
+       {
+        "lang": "en",
+        "value": "CWE-330"
+       }
+      ]
+     }
+    ],
+    "references": [
+     {
+      "url": "https://github.com/b1uerry/cves/blob/main/Linksys/RE6250/Linksys_RE6250_predictable_sessionId/details.md",
+      "source": "cna@vuldb.com"
+     },
+     {
+      "url": "https://vuldb.com/cve/CVE-2026-114576",
+      "source": "cna@vuldb.com"
+     },
+     {
+      "url": "https://vuldb.com/submit/1021306",
+      "source": "cna@vuldb.com"
+     },
+     {
+      "url": "https://vuldb.com/vuln/424944",
+      "source": "cna@vuldb.com"
+     },
+     {
+      "url": "https://vuldb.com/vuln/424944/cti",
+      "source": "cna@vuldb.com"
+     },
+     {
+      "url": "https://www.linksys.com/",
+      "source": "cna@vuldb.com"
+     }
+    ]
+   }
+  },
+  {
+   "cve": {
+    "id": "CVE-2026-114577",
+    "sourceIdentifier": "cna@vuldb.com",
+    "published": "2026-10-22T02:16:55.650",
+    "lastModified": "2026-10-22T15:15:23.833",
+    "vulnStatus": "Deferred",
+    "cveTags": [],
+    "descriptions": [
+     {
+      "lang": "en",
+      "value": "A vulnerability was found in oretnom23 php-travel-agency-system. This vulnerability affects unknown code of the file admin/insert.php of the component Insertion Handler. The manipulation of the argument costomer_id/payment_type/amount/description/user/uploadimage/full_name/visa_no results in sql injection. The attack may be launched remotely. The exploit has been made public and could be used. The project was informed of the problem early through an issue report but has not responded yet."
+     }
+    ],
+    "affected": [
+     {
+      "source": "cna@vuldb.com",
+      "affectedData": [
+       {
+        "vendor": "oretnom23",
+        "product": "php-travel-agency-system",
+        "cpes": [
+         "cpe:2.3:a:oretnom23:php-travel-agency-system:*:*:*:*:*:*:*:*"
+        ],
+        "modules": [
+         "Insertion Handler"
+        ],
+        "versions": [
+         {
+          "version": "4e28b8f84d72420373dd15c3ae32900beb7e0635",
+          "status": "affected"
+         },
+         {
+          "version": "2592d60d8f2c6e199f02c828c6d6fbc7b5298c96",
+          "status": "affected"
+         },
+         {
+          "version": "b58513f8371d098650fac656001bf8f59f795d25",
+          "status": "affected"
+         }
+        ]
+       }
+      ]
+     }
+    ],
+    "metrics": {
+     "cvssMetricV40": [
+      {
+       "source": "cna@vuldb.com",
+       "type": "Secondary",
+       "cvssData": {
+        "version": "4.0",
+        "vectorString": "CVSS:4.0/AV:N/AC:L/AT:N/PR:N/UI:N/VC:L/VI:L/VA:L/SC:N/SI:N/SA:N/E:P/CR:X/IR:X/AR:X/MAV:X/MAC:X/MAT:X/MPR:X/MUI:X/MVC:X/MVI:X/MVA:X/MSC:X/MSI:X/MSA:X/S:X/AU:X/R:X/V:X/RE:X/U:X",
+        "baseScore": 5.5,
+        "baseSeverity": "MEDIUM",
+        "attackVector": "NETWORK",
+        "attackComplexity": "LOW",
+        "attackRequirements": "NONE",
+        "privilegesRequired": "NONE",
+        "userInteraction": "NONE",
+        "vulnConfidentialityImpact": "LOW",
+        "vulnIntegrityImpact": "LOW",
+        "vulnAvailabilityImpact": "LOW",
+        "subConfidentialityImpact": "NONE",
+        "subIntegrityImpact": "NONE",
+        "subAvailabilityImpact": "NONE",
+        "exploitMaturity": "PROOF_OF_CONCEPT",
+        "confidentialityRequirement": "NOT_DEFINED",
+        "integrityRequirement": "NOT_DEFINED",
+        "availabilityRequirement": "NOT_DEFINED",
+        "modifiedAttackVector": "NOT_DEFINED",
+        "modifiedAttackComplexity": "NOT_DEFINED",
+        "modifiedAttackRequirements": "NOT_DEFINED",
+        "modifiedPrivilegesRequired": "NOT_DEFINED",
+        "modifiedUserInteraction": "NOT_DEFINED",
+        "modifiedVulnConfidentialityImpact": "NOT_DEFINED",
+        "modifiedVulnIntegrityImpact": "NOT_DEFINED",
+        "modifiedVulnAvailabilityImpact": "NOT_DEFINED",
+        "modifiedSubConfidentialityImpact": "NOT_DEFINED",
+        "modifiedSubIntegrityImpact": "NOT_DEFINED",
+        "modifiedSubAvailabilityImpact": "NOT_DEFINED",
+        "Safety": "NOT_DEFINED",
+        "Automatable": "NOT_DEFINED",
+        "Recovery": "NOT_DEFINED",
+        "valueDensity": "NOT_DEFINED",
+        "vulnerabilityResponseEffort": "NOT_DEFINED",
+        "providerUrgency": "NOT_DEFINED"
+       }
+      }
+     ],
+     "cvssMetricV31": [
+      {
+       "source": "cna@vuldb.com",
+       "type": "Primary",
+       "cvssData": {
+        "version": "3.1",
+        "vectorString": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:L/A:L",
+        "baseScore": 7.3,
+        "baseSeverity": "HIGH",
+        "attackVector": "NETWORK",
+        "attackComplexity": "LOW",
+        "privilegesRequired": "NONE",
+        "userInteraction": "NONE",
+        "scope": "UNCHANGED",
+        "confidentialityImpact": "LOW",
+        "integrityImpact": "LOW",
+        "availabilityImpact": "LOW"
+       },
+       "exploitabilityScore": 3.9,
+       "impactScore": 3.4
+      }
+     ],
+     "cvssMetricV2": [
+      {
+       "source": "cna@vuldb.com",
+       "type": "Secondary",
+       "cvssData": {
+        "version": "2.0",
+        "vectorString": "AV:N/AC:L/Au:N/C:P/I:P/A:P",
+        "baseScore": 7.5,
+        "accessVector": "NETWORK",
+        "accessComplexity": "LOW",
+        "authentication": "NONE",
+        "confidentialityImpact": "PARTIAL",
+        "integrityImpact": "PARTIAL",
+        "availabilityImpact": "PARTIAL"
+       },
+       "baseSeverity": "HIGH",
+       "exploitabilityScore": 10.0,
+       "impactScore": 6.4,
+       "acInsufInfo": false,
+       "obtainAllPrivilege": false,
+       "obtainUserPrivilege": false,
+       "obtainOtherPrivilege": false,
+       "userInteractionRequired": false
+      }
+     ]
+    },
+    "weaknesses": [
+     {
+      "source": "cna@vuldb.com",
+      "type": "Primary",
+      "description": [
+       {
+        "lang": "en",
+        "value": "CWE-74"
+       },
+       {
+        "lang": "en",
+        "value": "CWE-89"
+       }
+      ]
+     }
+    ],
+    "references": [
+     {
+      "url": "https://github.com/oretnom23/php-travel-agency-system/",
+      "source": "cna@vuldb.com"
+     },
+     {
+      "url": "https://github.com/oretnom23/php-travel-agency-system/issues/5",
+      "source": "cna@vuldb.com"
+     },
+     {
+      "url": "https://vuldb.com/cve/CVE-2026-114577",
+      "source": "cna@vuldb.com"
+     },
+     {
+      "url": "https://vuldb.com/submit/1021595",
+      "source": "cna@vuldb.com"
+     },
+     {
+      "url": "https://vuldb.com/vuln/424945",
+      "source": "cna@vuldb.com"
+     },
+     {
+      "url": "https://vuldb.com/vuln/424945/cti",
+      "source": "cna@vuldb.com"
+     }
+    ]
+   }
+  },
+  {
+   "cve": {
+    "id": "CVE-2026-114633",
+    "sourceIdentifier": "disclosure@vulncheck.com",
+    "published": "2026-10-22T02:16:55.837",
+    "lastModified": "2026-10-22T15:38:50.610",
+    "vulnStatus": "Deferred",
+    "cveTags": [],
+    "descriptions": [
+     {
+      "lang": "en",
+      "value": "WWBN AVideo before 29.4.0 contains an incorrect authorization vulnerability that allows delegated Users Admin accounts to delete or modify administrator accounts. Attackers can submit requests to confirmDeleteUser.json.php or userAddNew.json.php targeting administrators to delete their videos and accounts, or change and demote them."
+     }
+    ],
+    "affected": [
+     {
+      "source": "disclosure@vulncheck.com",
+      "affectedData": [
+       {
+        "vendor": "WWBN",
+        "product": "AVideo",
+        "defaultStatus": "unaffected",
+        "versions": [
+         {
+          "version": "0",
+          "lessThan": "29.4.0",
+          "versionType": "semver",
+          "status": "affected"
+         },
+         {
+          "version": "29.4.0",
+          "versionType": "semver",
+          "status": "unaffected"
+         }
+        ]
+       }
+      ]
+     }
+    ],
+    "metrics": {
+     "cvssMetricV40": [
+      {
+       "source": "disclosure@vulncheck.com",
+       "type": "Secondary",
+       "cvssData": {
+        "version": "4.0",
+        "vectorString": "CVSS:4.0/AV:N/AC:L/AT:N/PR:H/UI:N/VC:N/VI:H/VA:H/SC:N/SI:N/SA:N/E:X/CR:X/IR:X/AR:X/MAV:X/MAC:X/MAT:X/MPR:X/MUI:X/MVC:X/MVI:X/MVA:X/MSC:X/MSI:X/MSA:X/S:X/AU:X/R:X/V:X/RE:X/U:X",
+        "baseScore": 7.0,
+        "baseSeverity": "HIGH",
+        "attackVector": "NETWORK",
+        "attackComplexity": "LOW",
+        "attackRequirements": "NONE",
+        "privilegesRequired": "HIGH",
+        "userInteraction": "NONE",
+        "vulnConfidentialityImpact": "NONE",
+        "vulnIntegrityImpact": "HIGH",
+        "vulnAvailabilityImpact": "HIGH",
+        "subConfidentialityImpact": "NONE",
+        "subIntegrityImpact": "NONE",
+        "subAvailabilityImpact": "NONE",
+        "exploitMaturity": "NOT_DEFINED",
+        "confidentialityRequirement": "NOT_DEFINED",
+        "integrityRequirement": "NOT_DEFINED",
+        "availabilityRequirement": "NOT_DEFINED",
+        "modifiedAttackVector": "NOT_DEFINED",
+        "modifiedAttackComplexity": "NOT_DEFINED",
+        "modifiedAttackRequirements": "NOT_DEFINED",
+        "modifiedPrivilegesRequired": "NOT_DEFINED",
+        "modifiedUserInteraction": "NOT_DEFINED",
+        "modifiedVulnConfidentialityImpact": "NOT_DEFINED",
+        "modifiedVulnIntegrityImpact": "NOT_DEFINED",
+        "modifiedVulnAvailabilityImpact": "NOT_DEFINED",
+        "modifiedSubConfidentialityImpact": "NOT_DEFINED",
+        "modifiedSubIntegrityImpact": "NOT_DEFINED",
+        "modifiedSubAvailabilityImpact": "NOT_DEFINED",
+        "Safety": "NOT_DEFINED",
+        "Automatable": "NOT_DEFINED",
+        "Recovery": "NOT_DEFINED",
+        "valueDensity": "NOT_DEFINED",
+        "vulnerabilityResponseEffort": "NOT_DEFINED",
+        "providerUrgency": "NOT_DEFINED"
+       }
+      }
+     ],
+     "cvssMetricV31": [
+      {
+       "source": "disclosure@vulncheck.com",
+       "type": "Primary",
+       "cvssData": {
+        "version": "3.1",
+        "vectorString": "CVSS:3.1/AV:N/AC:L/PR:H/UI:N/S:U/C:N/I:H/A:H",
+        "baseScore": 6.5,
+        "baseSeverity": "MEDIUM",
+        "attackVector": "NETWORK",
+        "attackComplexity": "LOW",
+        "privilegesRequired": "HIGH",
+        "userInteraction": "NONE",
+        "scope": "UNCHANGED",
+        "confidentialityImpact": "NONE",
+        "integrityImpact": "HIGH",
+        "availabilityImpact": "HIGH"
+       },
+       "exploitabilityScore": 1.2,
+       "impactScore": 5.2
+      }
+     ]
+    },
+    "weaknesses": [
+     {
+      "source": "disclosure@vulncheck.com",
+      "type": "Primary",
+      "description": [
+       {
+        "lang": "en",
+        "value": "CWE-863"
+       }
+      ]
+     }
+    ],
+    "references": [
+     {
+      "url": "https://github.com/WWBN/AVideo/commit/9c7cadaee8f472e9f6584b941af1bdaed5668145",
+      "source": "disclosure@vulncheck.com"
+     },
+     {
+      "url": "https://github.com/WWBN/AVideo/security/advisories/GHSA-mp89-8x4j-2grx",
+      "source": "disclosure@vulncheck.com"
+     },
+     {
+      "url": "https://www.vulncheck.com/advisories/wwbn-avideo-before-29.4.0-incorrect-authorization-via-confirmdeleteuser-json-php",
+      "source": "disclosure@vulncheck.com"
+     }
+    ]
+   }
+  },
+  {
+   "cve": {
+    "id": "CVE-2026-114634",
+    "sourceIdentifier": "disclosure@vulncheck.com",
+    "published": "2026-10-22T02:16:55.990",
+    "lastModified": "2026-10-23T15:17:27.090",
+    "vulnStatus": "Deferred",
+    "cveTags": [],
+    "descriptions": [
+     {
+      "lang": "en",
+      "value": "WWBN AVideo before 29.4.0 contains a blind server-side request forgery vulnerability in getHeaderContentTypeFromURL() because get_headers() follows redirects without re-validating targets with isSSRFSafeURL(). Authenticated uploaders can store a videoLink pointing to a redirector, causing internal GET requests when visitors view the video, enabling internal port scanning via the embed-versus-video render oracle."
+     }
+    ],
+    "affected": [
+     {
+      "source": "disclosure@vulncheck.com",
+      "affectedData": [
+       {
+        "vendor": "WWBN",
+        "product": "AVideo",
+        "defaultStatus": "unaffected",
+        "versions": [
+         {
+          "version": "0",
+          "lessThan": "29.4.0",
+          "versionType": "semver",
+          "status": "affected"
+         },
+         {
+          "version": "29.4.0",
+          "versionType": "semver",
+          "status": "unaffected"
+         }
+        ]
+       }
+      ]
+     }
+    ],
+    "metrics": {
+     "cvssMetricV40": [
+      {
+       "source": "disclosure@vulncheck.com",
+       "type": "Secondary",
+       "cvssData": {
+        "version": "4.0",
+        "vectorString": "CVSS:4.0/AV:N/AC:L/AT:N/PR:L/UI:N/VC:N/VI:L/VA:N/SC:L/SI:L/SA:L/E:X/CR:X/IR:X/AR:X/MAV:X/MAC:X/MAT:X/MPR:X/MUI:X/MVC:X/MVI:X/MVA:X/MSC:X/MSI:X/MSA:X/S:X/AU:X/R:X/V:X/RE:X/U:X",
+        "baseScore": 5.3,
+        "baseSeverity": "MEDIUM",
+        "attackVector": "NETWORK",
+        "attackComplexity": "LOW",
+        "attackRequirements": "NONE",
+        "privilegesRequired": "LOW",
+        "userInteraction": "NONE",
+        "vulnConfidentialityImpact": "NONE",
+        "vulnIntegrityImpact": "LOW",
+        "vulnAvailabilityImpact": "NONE",
+        "subConfidentialityImpact": "LOW",
+        "subIntegrityImpact": "LOW",
+        "subAvailabilityImpact": "LOW",
+        "exploitMaturity": "NOT_DEFINED",
+        "confidentialityRequirement": "NOT_DEFINED",
+        "integrityRequirement": "NOT_DEFINED",
+        "availabilityRequirement": "NOT_DEFINED",
+        "modifiedAttackVector": "NOT_DEFINED",
+        "modifiedAttackComplexity": "NOT_DEFINED",
+        "modifiedAttackRequirements": "NOT_DEFINED",
+        "modifiedPrivilegesRequired": "NOT_DEFINED",
+        "modifiedUserInteraction": "NOT_DEFINED",
+        "modifiedVulnConfidentialityImpact": "NOT_DEFINED",
+        "modifiedVulnIntegrityImpact": "NOT_DEFINED",
+        "modifiedVulnAvailabilityImpact": "NOT_DEFINED",
+        "modifiedSubConfidentialityImpact": "NOT_DEFINED",
+        "modifiedSubIntegrityImpact": "NOT_DEFINED",
+        "modifiedSubAvailabilityImpact": "NOT_DEFINED",
+        "Safety": "NOT_DEFINED",
+        "Automatable": "NOT_DEFINED",
+        "Recovery": "NOT_DEFINED",
+        "valueDensity": "NOT_DEFINED",
+        "vulnerabilityResponseEffort": "NOT_DEFINED",
+        "providerUrgency": "NOT_DEFINED"
+       }
+      }
+     ],
+     "cvssMetricV31": [
+      {
+       "source": "disclosure@vulncheck.com",
+       "type": "Secondary",
+       "cvssData": {
+        "version": "3.1",
+        "vectorString": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:N/I:L/A:N",
+        "baseScore": 4.3,
+        "baseSeverity": "MEDIUM",
+        "attackVector": "NETWORK",
+        "attackComplexity": "LOW",
+        "privilegesRequired": "LOW",
+        "userInteraction": "NONE",
+        "scope": "UNCHANGED",
+        "confidentialityImpact": "NONE",
+        "integrityImpact": "LOW",
+        "availabilityImpact": "NONE"
+       },
+       "exploitabilityScore": 2.8,
+       "impactScore": 1.4
+      }
+     ],
+     "ssvcV203": [
+      {
+       "source": "134c704f-9b21-4f2e-91b3-4a467353bcc0",
+       "ssvcData": {
+        "timestamp": "2026-10-23T14:48:06.193158Z",
+        "id": "CVE-2026-114634",
+        "options": [
+         {
+          "exploitation": "none"
+         },
+         {
+          "automatable": "no"
+         },
+         {
+          "technicalImpact": "partial"
+         }
+        ],
+        "role": "CISA Coordinator",
+        "version": "2.0.3"
+       }
+      }
+     ]
+    },
+    "weaknesses": [
+     {
+      "source": "disclosure@vulncheck.com",
+      "type": "Secondary",
+      "description": [
+       {
+        "lang": "en",
+        "value": "CWE-918"
+       }
+      ]
+     }
+    ],
+    "references": [
+     {
+      "url": "https://github.com/WWBN/AVideo/commit/2db920d3326729743511a27de44034b0a6c78b05",
+      "source": "disclosure@vulncheck.com"
+     },
+     {
+      "url": "https://github.com/WWBN/AVideo/security/advisories/GHSA-m8q2-35pq-qrmc",
+      "source": "disclosure@vulncheck.com"
+     },
+     {
+      "url": "https://www.vulncheck.com/advisories/wwbn-avideo-before-29.4.0-blind-ssrf-via-getheadercontenttypefromurl-redirect",
+      "source": "disclosure@vulncheck.com"
+     }
+    ]
+   }
+  },
+  {
+   "cve": {
+    "id": "CVE-2026-114635",
+    "sourceIdentifier": "disclosure@vulncheck.com",
+    "published": "2026-10-22T02:16:56.140",
+    "lastModified": "2026-10-22T15:39:30.497",
+    "vulnStatus": "Undergoing Analysis",
+    "cveTags": [],
+    "descriptions": [
+     {
+      "lang": "en",
+      "value": "Traefik before v2.11.58 and v3.7.14 contains an authentication bypass vulnerability in its SNI check, which is skipped when request TLS state is nil. Unauthenticated clients can send HTTP/2 requests with the :scheme http pseudo-header over TLS on Go 1.27 builds to reach routers requiring client certificates without presenting one."
+     }
+    ],
+    "affected": [
+     {
+      "source": "disclosure@vulncheck.com",
+      "affectedData": [
+       {
+        "vendor": "traefik",
+        "product": "traefik",
+        "defaultStatus": "unaffected",
+        "packageURL": "pkg:golang/github.com/traefik/traefik/v2",
+        "versions": [
+         {
+          "version": "0",
+          "lessThan": "2.11.58",
+          "versionType": "semver",
+          "status": "affected"
+         },
+         {
+          "version": "2.11.58",
+          "versionType": "semver",
+          "status": "unaffected"
+         }
+        ]
+       },
+       {
+        "vendor": "traefik",
+        "product": "traefik",
+        "defaultStatus": "unaffected",
+        "packageURL": "pkg:golang/github.com/traefik/traefik/v3",
+        "versions": [
+         {
+          "version": "3.0.0",
+          "lessThan": "3.7.14",
+          "versionType": "semver",
+          "status": "affected"
+         },
+         {
+          "version": "3.7.14",
+          "versionType": "semver",
+          "status": "unaffected"
+         }
+        ]
+       }
+      ]
+     }
+    ],
+    "metrics": {
+     "cvssMetricV40": [
+      {
+       "source": "disclosure@vulncheck.com",
+       "type": "Secondary",
+       "cvssData": {
+        "version": "4.0",
+        "vectorString": "CVSS:4.0/AV:N/AC:L/AT:P/PR:N/UI:N/VC:N/VI:N/VA:N/SC:H/SI:H/SA:N/E:X/CR:X/IR:X/AR:X/MAV:X/MAC:X/MAT:X/MPR:X/MUI:X/MVC:X/MVI:X/MVA:X/MSC:X/MSI:X/MSA:X/S:X/AU:X/R:X/V:X/RE:X/U:X",
+        "baseScore": 7.0,
+        "baseSeverity": "HIGH",
+        "attackVector": "NETWORK",
+        "attackComplexity": "LOW",
+        "attackRequirements": "PRESENT",
+        "privilegesRequired": "NONE",
+        "userInteraction": "NONE",
+        "vulnConfidentialityImpact": "NONE",
+        "vulnIntegrityImpact": "NONE",
+        "vulnAvailabilityImpact": "NONE",
+        "subConfidentialityImpact": "HIGH",
+        "subIntegrityImpact": "HIGH",
+        "subAvailabilityImpact": "NONE",
+        "exploitMaturity": "NOT_DEFINED",
+        "confidentialityRequirement": "NOT_DEFINED",
+        "integrityRequirement": "NOT_DEFINED",
+        "availabilityRequirement": "NOT_DEFINED",
+        "modifiedAttackVector": "NOT_DEFINED",
+        "modifiedAttackComplexity": "NOT_DEFINED",
+        "modifiedAttackRequirements": "NOT_DEFINED",
+        "modifiedPrivilegesRequired": "NOT_DEFINED",
+        "modifiedUserInteraction": "NOT_DEFINED",
+        "modifiedVulnConfidentialityImpact": "NOT_DEFINED",
+        "modifiedVulnIntegrityImpact": "NOT_DEFINED",
+        "modifiedVulnAvailabilityImpact": "NOT_DEFINED",
+        "modifiedSubConfidentialityImpact": "NOT_DEFINED",
+        "modifiedSubIntegrityImpact": "NOT_DEFINED",
+        "modifiedSubAvailabilityImpact": "NOT_DEFINED",
+        "Safety": "NOT_DEFINED",
+        "Automatable": "NOT_DEFINED",
+        "Recovery": "NOT_DEFINED",
+        "valueDensity": "NOT_DEFINED",
+        "vulnerabilityResponseEffort": "NOT_DEFINED",
+        "providerUrgency": "NOT_DEFINED"
+       }
+      }
+     ],
+     "cvssMetricV31": [
+      {
+       "source": "disclosure@vulncheck.com",
+       "type": "Primary",
+       "cvssData": {
+        "version": "3.1",
+        "vectorString": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:C/C:H/I:H/A:N",
+        "baseScore": 8.7,
+        "baseSeverity": "HIGH",
+        "attackVector": "NETWORK",
+        "attackComplexity": "HIGH",
+        "privilegesRequired": "NONE",
+        "userInteraction": "NONE",
+        "scope": "CHANGED",
+        "confidentialityImpact": "HIGH",
+        "integrityImpact": "HIGH",
+        "availabilityImpact": "NONE"
+       },
+       "exploitabilityScore": 2.2,
+       "impactScore": 5.8
+      }
+     ]
+    },
+    "weaknesses": [
+     {
+      "source": "disclosure@vulncheck.com",
+      "type": "Primary",
+      "description": [
+       {
+        "lang": "en",
+        "value": "CWE-288"
+       }
+      ]
+     }
+    ],
+    "references": [
+     {
+      "url": "https://github.com/traefik/traefik/security/advisories/GHSA-fh26-gfpp-7xxx",
+      "source": "disclosure@vulncheck.com"
+     },
+     {
+      "url": "https://www.vulncheck.com/advisories/traefik-before-2.11.58-and-3.7.14-sni-check-bypass-via-http-2-scheme",
+      "source": "disclosure@vulncheck.com"
+     }
+    ]
+   }
+  }
+ ]
+}

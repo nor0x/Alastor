@@ -1,0 +1,58 @@
+# SentinelVPS global default policy.
+# Layers merge in order: global → group → host. A layer only needs the keys it changes.
+# Durations: 90s, 10m, 1h, 7d, 2w, or "permanent".
+# Schedules (every recurring job): "every 6h" (interval since last run), a 5-field cron like "0 3 * * *"
+# (evaluated in the host's local time zone; missed runs catch up once), or "off".
+
+agent:
+  # Remove server-pushed firewall state (blocklists) if the server is unreachable for this long ("permanent" = never).
+  offlineGracePeriod: 24h
+  # Install missing tools from distro repos. If false, the agent only adopts tools that are already installed.
+  autoInstall: true
+  heartbeatInterval: 60s     # metrics + tool health + poll for policy/commands (10s-1h)
+  driftCheckInterval: 5m     # re-verify tool config/daemons without a policy change (1m-1d)
+  eventFlushInterval: 5s     # ship new bans/failures to the server (1s-10m)
+  banSnapshotInterval: 5m    # full ban-list resync; changes are pushed at the next flush anyway (30s-1d)
+  scheduleSpread: 30m        # per-host offset for scheduled jobs so the fleet doesn't scan in the same minute (0-12h)
+
+banning:
+  enabled: true
+  engine: fail2ban          # or "crowdsec" (opt-in)
+  manualBantime: permanent  # bans issued from the dashboard
+  allowlist: []             # add your admin IP / tailnet (100.64.0.0/10) here or on the Bans page
+
+  defaults:
+    bantime: 1h
+    findtime: 10m
+    maxretry: 5
+    bantimeIncrement: true  # repeat offenders get longer bans…
+    bantimeFactor: 2
+    bantimeMaxtime: 1w      # …up to one week
+
+  jails:
+    sshd:
+      enabled: true
+
+# ---- Scheduled jobs. Each integration reads its key when it lands (deliverables 6-10). ----
+
+updates:
+  checkSchedule: every 6h    # count pending security updates
+  applySchedule: "off"       # auto-install security updates, e.g. "0 4 * * *"; "off" = report only + "Apply now"
+
+vulnerabilities:
+  scanSchedule: "0 3 * * *"  # Trivy/Grype package scan, nightly
+
+hardening:
+  auditSchedule: "0 5 * * 0" # Lynis audit, weekly (Sunday)
+
+malware:
+  scanSchedule: "off"        # ClamAV is opt-in, e.g. "0 2 * * 6"
+
+# ---- Security baseline ----
+
+baseline:
+  checkSchedule: every 1h    # run the baseline checks (SSH, firewall, updates, kernel, accounts); takes a second
+  # Check id -> "apply" (the agent enforces the fix with a managed drop-in), "ignore" (accepted risk)
+  # or "report" (the default; lets a group/host undo a lower layer's apply).
+  # Unlisted checks are only reported. Use the Baseline page to apply fixes per host, group or fleet.
+  mitigations: {}
