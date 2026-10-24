@@ -2,6 +2,7 @@ using System.Collections.Concurrent;
 using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Channels;
+using Sentinel.Core.Baseline;
 using Sentinel.Core.Contracts;
 using Sentinel.Core.Events;
 using Sentinel.Core.Integrations;
@@ -45,6 +46,9 @@ public sealed class Supervisor(
     private PolicyApplyReport? _lastReport;
     private DateTime _lastReconcile = DateTime.MinValue;
     private DateTime _lastServerContact;
+    private DateTime? _lastBaselineRun;
+    private bool _baselineDirty = true;
+    private BaselineReport? _pendingBaseline;
 
     /// <summary>Called by the SignalR listener. Wakes the main loop without waiting for the next interval.</summary>
     public void Wake(string reason) => _wake.Writer.TryWrite(reason);
@@ -119,6 +123,43 @@ public sealed class Supervisor(
 
         if (hb.PendingCommands > 0 || wakeReason == "command")
             await ProcessCommandsAsync(ct);
+
+        await RunBaselineIfDueAsync(force: false, ct);
+    }
+
+    /// <summary>
+    /// Runs the baseline checks on startup, after every policy change (apply/ignore changes the results), and on
+    /// baseline.checkSchedule. A report that couldn't be delivered is retried on the next tick.
+    /// </summary>
+    private async Task RunBaselineIfDueAsync(bool force, CancellationToken ct)
+    {
+        if (_policy is null) return;
+        var provider = _tools.OfType<IBaselineProvider>().FirstOrDefault();
+        if (provider is null) return;
+        var now = time.GetUtcNow().UtcDateTime;
+        var schedule = ScheduleDefaults.For(_policy, "baseline.checkSchedule");
+        // A disabled schedule ("off") is never due by itself, but startup, policy changes and "Re-check now" still run.
+        var due = force || _baselineDirty || _lastBaselineRun is null ||
+                  schedule.IsDue(_lastBaselineRun, _lastBaselineRun.Value, now, TimeZoneInfo.Local, Schedule.HostSpread(Environment.MachineName, Timings.ScheduleSpread));
+        if (due)
+        {
+            try
+            {
+                _pendingBaseline = await provider.RunChecksAsync(_policy, _lastReport?.Revision, ct);
+                _lastBaselineRun = now;
+                _baselineDirty = false;
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                logger.LogError(ex, "Baseline checks failed");
+                _lastBaselineRun = now;
+            }
+        }
+        if (_pendingBaseline is { } report)
+        {
+            await server.SendBaselineAsync(report, ct);
+            _pendingBaseline = null;
+        }
     }
 
     private async Task<List<ToolStatus>> DetectAllAsync(CancellationToken ct)
@@ -204,6 +245,7 @@ public sealed class Supervisor(
                 }
             }
 
+            if (_lastReport?.Revision != desired.Revision || reclaim || reports.Any(r => r.Changes.Count > 0)) _baselineDirty = true;
             _lastReport = new PolicyApplyReport(desired.Revision, reports.All(r => r.Success), time.GetUtcNow().UtcDateTime, reports);
             _lastReconcile = time.GetUtcNow().UtcDateTime;
             // Report the outcome (and fresh tool states) right away instead of waiting a full heartbeat interval.
@@ -259,6 +301,9 @@ public sealed class Supervisor(
                 return new(_lastReport?.Success ?? false, $"Reclaimed managed files at revision {_lastReport?.Revision}");
             case AgentCommandTypes.RefreshBans:
                 return new(true, "Ban list refreshed");
+            case AgentCommandTypes.BaselineCheck:
+                await RunBaselineIfDueAsync(force: true, ct);
+                return new(true, "Baseline checks ran");
             default:
                 return new(false, $"Unknown command '{cmd.Type}' (agent {AgentInfo.Version})");
         }

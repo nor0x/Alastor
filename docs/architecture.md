@@ -123,7 +123,9 @@ Cookie-authenticated writes must also send `X-Sentinel-Request: 1` (CSRF guard o
 | `GET /api/hosts/{id}/metrics?hours=` | R | downsampled CPU/mem/disk/load history |
 | `GET /api/hosts/{id}/effective-policy` · `/commands` | R | merged YAML and revision · command history |
 | `PATCH /api/hosts/{id}` · `DELETE /api/hosts/{id}` | A | rename, group, tags · remove (revokes the agent) |
-| `POST /api/hosts/{id}/actions/{reconcile\|reclaim\|refresh-bans}` | A | operator actions |
+| `POST /api/hosts/{id}/actions/{reconcile\|reclaim\|refresh-bans\|recheck}` | A | operator actions (`recheck` re-runs the security baseline) |
+| `GET /api/baseline` · `GET /api/baseline/catalog` | R | fleet baseline: per-check pass/fail counts with failing hosts, per-host scores · check catalog |
+| `GET /api/hosts/{id}/baseline` | R | every baseline check merged with this host's result, copy-paste commands and the policy key that fixes it |
 | `GET/POST/PUT/DELETE /api/groups[/{id}]` | R/A | host groups |
 | `GET/POST/DELETE /api/enrollment-tokens[/{id}]` | A | single-use tokens; POST returns the secret once plus the install command |
 | `GET/POST/DELETE /api/api-keys[/{id}]` | A | read-only API keys (secret shown once) |
@@ -144,9 +146,10 @@ Cookie-authenticated writes must also send `X-Sentinel-Request: 1` (CSRF guard o
 | `POST /api/agent/heartbeat` | Ag | metrics + tool statuses + last apply report → `{desiredRevision, pendingCommands}` |
 | `GET /api/agent/desired-state` | Ag | effective policy + revision |
 | `POST /api/agent/events` | Ag | batch of `SecurityEvent` (≤1000), idempotent |
+| `POST /api/agent/baseline` | Ag | one baseline run; the server replaces the host's result set and recomputes the score |
 | `POST /api/agent/bans` | Ag | full ban snapshot per tool (server replaces that host's active set) |
 | `GET /api/agent/commands` · `POST /api/agent/commands/{id}/result` | Ag | pull pending commands · report outcome |
-| `/hubs/agent` · `/hubs/dashboard` | Ag · R | SignalR: `Wake(reason)` to agents · `hostUpdated`, `eventsCreated`, `bansChanged`, `policyChanged`, `commandUpdated`, `feedUpdated` to browsers |
+| `/hubs/agent` · `/hubs/dashboard` | Ag · R | SignalR: `Wake(reason)` to agents · `hostUpdated`, `eventsCreated`, `bansChanged`, `policyChanged`, `commandUpdated`, `feedUpdated`, `baselineUpdated` to browsers |
 
 ### Agent ↔ server protocol
 
@@ -195,6 +198,7 @@ times, so the editor can show `0 4 * * 1-5` as "Mon 04:00, Tue 04:00, …".
 | `agent.banSnapshotInterval` | `5m` | 30s–1d | full ban-list resync |
 | `agent.scheduleSpread` | `30m` | 0–12h | per-host offset for scheduled jobs |
 | `agent.offlineGracePeriod` | `24h` | any, or `permanent` | release server-pushed firewall state |
+| `baseline.checkSchedule` | `every 1h` | ≥1m | security baseline checks; also run at agent start, after policy changes, and on "Re-check now" |
 | `updates.checkSchedule` | `every 6h` | ≥1m | pending security update count (D6) |
 | `updates.applySchedule` | `off` | ≥1m | auto-apply security updates (D6) |
 | `vulnerabilities.scanSchedule` | `0 3 * * *` | ≥1m | Trivy/Grype (D7) |
@@ -281,4 +285,22 @@ allowlist, and the operator's own address.
   engines.
 * **Ban snapshots and manual-ban jail.** These use fail2ban's own mechanisms (`banip`, jail DB). We add no
   firewall code for banning.
+* **Security baseline.** About twenty checks that matter most on an internet-facing server (SSH, firewall,
+  automatic updates, pending reboot, kernel network hardening, UID 0 and empty-password accounts, shadow file
+  permissions, time sync). Lynis (D8) audits far more broadly, but it only *suggests*: it has no "apply" and no
+  undo. The baseline exists for the short list where a fix is safe to automate. It still parses nothing by hand:
+  checks read the system's own authoritative output (`sshd -T` for the *effective* SSH config, `sysctl -e`,
+  `ufw status`, `nft -j list ruleset`, `iptables -S`, `apt-config dump`, `timedatectl show`, `passwd -S -a`,
+  `getent`). Fixes are policy (`baseline.mitigations.<check>: apply | ignore | report`, merged key by key, so a
+  host can opt out of a global `apply` with `report`). The agent applies them as two managed drop-ins:
+  `/etc/ssh/sshd_config.d/01-sentinel-vps.conf` (sorts before cloud-init's `50-…`, because sshd keeps the *first*
+  value; checked with `sshd -t` before sshd reloads, rolled back on failure; only keywords this sshd prints in
+  `sshd -T` are written) and `/etc/sysctl.d/99-zz-sentinel-vps.conf` (sorts last; values it replaced are recorded
+  and restored when a fix is removed). `sysctl -p` exits 0 even when `/proc/sys` is read-only (containers,
+  LXC/OpenVZ VPS), so the agent reads the values back and reports what the kernel refused. Lockout guards:
+  passwords are only turned off when an admin account (root, sudo, wheel, admin) has an authorized key, and root
+  password login only when root has a key or another admin exists. Firewall, updates, reboots and account fixes
+  stay manual (the agent can't know which ports you need or who `toor` is); the dashboard shows commands filled
+  in with the host's SSH port, distro and user names. Score: severity-weighted (critical 10, high 6, medium 3,
+  low 1); accepted, unknown and not-applicable checks are left out.
 * **Metrics from /proc.** Five files are cheaper than shipping node_exporter for four numbers.

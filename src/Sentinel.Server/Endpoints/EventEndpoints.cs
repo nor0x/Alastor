@@ -24,6 +24,8 @@ public static class EventEndpoints
         int? HostsWithPendingSecurityUpdates,
         int? HostsWithHighCves,
         double? AverageHardeningIndex,
+        double? AverageBaselineScore,
+        int HostsFailingBaselineHigh,
         IReadOnlyList<EventDto> RecentAlerts,
         IReadOnlyList<TopOffender> TopOffenders);
 
@@ -64,6 +66,11 @@ public static class EventEndpoints
             var offenders = perHost.GroupBy(x => x.Subject!)
                 .Select(grp => new TopOffender(grp.Key, grp.Sum(x => x.Count), grp.Count()))
                 .OrderByDescending(o => o.Events).Take(10).ToList();
+            var scored = hosts.Where(h => h.BaselineScore is not null).ToList();
+            var highSeverityChecks = Sentinel.Core.Baseline.BaselineCatalog.All.Where(i => i.Severity >= Severity.High).Select(i => i.Id).ToList();
+            var hostsFailingHigh = await db.BaselineChecks
+                .Where(c => c.Status == Sentinel.Core.Baseline.CheckStatus.Fail && !c.Accepted && highSeverityChecks.Contains(c.CheckId))
+                .Select(c => c.HostId).Distinct().CountAsync(ct);
 
             return new OverviewDto(
                 hosts.Count,
@@ -80,6 +87,8 @@ public static class EventEndpoints
                 null,
                 null,
                 null,
+                scored.Count == 0 ? null : Math.Round(scored.Average(h => h.BaselineScore!.Value), 0),
+                hostsFailingHigh,
                 recent.Select(Dto.Event).ToList(),
                 offenders);
         }).WithTags("Overview").RequireAuthorization(AuthPolicies.Reader);

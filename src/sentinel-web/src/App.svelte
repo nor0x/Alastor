@@ -12,6 +12,7 @@
   import HostDetail from './pages/HostDetail.svelte';
   import Events from './pages/Events.svelte';
   import Bans from './pages/Bans.svelte';
+  import Baseline from './pages/Baseline.svelte';
   import Policies from './pages/Policies.svelte';
   import PolicyEditor from './pages/PolicyEditor.svelte';
   import Settings from './pages/Settings.svelte';
@@ -50,6 +51,7 @@
   const nav = [
     { href: '/', label: 'Overview', match: (p: string) => p === '/' },
     { href: '/hosts', label: 'Hosts', match: (p: string) => p.startsWith('/hosts') },
+    { href: '/baseline', label: 'Baseline', match: (p: string) => p.startsWith('/baseline') },
     { href: '/events', label: 'Events', match: (p: string) => p.startsWith('/events') },
     { href: '/bans', label: 'Bans', match: (p: string) => p.startsWith('/bans') },
     { href: '/policies', label: 'Policies', match: (p: string) => p.startsWith('/policies') },
@@ -71,6 +73,7 @@
     if ((m = match('/hosts/:id', p))) return { name: 'host', id: m.id } as const;
     if (p === '/events') return { name: 'events' } as const;
     if (p === '/bans') return { name: 'bans' } as const;
+    if (p === '/baseline') return { name: 'baseline' } as const;
     if (p === '/policies') return { name: 'policies' } as const;
     if (p === '/policies/global') return { name: 'policy', scope: 'global', id: null } as const;
     if ((m = match('/policies/group/:id', p))) return { name: 'policy', scope: 'group', id: m.id } as const;
@@ -82,7 +85,7 @@
     return { name: 'notfound' } as const;
   });
 
-  const titles: Record<string, string> = { overview: 'Overview', hosts: 'Hosts', host: 'Host', events: 'Events', bans: 'Bans', policies: 'Policies', policy: 'Policy', feed: 'Threat feed', settings: 'Settings', about: 'About', notfound: 'Not found' };
+  const titles: Record<string, string> = { overview: 'Overview', hosts: 'Hosts', host: 'Host', events: 'Events', bans: 'Bans', baseline: 'Security baseline', policies: 'Policies', policy: 'Policy', feed: 'Threat feed', settings: 'Settings', about: 'About', notfound: 'Not found' };
   $effect(() => {
     document.title = `${titles[page.name]} · SentinelVPS`;
   });
@@ -123,6 +126,7 @@
     {:else if page.name === 'host'}{#key page.id}<HostDetail id={page.id} />{/key}
     {:else if page.name === 'events'}<Events />
     {:else if page.name === 'bans'}<Bans />
+    {:else if page.name === 'baseline'}<Baseline />
     {:else if page.name === 'policies'}<Policies />
     {:else if page.name === 'policy'}{#key `${page.scope}/${page.id}`}<PolicyEditor scope={page.scope} targetId={page.id} />{/key}
     {:else if page.name === 'feed'}<ThreatFeed />

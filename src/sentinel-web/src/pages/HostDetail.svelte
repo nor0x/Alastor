@@ -6,9 +6,11 @@
   import { canWrite } from '../lib/session.svelte';
   import { toast } from '../lib/toast.svelte';
   import { bytes, fullDate, uptime } from '../lib/format';
+  import { scoreTone } from '../lib/baseline';
   import { confirm } from '../lib/ui/confirm.svelte';
   import BanDialog from '../lib/BanDialog.svelte';
   import BanTable from '../lib/BanTable.svelte';
+  import HostBaseline from '../lib/HostBaseline.svelte';
   import EventList from '../lib/ui/EventList.svelte';
   import MetricChart from '../lib/ui/MetricChart.svelte';
   import Modal from '../lib/ui/Modal.svelte';
@@ -16,8 +18,8 @@
 
   let { id }: { id: string } = $props();
 
-  type Tab = 'overview' | 'events' | 'bans' | 'policy' | 'commands';
-  const tabs: [Tab, string][] = [['overview', 'Overview'], ['events', 'Events'], ['bans', 'Bans'], ['policy', 'Policy'], ['commands', 'Commands']];
+  type Tab = 'overview' | 'baseline' | 'events' | 'bans' | 'policy' | 'commands';
+  const tabs: [Tab, string][] = [['overview', 'Overview'], ['baseline', 'Baseline'], ['events', 'Events'], ['bans', 'Bans'], ['policy', 'Policy'], ['commands', 'Commands']];
   const tab = $derived((new URLSearchParams(route.search).get('tab') as Tab) || 'overview');
 
   let host = $state<HostDetail | null>(null);
@@ -242,6 +244,7 @@
     {#each tabs as [t, label] (t)}
       <button class:on={tab === t} aria-current={tab === t ? 'page' : undefined} onclick={() => setTab(t)}>
         {label}
+        {#if t === 'baseline' && s.baselineFailing}<span class="count">{s.baselineFailing}</span>{/if}
         {#if t === 'bans' && bans.length}<span class="count">{bans.length}</span>{/if}
         {#if t === 'commands' && commands.some((c) => c.status === 'Pending' || c.status === 'Delivered')}<span class="count">…</span>{/if}
       </button>
@@ -315,6 +318,13 @@
             <dt>Enrolled</dt><dd>{fullDate(host.enrolledAt)}</dd>
             <dt>Last heartbeat</dt><dd><Time iso={s.lastSeenAt} /></dd>
             <dt>Machine ID</dt><dd class="mono small">{host.machineId ?? '—'}</dd>
+            <dt>Baseline</dt>
+            <dd>
+              {#if s.baselineScore !== null}
+                <a href="/hosts/{id}?tab=baseline"><span class="pill {scoreTone(s.baselineScore)}">score {s.baselineScore}</span></a>
+                {#if s.baselineFailing}<span class="muted small">{s.baselineFailing} failing</span>{/if}
+              {:else}<span class="muted">not checked yet</span>{/if}
+            </dd>
             <dt>Policy</dt>
             <dd>
               {#if s.policySync === 'in-sync'}<span class="pill ok">✓ in sync</span>{:else if s.policySync === 'failed'}<span class="pill bad">✕ failed</span>{:else}<span class="pill info">… pending</span>{/if}
@@ -324,6 +334,8 @@
         </section>
       </div>
     </div>
+  {:else if tab === 'baseline'}
+    <HostBaseline hostId={id} groupId={s.groupId} groupName={s.groupName} isOnline={s.isOnline} />
   {:else if tab === 'events'}
     <section class="card">
       <header><h2>Events</h2><a class="hint" href="/events?hostId={id}">Open in event timeline →</a></header>

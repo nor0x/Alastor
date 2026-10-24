@@ -26,7 +26,9 @@ public sealed record HostSummaryDto(
     int ActiveBans,
     string PolicySync,
     int ToolsRunning,
-    int ToolsWithProblems);
+    int ToolsWithProblems,
+    int? BaselineScore,
+    int BaselineFailing);
 
 public sealed record ToolStatusDto(
     string ToolId,
@@ -133,6 +135,67 @@ public sealed record FeedSourceDto(
     int ConsecutiveFailures,
     string? LastError,
     int Items);
+
+/// <summary>A baseline check: catalog text plus, when for one host, that host's latest result (null fields before the first run).</summary>
+public sealed record BaselineCheckDto(
+    string Id,
+    string Title,
+    Sentinel.Core.Baseline.BaselineCategory Category,
+    Severity Severity,
+    string Why,
+    string Expected,
+    Sentinel.Core.Baseline.FixKind Fix,
+    string Remediation,
+    IReadOnlyList<string> PolicyPath,
+    string PolicyValue,
+    Sentinel.Core.Baseline.CheckStatus? Status,
+    string? Actual,
+    string? Detail,
+    IReadOnlyList<string> Commands,
+    bool Enforced,
+    bool Accepted,
+    DateTime? UpdatedAt,
+    DateTime? FailingSince);
+
+public sealed record HostBaselineDto(
+    Guid HostId,
+    string HostName,
+    Guid? GroupId,
+    int? Score,
+    DateTime? CheckedAt,
+    string? PolicyRevision,
+    IReadOnlyList<BaselineCheckDto> Checks);
+
+public sealed record BaselineHostRef(Guid Id, string Name, string Actual);
+
+public sealed record BaselineHostDto(
+    Guid Id,
+    string Name,
+    Guid? GroupId,
+    string? GroupName,
+    bool IsOnline,
+    int? Score,
+    DateTime? CheckedAt,
+    int Failing,
+    int FailingHighOrCritical);
+
+/// <summary>One check across the fleet. <c>Failing</c> leaves out accepted risks, which are counted separately.</summary>
+public sealed record BaselineFleetCheckDto(
+    BaselineCheckDto Check,
+    int Passing,
+    int Failing,
+    int Accepted,
+    int Unknown,
+    int NotApplicable,
+    int Enforced,
+    IReadOnlyList<BaselineHostRef> FailingHosts);
+
+public sealed record BaselineFleetDto(
+    double? AverageScore,
+    int HostsReported,
+    int HostsTotal,
+    IReadOnlyList<BaselineHostDto> Hosts,
+    IReadOnlyList<BaselineFleetCheckDto> Checks);
 
 public static class Dto
 {

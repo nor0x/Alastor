@@ -325,6 +325,50 @@ namespace Sentinel.Server.Data.Migrations.Sqlite
                     b.ToTable("FeedSources");
                 });
 
+            modelBuilder.Entity("Sentinel.Server.Data.HostBaselineCheck", b =>
+                {
+                    b.Property<Guid>("HostId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("CheckId")
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("Accepted")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Actual")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Commands")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Detail")
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("Enforced")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime?>("FailingSince")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("HostId", "CheckId");
+
+                    b.HasIndex("CheckId", "Status");
+
+                    b.ToTable("BaselineChecks");
+                });
+
             modelBuilder.Entity("Sentinel.Server.Data.HostCommand", b =>
                 {
                     b.Property<Guid>("Id")
@@ -546,6 +590,15 @@ namespace Sentinel.Server.Data.Migrations.Sqlite
                     b.Property<string>("Architecture")
                         .IsRequired()
                         .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("BaselineCheckedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("BaselineRevision")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int?>("BaselineScore")
+                        .HasColumnType("INTEGER");
 
                     b.Property<double>("CpuPercent")
                         .HasColumnType("REAL");
@@ -798,6 +851,15 @@ namespace Sentinel.Server.Data.Migrations.Sqlite
                 });
 
             modelBuilder.Entity("Sentinel.Server.Data.ActiveBan", b =>
+                {
+                    b.HasOne("Sentinel.Server.Data.ManagedHost", null)
+                        .WithMany()
+                        .HasForeignKey("HostId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Sentinel.Server.Data.HostBaselineCheck", b =>
                 {
                     b.HasOne("Sentinel.Server.Data.ManagedHost", null)
                         .WithMany()

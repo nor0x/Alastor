@@ -12,7 +12,7 @@ let hub: HubConnection | undefined;
 export function startLive() {
   if (hub) return;
   hub = new HubConnectionBuilder().withUrl('/hubs/dashboard').withAutomaticReconnect([0, 2000, 5000, 10000, 30000]).configureLogging(LogLevel.Warning).build();
-  for (const name of ['hostUpdated', 'eventsCreated', 'bansChanged', 'policyChanged', 'commandUpdated', 'feedUpdated'])
+  for (const name of ['hostUpdated', 'eventsCreated', 'bansChanged', 'policyChanged', 'commandUpdated', 'feedUpdated', 'baselineUpdated'])
     hub.on(name, (...args: unknown[]) => handlers.get(name)?.forEach((h) => h(...args)));
   hub.onreconnecting(() => (live.connected = false));
   hub.onreconnected(() => (live.connected = true));

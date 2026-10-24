@@ -62,6 +62,12 @@ public sealed class ServerClient(HttpClient http)
         resp.EnsureSuccessStatusCode();
     }
 
+    public async Task SendBaselineAsync(Sentinel.Core.Baseline.BaselineReport report, CancellationToken ct)
+    {
+        using var resp = await http.PostAsJsonAsync("api/agent/baseline", report, Json.BaselineReport, ct);
+        resp.EnsureSuccessStatusCode();
+    }
+
     public async Task<List<AgentCommand>> GetCommandsAsync(CancellationToken ct) =>
         (await http.GetFromJsonAsync("api/agent/commands", Json.ListAgentCommand, ct)) ?? [];
 

@@ -76,6 +76,9 @@ public static class AgentCommandTypes
     public const string Reclaim = "reclaim";
 
     public const string RefreshBans = "refresh-bans";
+
+    /// <summary>Run the security baseline checks now and report the results.</summary>
+    public const string BaselineCheck = "baseline-check";
 }
 
 public sealed record AgentCommand(Guid Id, string Type, IReadOnlyDictionary<string, string> Payload, DateTime CreatedAtUtc);
@@ -107,4 +110,5 @@ public static class AgentHubMethods
 [JsonSerializable(typeof(Dictionary<string, string>))]
 [JsonSerializable(typeof(string))]
 [JsonSerializable(typeof(List<ToolStatus>))]
+[JsonSerializable(typeof(Sentinel.Core.Baseline.BaselineReport))]
 public sealed partial class AgentJsonContext : JsonSerializerContext;

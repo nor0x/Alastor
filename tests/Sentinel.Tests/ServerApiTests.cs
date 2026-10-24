@@ -4,6 +4,7 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Sentinel.Core.Baseline;
 using Sentinel.Core.Contracts;
 using Sentinel.Core.Events;
 using Sentinel.Core.Integrations;
@@ -215,5 +216,55 @@ public sealed class ServerApiTests : IClassFixture<ServerApiTests.Factory>
         Assert.Equal(HttpStatusCode.OK, (await c.GetAsync("/api/overview")).StatusCode);
         Assert.Equal(HttpStatusCode.Forbidden, (await c.PostAsJsonAsync("/api/bans", new { target = "203.0.113.1" })).StatusCode);
         Assert.Equal(HttpStatusCode.Forbidden, (await c.GetAsync("/api/api-keys")).StatusCode);
+    }
+
+    [Fact]
+    public async Task Baseline_report_is_scored_on_the_server_and_merged_with_the_catalog()
+    {
+        var admin = await AdminAsync();
+        var (hostId, agent) = await EnrollAsync(admin);
+
+        BaselineReport Report(CheckStatus firewall) => new(DateTime.UtcNow, "rev-1",
+        [
+            new("ssh-password-auth", CheckStatus.Pass, "PasswordAuthentication no"),
+            new("firewall-active", firewall, "No active firewall") { Commands = ["sudo ufw --force enable"] },
+            new("time-sync", CheckStatus.Unknown, "?"),
+            new("not-a-check", CheckStatus.Fail, "ignored"),
+        ]);
+
+        Assert.Equal(HttpStatusCode.NoContent, (await agent.PostAsJsonAsync("/api/agent/baseline", Report(CheckStatus.Fail), Json)).StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, (await admin.PostAsJsonAsync("/api/agent/baseline", Report(CheckStatus.Fail), Json)).StatusCode);
+
+        var host = await admin.GetFromJsonAsync<JsonElement>($"/api/hosts/{hostId}/baseline", Json);
+        Assert.Equal(50, host.GetProperty("score").GetInt32()); // High pass + High fail; unknown left out
+        var checks = host.GetProperty("checks").EnumerateArray().ToList();
+        Assert.Equal(BaselineCatalog.All.Count, checks.Count); // every catalog check, reported or not
+        var fw = checks.Single(c => c.GetProperty("id").GetString() == "firewall-active");
+        Assert.Equal("Fail", fw.GetProperty("status").GetString());
+        Assert.Equal("Manual", fw.GetProperty("fix").GetString());
+        Assert.Equal("sudo ufw --force enable", fw.GetProperty("commands")[0].GetString());
+        Assert.NotEqual(JsonValueKind.Null, fw.GetProperty("failingSince").ValueKind);
+        Assert.Equal(JsonValueKind.Null, checks.Single(c => c.GetProperty("id").GetString() == "kernel-aslr").GetProperty("status").ValueKind);
+
+        var summary = (await admin.GetFromJsonAsync<JsonElement>("/api/hosts", Json)).EnumerateArray().Single(h => h.GetProperty("id").GetGuid() == hostId);
+        Assert.Equal(50, summary.GetProperty("baselineScore").GetInt32());
+        Assert.Equal(1, summary.GetProperty("baselineFailing").GetInt32());
+
+        var fleet = await admin.GetFromJsonAsync<JsonElement>("/api/baseline", Json);
+        var fleetFw = fleet.GetProperty("checks").EnumerateArray().Single(c => c.GetProperty("check").GetProperty("id").GetString() == "firewall-active");
+        Assert.Contains(fleetFw.GetProperty("failingHosts").EnumerateArray(), h => h.GetProperty("id").GetGuid() == hostId);
+        var overview = await admin.GetFromJsonAsync<JsonElement>("/api/overview", Json);
+        Assert.True(overview.GetProperty("hostsFailingBaselineHigh").GetInt32() >= 1);
+
+        // The check now passes: failingSince clears and the score goes to 100.
+        await agent.PostAsJsonAsync("/api/agent/baseline", Report(CheckStatus.Pass), Json);
+        host = await admin.GetFromJsonAsync<JsonElement>($"/api/hosts/{hostId}/baseline", Json);
+        Assert.Equal(100, host.GetProperty("score").GetInt32());
+        Assert.Equal(JsonValueKind.Null, host.GetProperty("checks").EnumerateArray().Single(c => c.GetProperty("id").GetString() == "firewall-active").GetProperty("failingSince").ValueKind);
+
+        var recheck = await admin.PostAsync($"/api/hosts/{hostId}/actions/recheck", null);
+        Assert.Equal(HttpStatusCode.Accepted, recheck.StatusCode);
+        var cmds = await agent.GetFromJsonAsync<List<AgentCommand>>("/api/agent/commands", Json);
+        Assert.Contains(cmds!, c => c.Type == AgentCommandTypes.BaselineCheck);
     }
 }

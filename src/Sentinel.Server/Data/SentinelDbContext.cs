@@ -18,6 +18,7 @@ public abstract class SentinelDbContext(DbContextOptions options) : DbContext(op
     public DbSet<HostGroup> Groups => Set<HostGroup>();
     public DbSet<ManagedHost> Hosts => Set<ManagedHost>();
     public DbSet<HostToolStatus> ToolStatuses => Set<HostToolStatus>();
+    public DbSet<HostBaselineCheck> BaselineChecks => Set<HostBaselineCheck>();
     public DbSet<HostMetricSample> MetricSamples => Set<HostMetricSample>();
     public DbSet<StoredEvent> Events => Set<StoredEvent>();
     public DbSet<ActiveBan> Bans => Set<ActiveBan>();
@@ -57,6 +58,14 @@ public abstract class SentinelDbContext(DbContextOptions options) : DbContext(op
         });
 
         m.Entity<HostToolStatus>().HasKey(t => new { t.HostId, t.ToolId });
+
+        m.Entity<HostBaselineCheck>(e =>
+        {
+            e.HasKey(c => new { c.HostId, c.CheckId });
+            e.Property(c => c.CheckId).HasMaxLength(64);
+            e.HasIndex(c => new { c.CheckId, c.Status });
+            e.HasOne<ManagedHost>().WithMany().HasForeignKey(c => c.HostId).OnDelete(DeleteBehavior.Cascade);
+        });
 
         m.Entity<HostMetricSample>(e =>
         {

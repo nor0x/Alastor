@@ -3,10 +3,11 @@
   import { refreshOn } from '../lib/live.svelte';
   import { route } from '../lib/router.svelte';
   import { canWrite } from '../lib/session.svelte';
+  import { scoreTone } from '../lib/baseline';
   import Meter from '../lib/ui/Meter.svelte';
   import Time from '../lib/ui/Time.svelte';
 
-  type Filter = '' | 'online' | 'offline' | 'problems' | 'pending';
+  type Filter = '' | 'online' | 'offline' | 'problems' | 'pending' | 'baseline';
 
   const params = new URLSearchParams(route.search);
   let q = $state(params.get('q') ?? '');
@@ -37,6 +38,7 @@
         case 'offline': return !h.isOnline;
         case 'problems': return h.toolsWithProblems > 0;
         case 'pending': return h.policySync !== 'in-sync';
+        case 'baseline': return h.baselineFailing > 0;
         default: return true;
       }
     }),
@@ -61,6 +63,7 @@
     <option value="offline">Offline</option>
     <option value="problems">Tool problems</option>
     <option value="pending">Policy not applied</option>
+    <option value="baseline">Failing baseline checks</option>
   </select>
   <select class="field" bind:value={group} aria-label="Group">
     <option value="">All groups</option>
@@ -94,6 +97,7 @@
           <th class="num">Bans</th>
           <th>Tools</th>
           <th>Policy</th>
+          <th class="num hide-sm" title="Security baseline score">Baseline</th>
           <th class="hide-sm">Last seen</th>
         </tr>
       </thead>
@@ -126,6 +130,10 @@
               {#if h.policySync === 'in-sync'}<span class="pill ok">✓ in sync</span>
               {:else if h.policySync === 'failed'}<span class="pill bad">✕ failed</span>
               {:else}<span class="pill info">… pending</span>{/if}
+            </td>
+            <td class="num hide-sm">
+              {#if h.baselineScore !== null}<a href="/hosts/{h.id}?tab=baseline" title="{h.baselineFailing} failing check{h.baselineFailing === 1 ? '' : 's'}"><span class="pill {scoreTone(h.baselineScore)}">{h.baselineScore}</span></a>
+              {:else}<span class="muted">—</span>{/if}
             </td>
             <td class="hide-sm nowrap"><Time iso={h.lastSeenAt} /></td>
           </tr>

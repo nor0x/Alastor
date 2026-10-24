@@ -20,6 +20,7 @@ public static class ToolCatalog
     public static readonly IReadOnlyList<Entry> All =
     [
         new(Fail2BanIntegration.Info, Implemented: true, OptIn: false),
+        new(Baseline.BaselineIntegration.Info, Implemented: true, OptIn: false),
         new(D("crowdsec", "CrowdSec Security Engine", Capability.Banning, "MIT", "https://github.com/crowdsecurity/crowdsec", "crowdsec",
             "Collaborative behaviour-based banning with community blocklist and AppSec WAF.", alpinePkg: null), false, true),
         new(D("nftables", "nftables", Capability.Firewall, "GPL-2.0", "https://netfilter.org/projects/nftables/", "nftables",
