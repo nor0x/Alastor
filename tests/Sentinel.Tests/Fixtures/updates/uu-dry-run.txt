@@ -1,0 +1,13 @@
+Checking if system is running on battery is skipped. Please install powermgmt-base package to check power status and skip installing updates when the system is running on battery.
+Starting unattended upgrades script
+Allowed origins are: o=Ubuntu,a=resolute, o=Ubuntu,a=resolute-security, o=UbuntuESMApps,a=resolute-apps-security, o=UbuntuESM,a=resolute-infra-security
+Initial blacklist: 
+Initial whitelist (not strict): 
+Option --dry-run given, *not* performing real actions
+Packages that will be upgraded: gpgv
+Writing dpkg log to /var/log/unattended-upgrades/unattended-upgrades-dpkg.log
+/usr/bin/dpkg --status-fd 10 --no-triggers --unpack --auto-deconfigure /var/cache/apt/archives/gpgv_2.4.8-4ubuntu3.1_amd64.deb 
+/usr/bin/dpkg --status-fd 10 --no-triggers --configure gpgv:amd64 
+/usr/bin/dpkg --status-fd 10 --configure --pending 
+All upgrades installed
+The list of kept packages can't be calculated in dry-run mode.

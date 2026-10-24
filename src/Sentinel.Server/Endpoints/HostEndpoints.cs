@@ -92,18 +92,20 @@ public static class HostEndpoints
         // Operator actions: re-run reconcile, reclaim hand-edited files, refresh ban list, re-run the security baseline.
         g.MapPost("/{id:guid}/actions/{action}", async (Guid id, string action, ClaimsPrincipal user, SentinelDbContext db, CommandService commands, CancellationToken ct) =>
         {
-            var type = action switch
+            var (type, job) = action switch
             {
-                "reconcile" => AgentCommandTypes.Reconcile,
-                "reclaim" => AgentCommandTypes.Reclaim,
-                "refresh-bans" => AgentCommandTypes.RefreshBans,
-                "recheck" => AgentCommandTypes.BaselineCheck,
-                _ => null,
+                "reconcile" => (AgentCommandTypes.Reconcile, null),
+                "reclaim" => (AgentCommandTypes.Reclaim, null),
+                "refresh-bans" => (AgentCommandTypes.RefreshBans, null),
+                "recheck" => (AgentCommandTypes.BaselineCheck, null),
+                "check-updates" => (AgentCommandTypes.RunJob, "updates.check"),
+                "apply-updates" => (AgentCommandTypes.RunJob, "updates.apply"),
+                _ => ((string?)null, (string?)null),
             };
             if (type is null) return Results.Problem($"Unknown action '{action}'.", statusCode: 400);
             if (!await db.Hosts.AnyAsync(h => h.Id == id, ct)) return Results.NotFound();
             db.Audit.Add(new AuditEntry { Actor = user.Actor(), Action = $"host.{action}", Target = id.ToString() });
-            var cmds = await commands.QueueAsync([id], type, [], user.Actor(), ct);
+            var cmds = await commands.QueueAsync([id], type, job is null ? [] : new() { ["job"] = job }, user.Actor(), ct);
             return Results.Accepted(value: Dto.Command(cmds[0]));
         }).RequireAuthorization(AuthPolicies.Admin);
     }
@@ -122,6 +124,6 @@ public static class HostEndpoints
         return new HostSummaryDto(h.Id, h.Name, h.Hostname, h.OsPrettyName, h.Architecture, h.AgentVersion, h.IsOnline, h.LastSeenAt,
             h.CpuPercent, Dto.Percent(h.MemoryUsedBytes, h.MemoryTotalBytes), Dto.Percent(h.DiskUsedBytes, h.DiskTotalBytes), h.Load1,
             h.GroupId, h.Group?.Name, h.Tags, bans, sync, h.Tools.Count(t => t.Running), problems,
-            h.BaselineScore, baselineFailing);
+            h.BaselineScore, baselineFailing, h.PendingUpdates, h.SecurityUpdates, h.RebootRequired);
     }
 }

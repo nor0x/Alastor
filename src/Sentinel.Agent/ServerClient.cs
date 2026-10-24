@@ -69,6 +69,12 @@ public sealed class ServerClient(HttpClient http)
         resp.EnsureSuccessStatusCode();
     }
 
+    public async Task SendReportAsync(AgentReport report, CancellationToken ct)
+    {
+        using var resp = await http.PostAsJsonAsync("api/agent/reports", report, Json.AgentReport, ct);
+        resp.EnsureSuccessStatusCode();
+    }
+
     /// <summary>The merged blocklist for this host, or null when it still matches <paramref name="etag"/> (304).</summary>
     public async Task<BlocklistPayload?> GetBlocklistAsync(string? etag, CancellationToken ct)
     {

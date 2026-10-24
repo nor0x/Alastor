@@ -85,11 +85,11 @@
       {:else if data.hostsFailingBaselineHigh > 0}<span class="foot warn">{data.hostsFailingBaselineHigh} host{data.hostsFailingBaselineHigh > 1 ? 's' : ''} failing high-severity checks</span>
       {:else}<span class="foot muted">no high-severity failures</span>{/if}
     </a>
-    <div class="tile later" title="Arrives with the update-agent integration (deliverable 6)">
+    <a class="tile" href="/hosts?filter=updates">
       <span class="label">Pending security updates</span>
       <span class="big">{data.hostsWithPendingSecurityUpdates ?? '—'}</span>
-      <span class="foot muted">{data.hostsWithPendingSecurityUpdates === null ? 'not collected yet' : 'hosts'}</span>
-    </div>
+      <span class="foot muted">{data.hostsWithPendingSecurityUpdates === null ? 'not checked yet' : `host${data.hostsWithPendingSecurityUpdates === 1 ? '' : 's'} need updates`}</span>
+    </a>
     <div class="tile later" title="Arrives with the Trivy/Grype integration (deliverable 7)">
       <span class="label">Hosts with CVSS ≥ 7</span>
       <span class="big">{data.hostsWithHighCves ?? '—'}</span>

@@ -551,6 +551,44 @@ namespace Sentinel.Server.Data.Migrations.Sqlite
                     b.ToTable("MetricSamples");
                 });
 
+            modelBuilder.Entity("Sentinel.Server.Data.HostReport", b =>
+                {
+                    b.Property<Guid>("HostId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Kind")
+                        .HasMaxLength(32)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Error")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("FinishedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("JobId")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Json")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("ReceivedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("StartedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("Success")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("HostId", "Kind");
+
+                    b.ToTable("HostReports");
+                });
+
             modelBuilder.Entity("Sentinel.Server.Data.HostToolStatus", b =>
                 {
                     b.Property<Guid>("HostId")
@@ -749,6 +787,9 @@ namespace Sentinel.Server.Data.Migrations.Sqlite
                         .IsRequired()
                         .HasColumnType("TEXT");
 
+                    b.Property<int?>("PendingUpdates")
+                        .HasColumnType("INTEGER");
+
                     b.Property<DateTime?>("PolicyAppliedAt")
                         .HasColumnType("TEXT");
 
@@ -758,12 +799,21 @@ namespace Sentinel.Server.Data.Migrations.Sqlite
                     b.Property<string>("PolicyReportJson")
                         .HasColumnType("TEXT");
 
+                    b.Property<bool>("RebootRequired")
+                        .HasColumnType("INTEGER");
+
                     b.Property<string>("SecretHash")
                         .IsRequired()
                         .HasColumnType("TEXT");
 
+                    b.Property<int?>("SecurityUpdates")
+                        .HasColumnType("INTEGER");
+
                     b.Property<string>("Tags")
                         .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("UpdatesCheckedAt")
                         .HasColumnType("TEXT");
 
                     b.Property<long>("UptimeSeconds")
@@ -1062,6 +1112,15 @@ namespace Sentinel.Server.Data.Migrations.Sqlite
                 });
 
             modelBuilder.Entity("Sentinel.Server.Data.HostMetricSample", b =>
+                {
+                    b.HasOne("Sentinel.Server.Data.ManagedHost", null)
+                        .WithMany()
+                        .HasForeignKey("HostId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Sentinel.Server.Data.HostReport", b =>
                 {
                     b.HasOne("Sentinel.Server.Data.ManagedHost", null)
                         .WithMany()

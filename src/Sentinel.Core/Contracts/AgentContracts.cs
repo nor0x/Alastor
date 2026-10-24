@@ -73,6 +73,15 @@ public sealed record BlocklistPayload(string Etag, DateTime GeneratedAtUtc, IRea
 /// <summary>One source list as merged into a payload. <see cref="UpdatedAtUtc"/> is null if the server hasn't fetched it yet.</summary>
 public sealed record BlocklistListInfo(string Id, int Entries, DateTime? UpdatedAtUtc, string? Error);
 
+/// <summary>
+/// The outcome of one scheduled job, posted to <c>/api/agent/reports</c>. Exactly one section is set, matching the job
+/// (updates.* fill <see cref="Updates"/>, and so on); the server keeps the latest report per host and section.
+/// </summary>
+public sealed record AgentReport(string JobId, DateTime StartedAtUtc, DateTime FinishedAtUtc, bool Success, string? Error)
+{
+    public Sentinel.Core.Updates.UpdatesReport? Updates { get; init; }
+}
+
 public static class AgentCommandTypes
 {
     public const string Ban = "ban";
@@ -88,6 +97,9 @@ public static class AgentCommandTypes
 
     /// <summary>Run the security baseline checks now and report the results.</summary>
     public const string BaselineCheck = "baseline-check";
+
+    /// <summary>Run a scheduled job now. Payload: <c>job</c> = the job id (updates.check, updates.apply, …).</summary>
+    public const string RunJob = "run-job";
 }
 
 public sealed record AgentCommand(Guid Id, string Type, IReadOnlyDictionary<string, string> Payload, DateTime CreatedAtUtc);
@@ -121,4 +133,6 @@ public static class AgentHubMethods
 [JsonSerializable(typeof(List<ToolStatus>))]
 [JsonSerializable(typeof(Sentinel.Core.Baseline.BaselineReport))]
 [JsonSerializable(typeof(BlocklistPayload))]
+[JsonSerializable(typeof(AgentReport))]
+[JsonSerializable(typeof(Sentinel.Core.Updates.UpdateApplyResult))]
 public sealed partial class AgentJsonContext : JsonSerializerContext;

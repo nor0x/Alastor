@@ -562,6 +562,44 @@ namespace Sentinel.Server.Data.Migrations.Postgres
                     b.ToTable("MetricSamples");
                 });
 
+            modelBuilder.Entity("Sentinel.Server.Data.HostReport", b =>
+                {
+                    b.Property<Guid>("HostId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Kind")
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.Property<string>("Error")
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("FinishedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("JobId")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("Json")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("ReceivedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime>("StartedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("Success")
+                        .HasColumnType("boolean");
+
+                    b.HasKey("HostId", "Kind");
+
+                    b.ToTable("HostReports");
+                });
+
             modelBuilder.Entity("Sentinel.Server.Data.HostToolStatus", b =>
                 {
                     b.Property<Guid>("HostId")
@@ -760,6 +798,9 @@ namespace Sentinel.Server.Data.Migrations.Postgres
                         .IsRequired()
                         .HasColumnType("text");
 
+                    b.Property<int?>("PendingUpdates")
+                        .HasColumnType("integer");
+
                     b.Property<DateTime?>("PolicyAppliedAt")
                         .HasColumnType("timestamp with time zone");
 
@@ -769,13 +810,22 @@ namespace Sentinel.Server.Data.Migrations.Postgres
                     b.Property<string>("PolicyReportJson")
                         .HasColumnType("text");
 
+                    b.Property<bool>("RebootRequired")
+                        .HasColumnType("boolean");
+
                     b.Property<string>("SecretHash")
                         .IsRequired()
                         .HasColumnType("text");
 
+                    b.Property<int?>("SecurityUpdates")
+                        .HasColumnType("integer");
+
                     b.Property<string>("Tags")
                         .IsRequired()
                         .HasColumnType("text");
+
+                    b.Property<DateTime?>("UpdatesCheckedAt")
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<long>("UptimeSeconds")
                         .HasColumnType("bigint");
@@ -1077,6 +1127,15 @@ namespace Sentinel.Server.Data.Migrations.Postgres
                 });
 
             modelBuilder.Entity("Sentinel.Server.Data.HostMetricSample", b =>
+                {
+                    b.HasOne("Sentinel.Server.Data.ManagedHost", null)
+                        .WithMany()
+                        .HasForeignKey("HostId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Sentinel.Server.Data.HostReport", b =>
                 {
                     b.HasOne("Sentinel.Server.Data.ManagedHost", null)
                         .WithMany()

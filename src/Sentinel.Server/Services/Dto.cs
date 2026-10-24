@@ -28,7 +28,10 @@ public sealed record HostSummaryDto(
     int ToolsRunning,
     int ToolsWithProblems,
     int? BaselineScore,
-    int BaselineFailing);
+    int BaselineFailing,
+    int? PendingUpdates,
+    int? SecurityUpdates,
+    bool RebootRequired);
 
 public sealed record ToolStatusDto(
     string ToolId,
