@@ -89,6 +89,20 @@ public sealed class SentinelOptions
     /// <summary>How often each list in use is re-fetched (conditional GET). Providers ask for no more than hourly.</summary>
     public string BlocklistRefreshInterval { get; set; } = "4h";
 
+    // ---- vulnerability databases ----
+
+    /// <summary>Mirror the Trivy/Grype databases for agents. Only scanners some agent asks for are fetched. Turn off for air-gapped servers and place the files by hand.</summary>
+    public bool VulnDbEnabled { get; set; } = true;
+
+    /// <summary>How often a mirrored database is checked for a newer build (Trivy publishes every 6 h, Grype daily).</summary>
+    public string VulnDbRefreshInterval { get; set; } = "12h";
+
+    /// <summary>OCI reference of Trivy's database. <c>mirror.gcr.io/aquasec/trivy-db:2</c> is Aqua's official mirror.</summary>
+    public string TrivyDbRepository { get; set; } = "ghcr.io/aquasecurity/trivy-db:2";
+
+    /// <summary>Base URL of Grype's database listing (<c>{url}/v6/latest.json</c>).</summary>
+    public string GrypeDbUrl { get; set; } = "https://grype.anchore.io/databases";
+
     // ---- alerts ----
 
     /// <summary>Leaky-bucket dedup: the same alert (host + event key) is sent at most <see cref="AlertBurst"/> times per window; repeats are counted and summarized.</summary>
@@ -110,6 +124,7 @@ public sealed class SentinelOptions
     public TimeSpan ThreatFeedRetentionValue => Parse(ThreatFeedRetention);
     public TimeSpan AlertDedupWindowValue => Parse(AlertDedupWindow);
     public TimeSpan BlocklistRefreshIntervalValue => Parse(BlocklistRefreshInterval);
+    public TimeSpan VulnDbRefreshIntervalValue => Parse(VulnDbRefreshInterval);
 
     /// <summary>When a host with the given heartbeat interval counts as offline.</summary>
     public TimeSpan OfflineAfter(TimeSpan heartbeat) => heartbeat * OfflineAfterMissedHeartbeats + TimeSpan.FromSeconds(15);
@@ -136,6 +151,9 @@ public sealed class SentinelOptions
         Check(nameof(ThreatFeedInterval), ThreatFeedInterval, TimeSpan.FromMinutes(5), TimeSpan.FromDays(1));
         Check(nameof(ThreatFeedRetention), ThreatFeedRetention, TimeSpan.FromDays(1), TimeSpan.FromDays(365));
         Check(nameof(BlocklistRefreshInterval), BlocklistRefreshInterval, TimeSpan.FromHours(1), TimeSpan.FromDays(7));
+        Check(nameof(VulnDbRefreshInterval), VulnDbRefreshInterval, TimeSpan.FromHours(1), TimeSpan.FromDays(7));
+        if (!Uri.TryCreate(GrypeDbUrl, UriKind.Absolute, out var g) || g.Scheme != Uri.UriSchemeHttps) errors.Add("GrypeDbUrl must be an https:// URL.");
+        if (!Sentinel.Server.Services.Vulnerabilities.OciReference.TryParse(TrivyDbRepository, out _)) errors.Add("TrivyDbRepository must look like registry/repository:tag, e.g. ghcr.io/aquasecurity/trivy-db:2.");
         Check(nameof(AlertDedupWindow), AlertDedupWindow, TimeSpan.FromMinutes(1), TimeSpan.FromDays(7));
         if (AlertBurst is < 1 or > 100) errors.Add("AlertBurst must be between 1 and 100.");
         if (OfflineAfterMissedHeartbeats is < 1 or > 100) errors.Add("OfflineAfterMissedHeartbeats must be between 1 and 100.");

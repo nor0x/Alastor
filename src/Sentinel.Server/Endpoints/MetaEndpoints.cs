@@ -22,6 +22,7 @@ public static class MetaEndpoints
                 e.Descriptor.Homepage, e.Implemented, e.OptIn, e.Descriptor.Description)).ToList(),
             [
                 "Bundled tools are installed from your distribution's package repositories and keep their own licenses.",
+                "Trivy and Grype aren't in most distributions' repositories: the agent adopts whichever one you installed from its vendor's package repository, and scans against a database this server mirrors.",
                 "SentinelVPS sends no telemetry. Agents only talk to this server; blocklist and threat feeds (NVD, CISA KEV, security news RSS) are fetched by the server.",
                 "Alerts leave the server only through notification channels an admin sets up (SMTP, webhooks, ntfy).",
             ])).AllowAnonymous().WithTags("Meta");

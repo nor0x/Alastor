@@ -649,6 +649,74 @@ namespace Sentinel.Server.Data.Migrations.Sqlite
                     b.ToTable("ToolStatuses");
                 });
 
+            modelBuilder.Entity("Sentinel.Server.Data.HostVulnerability", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool>("Accepted")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<double?>("Cvss")
+                        .HasColumnType("REAL");
+
+                    b.Property<DateTime>("FirstSeenAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Fix")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Fixed")
+                        .HasMaxLength(400)
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("HostId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Installed")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Package")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Path")
+                        .HasMaxLength(1024)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("PkgType")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("Severity")
+                        .HasMaxLength(32)
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Title")
+                        .HasMaxLength(256)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("VulnId")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("HostId");
+
+                    b.HasIndex("VulnId");
+
+                    b.ToTable("Vulnerabilities");
+                });
+
             modelBuilder.Entity("Sentinel.Server.Data.KevEntry", b =>
                 {
                     b.Property<string>("CveId")
@@ -817,6 +885,21 @@ namespace Sentinel.Server.Data.Migrations.Sqlite
                         .HasColumnType("TEXT");
 
                     b.Property<long>("UptimeSeconds")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("VulnCritical")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("VulnFixable")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("VulnHigh")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime?>("VulnScannedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int?>("VulnTotal")
                         .HasColumnType("INTEGER");
 
                     b.HasKey("Id");
@@ -1133,6 +1216,15 @@ namespace Sentinel.Server.Data.Migrations.Sqlite
                 {
                     b.HasOne("Sentinel.Server.Data.ManagedHost", null)
                         .WithMany("Tools")
+                        .HasForeignKey("HostId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Sentinel.Server.Data.HostVulnerability", b =>
+                {
+                    b.HasOne("Sentinel.Server.Data.ManagedHost", null)
+                        .WithMany()
                         .HasForeignKey("HostId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();

@@ -26,6 +26,7 @@ public sealed class ServerApiTests : IClassFixture<ServerApiTests.Factory>
             builder.UseSetting("SecureCookies", "false");
             builder.UseSetting("ThreatFeedEnabled", "false"); // no internet in tests; ThreatFeedTests drives the feed itself
             builder.UseSetting("BlocklistsEnabled", "false"); // no list downloads in tests; BlocklistApiTests drives them itself
+            builder.UseSetting("VulnDbEnabled", "false"); // no scanner database downloads in tests
             builder.UseSetting("AuthRateLimitPerMinute", "1000"); // every test signs in and enrolls; the default 10/min is for real clients
         }
 
@@ -118,7 +119,7 @@ public sealed class ServerApiTests : IClassFixture<ServerApiTests.Factory>
         Assert.Equal(40.0, host.GetProperty("summary").GetProperty("memoryPercent").GetDouble());
         var tools = host.GetProperty("tools").EnumerateArray().ToList();
         Assert.Contains(tools, t => t.GetProperty("toolId").GetString() == "fail2ban" && t.GetProperty("running").GetBoolean());
-        Assert.Contains(tools, t => t.GetProperty("toolId").GetString() == "trivy" && !t.GetProperty("implemented").GetBoolean());
+        Assert.Contains(tools, t => t.GetProperty("toolId").GetString() == "lynis" && !t.GetProperty("implemented").GetBoolean());
 
         var events = await admin.GetFromJsonAsync<JsonElement>($"/api/events?hostId={hostId}&ip=203.0.113.9");
         Assert.Single(events.GetProperty("items").EnumerateArray());

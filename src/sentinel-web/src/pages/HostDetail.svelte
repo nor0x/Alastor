@@ -12,7 +12,9 @@
   import BanTable from '../lib/BanTable.svelte';
   import HostBaseline from '../lib/HostBaseline.svelte';
   import HostUpdates from '../lib/HostUpdates.svelte';
+  import HostVulnerabilities from '../lib/HostVulnerabilities.svelte';
   import UpdatesBadge from '../lib/ui/UpdatesBadge.svelte';
+  import VulnBadge from '../lib/ui/VulnBadge.svelte';
   import EventList from '../lib/ui/EventList.svelte';
   import MetricChart from '../lib/ui/MetricChart.svelte';
   import Modal from '../lib/ui/Modal.svelte';
@@ -20,8 +22,8 @@
 
   let { id }: { id: string } = $props();
 
-  type Tab = 'overview' | 'baseline' | 'updates' | 'events' | 'bans' | 'policy' | 'commands';
-  const tabs: [Tab, string][] = [['overview', 'Overview'], ['baseline', 'Baseline'], ['updates', 'Updates'], ['events', 'Events'], ['bans', 'Bans'], ['policy', 'Policy'], ['commands', 'Commands']];
+  type Tab = 'overview' | 'baseline' | 'updates' | 'vulnerabilities' | 'events' | 'bans' | 'policy' | 'commands';
+  const tabs: [Tab, string][] = [['overview', 'Overview'], ['baseline', 'Baseline'], ['updates', 'Updates'], ['vulnerabilities', 'CVEs'], ['events', 'Events'], ['bans', 'Bans'], ['policy', 'Policy'], ['commands', 'Commands']];
   const tab = $derived((new URLSearchParams(route.search).get('tab') as Tab) || 'overview');
 
   let host = $state<HostDetail | null>(null);
@@ -248,6 +250,7 @@
         {label}
         {#if t === 'baseline' && s.baselineFailing}<span class="count">{s.baselineFailing}</span>{/if}
         {#if t === 'updates' && (s.securityUpdates ?? s.pendingUpdates)}<span class="count">{s.securityUpdates ?? s.pendingUpdates}</span>{/if}
+        {#if t === 'vulnerabilities' && (s.vulnCritical ?? 0) + (s.vulnHigh ?? 0) > 0}<span class="count">{(s.vulnCritical ?? 0) + (s.vulnHigh ?? 0)}</span>{/if}
         {#if t === 'bans' && bans.length}<span class="count">{bans.length}</span>{/if}
         {#if t === 'commands' && commands.some((c) => c.status === 'Pending' || c.status === 'Delivered')}<span class="count">…</span>{/if}
       </button>
@@ -335,6 +338,13 @@
                 {#if s.rebootRequired}<span class="pill warn">reboot required</span>{/if}
               {:else}<span class="muted">not checked yet</span>{/if}
             </dd>
+            <dt>Vulnerabilities</dt>
+            <dd>
+              {#if s.vulnTotal !== null}
+                <a href="/hosts/{id}?tab=vulnerabilities"><VulnBadge critical={s.vulnCritical} high={s.vulnHigh} total={s.vulnTotal} /></a>
+                {#if s.vulnFixable}<span class="muted small">{s.vulnFixable} fixable</span>{/if}
+              {:else}<span class="muted">not scanned yet</span>{/if}
+            </dd>
             <dt>Policy</dt>
             <dd>
               {#if s.policySync === 'in-sync'}<span class="pill ok">✓ in sync</span>{:else if s.policySync === 'failed'}<span class="pill bad">✕ failed</span>{:else}<span class="pill info">… pending</span>{/if}
@@ -348,6 +358,8 @@
     <HostBaseline hostId={id} groupId={s.groupId} groupName={s.groupName} isOnline={s.isOnline} />
   {:else if tab === 'updates'}
     <HostUpdates hostId={id} isOnline={s.isOnline} />
+  {:else if tab === 'vulnerabilities'}
+    <HostVulnerabilities hostId={id} isOnline={s.isOnline} osId={host.osId} />
   {:else if tab === 'events'}
     <section class="card">
       <header><h2>Events</h2><a class="hint" href="/events?hostId={id}">Open in event timeline →</a></header>

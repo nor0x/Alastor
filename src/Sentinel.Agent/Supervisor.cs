@@ -408,8 +408,10 @@ public sealed class Supervisor(
                         var due = forced == job.Id
                                   || (lastRun is null && job.RunOnFirstStart && !schedule.IsDisabled)
                                   || schedule.IsDue(lastRun, lastRun ?? started, now, TimeZoneInfo.Local, spread);
-                        if (!due) continue;
-                        await RunJobAsync(job, policy, forced == job.Id, ct);
+                        if (!due || !_runningJobs.TryAdd(job.Id, true)) continue;
+                        // Each job runs on its own: a CVE scan waiting for the server's database mirror must not hold up an update check.
+                        var isForced = forced == job.Id;
+                        _ = Task.Run(() => RunJobAsync(job, policy, isForced, ct), ct);
                     }
                 }
                 while (_pendingReports.TryPeek(out var report))
@@ -429,9 +431,9 @@ public sealed class Supervisor(
         }
     }
 
+    /// <summary>Runs one job the caller has already claimed in <see cref="_runningJobs"/>.</summary>
     private async Task RunJobAsync(ScheduledJob job, PolicyDocument policy, bool forced, CancellationToken ct)
     {
-        if (!_runningJobs.TryAdd(job.Id, true)) return;
         try
         {
             logger.LogInformation("Running {Job}{Forced}", job.Id, forced ? " (requested from the dashboard)" : "");
@@ -450,6 +452,7 @@ public sealed class Supervisor(
             await state.SetAsync($"job.{job.Id}.lastRunUtc", time.GetUtcNow().UtcDateTime.ToString("O"), ct);
             _pendingReports.Enqueue(report);
             while (_pendingReports.Count > 20 && _pendingReports.TryDequeue(out _)) { }
+            _jobRequests.Writer.TryWrite(""); // deliver the report now instead of at the next 30 s tick
             Wake("report"); // fresh tool details (pending counts) with the next heartbeat
         }
         finally

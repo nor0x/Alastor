@@ -85,8 +85,9 @@ public static class EventEndpoints
                 hosts.Count(h => h.PolicyApplySuccess != true),
                 // Hosts that never reported updates don't count; Alpine reports no security flag, so any pending update counts.
                 hosts.Any(h => h.PendingUpdates is not null) ? hosts.Count(h => (h.SecurityUpdates ?? h.PendingUpdates ?? 0) > 0) : null,
-                // Filled in by the CVE and Lynis integrations (deliverables 7-8).
-                null,
+                // Hosts with an open (not accepted) High or Critical CVE; null until some host has scanned.
+                hosts.Any(h => h.VulnScannedAt is not null) ? hosts.Count(h => (h.VulnCritical ?? 0) + (h.VulnHigh ?? 0) > 0) : null,
+                // Filled in by the Lynis integration (deliverable 8).
                 null,
                 scored.Count == 0 ? null : Math.Round(scored.Average(h => h.BaselineScore!.Value), 0),
                 hostsFailingHigh,

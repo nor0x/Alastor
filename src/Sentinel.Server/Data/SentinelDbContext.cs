@@ -32,6 +32,7 @@ public abstract class SentinelDbContext(DbContextOptions options) : DbContext(op
     public DbSet<FeedSourceState> FeedSources => Set<FeedSourceState>();
     public DbSet<BlocklistSourceState> BlocklistSources => Set<BlocklistSourceState>();
     public DbSet<HostReport> HostReports => Set<HostReport>();
+    public DbSet<HostVulnerability> Vulnerabilities => Set<HostVulnerability>();
     public DbSet<NotificationChannel> NotificationChannels => Set<NotificationChannel>();
     public DbSet<AlertBucket> AlertBuckets => Set<AlertBucket>();
     public DbSet<NotificationDelivery> NotificationDeliveries => Set<NotificationDelivery>();
@@ -70,6 +71,22 @@ public abstract class SentinelDbContext(DbContextOptions options) : DbContext(op
             e.Property(r => r.Kind).HasMaxLength(32);
             e.Property(r => r.JobId).HasMaxLength(64);
             e.HasOne<ManagedHost>().WithMany().HasForeignKey(r => r.HostId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        m.Entity<HostVulnerability>(e =>
+        {
+            e.HasKey(v => v.Id);
+            e.Property(v => v.VulnId).HasMaxLength(80);
+            e.Property(v => v.Package).HasMaxLength(200);
+            e.Property(v => v.Installed).HasMaxLength(200);
+            e.Property(v => v.Fixed).HasMaxLength(400);
+            e.Property(v => v.Title).HasMaxLength(256);
+            e.Property(v => v.PkgType).HasMaxLength(32);
+            e.Property(v => v.Path).HasMaxLength(1024);
+            e.Property(v => v.Severity).HasConversion<int>(); // ordered: min-severity filters use >=
+            e.HasIndex(v => v.HostId);
+            e.HasIndex(v => v.VulnId);
+            e.HasOne<ManagedHost>().WithMany().HasForeignKey(v => v.HostId).OnDelete(DeleteBehavior.Cascade);
         });
 
         m.Entity<HostBaselineCheck>(e =>

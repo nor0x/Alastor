@@ -100,6 +100,7 @@ public static class HostEndpoints
                 "recheck" => (AgentCommandTypes.BaselineCheck, null),
                 "check-updates" => (AgentCommandTypes.RunJob, "updates.check"),
                 "apply-updates" => (AgentCommandTypes.RunJob, "updates.apply"),
+                "scan-vulnerabilities" => (AgentCommandTypes.RunJob, Sentinel.Core.Vulnerabilities.VulnerabilityIntegration.ScanJob),
                 _ => ((string?)null, (string?)null),
             };
             if (type is null) return Results.Problem($"Unknown action '{action}'.", statusCode: 400);
@@ -124,6 +125,6 @@ public static class HostEndpoints
         return new HostSummaryDto(h.Id, h.Name, h.Hostname, h.OsPrettyName, h.Architecture, h.AgentVersion, h.IsOnline, h.LastSeenAt,
             h.CpuPercent, Dto.Percent(h.MemoryUsedBytes, h.MemoryTotalBytes), Dto.Percent(h.DiskUsedBytes, h.DiskTotalBytes), h.Load1,
             h.GroupId, h.Group?.Name, h.Tags, bans, sync, h.Tools.Count(t => t.Running), problems,
-            h.BaselineScore, baselineFailing, h.PendingUpdates, h.SecurityUpdates, h.RebootRequired);
+            h.BaselineScore, baselineFailing, h.PendingUpdates, h.SecurityUpdates, h.RebootRequired, h.VulnCritical, h.VulnHigh, h.VulnTotal, h.VulnFixable);
     }
 }

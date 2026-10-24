@@ -11,7 +11,7 @@ using Sentinel.Server.Services;
 namespace Sentinel.Server.Endpoints;
 
 /// <summary>
-/// Reports from agents' scheduled jobs (update checks now; CVE scans, audits and exposure checks as they land). The
+/// Reports from agents' scheduled jobs (update checks, CVE scans; audits and exposure checks as they land). The
 /// server keeps the latest report per host and kind, plus summary columns on the host for list views.
 /// </summary>
 public static class ReportEndpoints
@@ -75,9 +75,18 @@ public static class ReportEndpoints
     }
 
     private static async Task<IResult> Receive(AgentReport report, ClaimsPrincipal user, SentinelDbContext db, PolicyService policies, DashboardNotifier notifier,
-        TimeProvider time, CancellationToken ct)
+        Services.Vulnerabilities.VulnerabilityService vulnerabilities, TimeProvider time, CancellationToken ct)
     {
         var hostId = user.HostId();
+        if (report.Vulnerabilities is not null || report.JobId.StartsWith("vulnerabilities.", StringComparison.Ordinal))
+        {
+            if (report.Vulnerabilities?.Findings.Count > Sentinel.Core.Vulnerabilities.VulnerabilityIntegration.MaxFindings)
+                return Results.Problem("Too many findings.", statusCode: 413);
+            await vulnerabilities.ReceiveAsync(hostId, report, ct);
+            var eff = await policies.GetEffectiveAsync(hostId, ct);
+            await notifier.HostUpdatedAsync(await HostEndpoints.SummaryAsync(db, hostId, eff.Revision, ct), ct);
+            return Results.NoContent();
+        }
         var kind = report.Updates is not null || report.JobId.StartsWith("updates.", StringComparison.Ordinal) ? "updates" : null;
         if (kind is null) return Results.Problem($"Unknown report '{report.JobId}'.", statusCode: 400);
 

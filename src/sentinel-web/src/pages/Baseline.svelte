@@ -234,10 +234,6 @@
 {/if}
 
 <style>
-  .seg { display: inline-flex; border: 1px solid var(--border-strong); border-radius: var(--radius); overflow: hidden; align-self: flex-start; }
-  .seg button { padding: 4px 12px; border: 0; background: var(--bg); color: var(--muted); cursor: pointer; font-size: 13px; }
-  .seg button + button { border-left: 1px solid var(--border-strong); }
-  .seg button.on { background: var(--surface-2); color: var(--text-strong); }
   .summary { display: flex; flex-wrap: wrap; gap: 16px 40px; align-items: flex-end; padding: 16px; margin-bottom: 16px; }
   .stat { display: flex; flex-direction: column; gap: 4px; }
   .stat .label { color: var(--muted); font-size: 12px; }
