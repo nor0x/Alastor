@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { HubConnectionBuilder, LogLevel } from '@microsoft/signalr';
+  import { on } from './live.svelte';
   import { api, severities, type FeedPage, type FeedSource, type TagCount } from './api';
   import { number } from './format';
   import FeedRow from './FeedRow.svelte';
@@ -100,7 +100,7 @@
   // Any filter change: sync the URL and reload.
   $effect(() => {
     const qs = toParams(filters, false).toString();
-    history.replaceState(null, '', qs ? `?${qs}` : location.pathname);
+    history.replaceState(null, '', qs ? `/feed?${qs}` : '/feed');
     load();
   });
 
@@ -145,17 +145,15 @@
 
     // Live hint from the server when the background fetch stores new items. Without it, the page still works
     // and the health strip refreshes every minute.
-    const hub = new HubConnectionBuilder().withUrl('/hubs/dashboard').withAutomaticReconnect().configureLogging(LogLevel.Warning).build();
-    hub.on('feedUpdated', (summary: { newItems: number }) => {
+    const off = on('feedUpdated', (summary: { newItems: number }) => {
       pending += summary.newItems;
       loadMeta();
     });
-    hub.start().catch(() => {});
 
     return () => {
       clearInterval(tick);
       clearInterval(meta);
-      hub.stop();
+      off();
     };
   });
 </script>
@@ -274,6 +272,7 @@
 </section>
 
 <style>
+  .feed { max-width: 1040px; margin: 0 auto; }
   .head { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; flex-wrap: wrap; margin-bottom: 16px; }
   h1 { margin: 0; font-size: 22px; color: var(--text-strong); }
   .sub { margin: 4px 0 0; color: var(--muted); }

@@ -1,7 +1,7 @@
 // Thin fetch wrapper for the SentinelVPS REST API (cookie session; see docs/architecture.md §3).
 
 export class ApiError extends Error {
-  constructor(public status: number, message: string) {
+  constructor(public status: number, message: string, public body?: unknown) {
     super(message);
   }
 }
@@ -22,13 +22,17 @@ export async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
   if (res.status === 401 && !path.startsWith('/api/auth/login')) onUnauthorized?.();
   if (!res.ok) {
     let message = res.statusText || `HTTP ${res.status}`;
+    let body: unknown;
     try {
       const problem = await res.json();
-      message = problem.detail ?? problem.title ?? message;
+      body = problem;
+      // ProblemDetails (detail/title/errors) or { error, issues } from conflict and policy responses.
+      const fieldErrors = problem.errors ? Object.values(problem.errors as Record<string, string[]>).flat().join(' ') : '';
+      message = problem.error ?? (fieldErrors || problem.detail || problem.title) ?? message;
     } catch {
       /* not JSON */
     }
-    throw new ApiError(res.status, message);
+    throw new ApiError(res.status, message, body);
   }
   return (res.status === 204 ? undefined : await res.json()) as T;
 }
@@ -81,4 +85,265 @@ export interface FeedSource {
 export interface TagCount {
   tag: string;
   count: number;
+}
+
+// ---- Fleet, events, bans, policy, admin (see docs/architecture.md §3) ----
+
+export type Capability = 'Agent' | 'Banning' | 'Blocklist' | 'Firewall' | 'Updates' | 'Vulnerabilities' | 'Hardening' | 'Network' | 'Malware';
+export const capabilities: Capability[] = ['Agent', 'Banning', 'Blocklist', 'Firewall', 'Updates', 'Vulnerabilities', 'Hardening', 'Network', 'Malware'];
+export type Availability = 'Available' | 'Unavailable' | 'Disabled';
+export type Ownership = 'Managed' | 'Adopted' | 'NotInstalled';
+export type ConfigState = 'Unknown' | 'InSync' | 'Pending' | 'Drifted' | 'Conflict' | 'Rejected';
+export type PolicySync = 'in-sync' | 'pending' | 'failed';
+export type CommandStatus = 'Pending' | 'Delivered' | 'Succeeded' | 'Failed' | 'Expired';
+export type PolicyScope = 'Global' | 'Group' | 'Host';
+
+export interface HostSummary {
+  id: string;
+  name: string;
+  hostname: string;
+  osPrettyName: string;
+  architecture: string;
+  agentVersion: string;
+  isOnline: boolean;
+  lastSeenAt: string | null;
+  cpuPercent: number;
+  memoryPercent: number;
+  diskPercent: number;
+  load1: number;
+  groupId: string | null;
+  groupName: string | null;
+  tags: string[];
+  activeBans: number;
+  policySync: PolicySync;
+  toolsRunning: number;
+  toolsWithProblems: number;
+}
+
+export interface ToolStatus {
+  toolId: string;
+  displayName: string;
+  capability: Capability;
+  implemented: boolean;
+  optIn: boolean;
+  license: string;
+  availability: Availability;
+  unavailableReason: string | null;
+  installed: boolean;
+  version: string | null;
+  running: boolean;
+  ownership: Ownership;
+  configState: ConfigState;
+  appliedRevision: string | null;
+  lastError: string | null;
+  lastSuccessAt: string | null;
+  warnings: string[];
+  details: Record<string, string>;
+  updatedAt: string | null;
+}
+
+export interface ToolApplyReport {
+  toolId: string;
+  success: boolean;
+  state: ConfigState;
+  error: string | null;
+  warnings: string[];
+  changes: string[];
+}
+
+export interface HostDetail {
+  summary: HostSummary;
+  osId: string;
+  osVersion: string;
+  kernelVersion: string;
+  machineId: string | null;
+  ipAddresses: string[];
+  enrolledAt: string;
+  memoryTotalBytes: number;
+  memoryUsedBytes: number;
+  diskTotalBytes: number;
+  diskUsedBytes: number;
+  load5: number;
+  load15: number;
+  uptimeSeconds: number;
+  desiredRevision: string;
+  appliedRevision: string | null;
+  policyAppliedAt: string | null;
+  policyApplySuccess: boolean | null;
+  policyReport: { revision: string; success: boolean; appliedAtUtc: string; tools: ToolApplyReport[] } | null;
+  tools: ToolStatus[];
+}
+
+export interface MetricPoint {
+  at: string;
+  cpu: number;
+  memory: number;
+  disk: number;
+  load1: number;
+}
+
+export interface SecurityEvent {
+  id: string;
+  hostId: string | null;
+  occurredAt: string;
+  capability: Capability;
+  severity: Severity;
+  sourceTool: string;
+  kind: string;
+  subject: string | null;
+  message: string;
+  raw: string | null;
+  metadata: Record<string, string>;
+}
+
+export interface EventPage {
+  items: SecurityEvent[];
+  nextBefore: string | null;
+}
+
+export interface Overview {
+  hostsTotal: number;
+  hostsOnline: number;
+  hostsOffline: number;
+  alerts24h: number;
+  events24h: number;
+  activeBans: number;
+  bans24h: number;
+  hostsWithToolProblems: number;
+  hostsPolicyPending: number;
+  hostsWithPendingSecurityUpdates: number | null;
+  hostsWithHighCves: number | null;
+  averageHardeningIndex: number | null;
+  recentAlerts: SecurityEvent[];
+  topOffenders: { target: string; events: number; hosts: number }[];
+}
+
+export interface Ban {
+  id: number;
+  hostId: string;
+  hostName: string;
+  toolId: string;
+  target: string;
+  scope: string;
+  bannedAt: string | null;
+  expiresAt: string | null;
+  manual: boolean;
+}
+
+export interface Command {
+  id: string;
+  hostId: string;
+  type: string;
+  payload: Record<string, string>;
+  status: CommandStatus;
+  createdAt: string;
+  completedAt: string | null;
+  resultMessage: string | null;
+  createdBy: string;
+}
+
+export interface AllowlistEntry {
+  id: string;
+  target: string;
+  note: string | null;
+  createdAt: string;
+  createdBy: string;
+}
+
+export interface Group {
+  id: string;
+  name: string;
+  description: string | null;
+  hostCount: number;
+}
+
+export interface PolicyLayer {
+  id: string;
+  scope: PolicyScope;
+  targetId: string | null;
+  targetName: string;
+  currentVersion: number;
+  updatedAt: string | null;
+  updatedBy: string | null;
+}
+
+export interface PolicyVersion {
+  version: number;
+  comment: string | null;
+  createdAt: string;
+  createdBy: string;
+}
+
+export interface PolicyLayerDetail {
+  layer: PolicyLayer | null;
+  yaml: string;
+  versions: PolicyVersion[];
+}
+
+export interface PolicyIssue {
+  level: 'Warning' | 'Error';
+  path: string;
+  message: string;
+  line: number | null;
+}
+
+export interface ScheduleInfo {
+  path: string;
+  schedule: string;
+  kind: 'off' | 'cron' | 'interval';
+  isDefault: boolean;
+  nextRunsHostLocal: string[];
+}
+
+export interface PolicyPreview {
+  issues: PolicyIssue[];
+  effectiveYaml: string | null;
+  revision: string | null;
+  fail2BanConfig: string | null;
+  schedules: ScheduleInfo[] | null;
+}
+
+export interface EnrollmentToken {
+  id: string;
+  note: string | null;
+  groupId: string | null;
+  tags: string[];
+  createdAt: string;
+  expiresAt: string;
+  consumedAt: string | null;
+  consumedByHostId: string | null;
+  createdBy: string;
+}
+
+export interface ApiKey {
+  id: string;
+  name: string;
+  prefix: string;
+  createdAt: string;
+  lastUsedAt: string | null;
+  revokedAt: string | null;
+  createdBy: string;
+}
+
+export interface AuditEntry {
+  id: number;
+  at: string;
+  actor: string;
+  action: string;
+  target: string | null;
+  details: string | null;
+}
+
+export interface About {
+  product: string;
+  version: string;
+  license: string;
+  repository: string | null;
+  bundledTools: { id: string; name: string; capability: string; license: string; homepage: string; implemented: boolean; optIn: boolean; description: string }[];
+  notes: string[];
+}
+
+/** Error text for a failed write: validation problems list their fields, conflicts carry `error`. */
+export function errorText(e: unknown): string {
+  return e instanceof Error ? e.message : 'Something went wrong.';
 }
