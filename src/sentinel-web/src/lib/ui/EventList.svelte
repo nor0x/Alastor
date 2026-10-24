@@ -27,6 +27,8 @@
             {#if showHost && e.hostId}<span>· {hostNames[e.hostId] ?? 'host'}</span>{/if}
             <span>· {e.sourceTool}</span>
             <span class="kind">· {e.kind}</span>
+            {#if e.alert === 'Notified'}<span class="alert" title="Sent to notification channels">· notified</span>
+            {:else if e.alert === 'Suppressed'}<span class="alert" title="A repeat inside the dedup window: counted, not sent">· deduped</span>{/if}
           </span>
         </span>
       </button>
@@ -69,6 +71,7 @@
   .msg { color: var(--text-strong); overflow-wrap: anywhere; }
   .meta { display: flex; flex-wrap: wrap; gap: 4px; color: var(--muted); font-size: 12px; }
   .kind { font-family: var(--mono); font-size: 11.5px; }
+  .alert { font-style: italic; }
   .detail { padding: 4px 16px 14px 112px; background: var(--surface-2); }
   dl { display: grid; grid-template-columns: max-content 1fr; gap: 4px 16px; margin: 0 0 8px; font-size: 12.5px; }
   dt { color: var(--muted); }

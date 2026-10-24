@@ -33,6 +33,17 @@ banning:
     sshd:
       enabled: true
 
+# ---- Public IP blocklists ----
+# The server pulls the lists (agents never do), merges them, removes the allowlist and private/reserved ranges,
+# and each agent drops matching traffic in its own nftables table ("inet sentinel_vps"; ipset on iptables-only hosts).
+
+blocklists:
+  enabled: true
+  # spamhaus-drop, firehol-level1, abuse-ch-feodo, et-compromised, blocklist-de, cins-army (see the Bans page)
+  lists: [spamhaus-drop]
+  extra: []                 # your own IPs/CIDRs to block everywhere in scope
+  refreshSchedule: every 1h # how often agents ask the server for a newer set (conditional request)
+
 # ---- Scheduled jobs. Each integration reads its key when it lands (deliverables 6-10). ----
 
 updates:

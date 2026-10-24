@@ -6,12 +6,14 @@
   import Account from './settings/Account.svelte';
   import Audit from './settings/Audit.svelte';
   import Server from './settings/Server.svelte';
+  import Notifications from './settings/Notifications.svelte';
 
   let { section }: { section: string } = $props();
 
   const sections = [
     { id: 'groups', label: 'Groups', admin: false },
     { id: 'enrollment', label: 'Enrollment', admin: true },
+    { id: 'notifications', label: 'Notifications', admin: true },
     { id: 'api-keys', label: 'API keys', admin: true },
     { id: 'server', label: 'Server', admin: true },
     { id: 'account', label: 'Account', admin: true },
@@ -24,7 +26,7 @@
 <div class="page-head">
   <div>
     <h1>Settings</h1>
-    <p class="sub">Groups, enrolling new servers, API access and the audit trail.</p>
+    <p class="sub">Groups, enrolling new servers, alert notifications, API access and the audit trail.</p>
   </div>
 </div>
 
@@ -37,6 +39,7 @@
   <div class="content">
     {#if current === 'groups'}<Groups />
     {:else if current === 'enrollment'}<Enrollment />
+    {:else if current === 'notifications'}<Notifications />
     {:else if current === 'api-keys'}<ApiKeys />
     {:else if current === 'server'}<Server />
     {:else if current === 'account'}<Account />

@@ -67,6 +67,7 @@ public static partial class PolicyYaml
             if (b.Jails is not null) b.Jails = b.Jails.OrderBy(kv => kv.Key, StringComparer.Ordinal).ToDictionary(StringComparer.Ordinal);
             if (b.Allowlist is not null) b.Allowlist = b.Allowlist.Order(StringComparer.Ordinal).ToList();
         }
+        if (canonical.Blocklists?.Extra is { } extra) canonical.Blocklists.Extra = extra.Order(StringComparer.Ordinal).ToList();
         if (canonical.Baseline?.Mitigations is { } m)
             canonical.Baseline.Mitigations = m.OrderBy(kv => kv.Key, StringComparer.Ordinal).ToDictionary(StringComparer.Ordinal);
         var json = JsonSerializer.SerializeToUtf8Bytes(canonical, PolicyJsonContext.Default.PolicyDocument);
@@ -106,6 +107,23 @@ public static partial class PolicyYaml
         CheckSchedule("hardening.auditSchedule", doc.Hardening?.AuditSchedule);
         CheckSchedule("malware.scanSchedule", doc.Malware?.ScanSchedule);
         CheckSchedule("baseline.checkSchedule", doc.Baseline?.CheckSchedule);
+        CheckSchedule("blocklists.refreshSchedule", doc.Blocklists?.RefreshSchedule);
+        if (doc.Blocklists is { } bl)
+        {
+            foreach (var (id, i) in (bl.Lists ?? []).Select((id, i) => (id, i)))
+                if (Sentinel.Core.Blocklists.BlocklistCatalog.Find(id) is null)
+                    Error($"blocklists.lists[{i}]", $"Unknown list '{id}'. Use one of: {string.Join(", ", Sentinel.Core.Blocklists.BlocklistCatalog.All.Select(s => s.Id))}.");
+            foreach (var (entry, i) in (bl.Extra ?? []).Select((e, i) => (e, i)))
+            {
+                if (!IpTarget.TryParse(entry, out var t)) Error($"blocklists.extra[{i}]", $"'{entry}' is not an IP address or CIDR.");
+                else if (IpRangeSet.From([t.Value]).Except(IpRangeSet.Reserved).IsEmpty)
+                    Warn($"blocklists.extra[{i}]", $"'{entry}' is a private or reserved range; blocklists never block those.");
+                else if (t.Value.Network.PrefixLength < (t.Value.Network.BaseAddress.AddressFamily == System.Net.Sockets.AddressFamily.InterNetwork ? 8 : 16))
+                    Error($"blocklists.extra[{i}]", "Ranges wider than /8 (IPv4) or /16 (IPv6) are refused.");
+            }
+            if (bl.Enabled == true && (bl.Lists ?? []).Count == 0 && (bl.Extra ?? []).Count == 0)
+                Warn("blocklists", "Blocklists are enabled but no list and no extra entry is set, so nothing is blocked.");
+        }
         foreach (var (id, value) in doc.Baseline?.Mitigations ?? [])
         {
             var path = $"baseline.mitigations.{id}";

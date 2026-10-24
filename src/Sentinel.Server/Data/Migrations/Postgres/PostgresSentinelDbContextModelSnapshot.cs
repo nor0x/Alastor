@@ -67,6 +67,36 @@ namespace Sentinel.Server.Data.Migrations.Postgres
                     b.ToTable("Bans");
                 });
 
+            modelBuilder.Entity("Sentinel.Server.Data.AlertBucket", b =>
+                {
+                    b.Property<string>("Key")
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)");
+
+                    b.Property<DateTime?>("LastNotifiedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("LastSeverity")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.Property<double>("Level")
+                        .HasColumnType("double precision");
+
+                    b.Property<int>("Suppressed")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Key");
+
+                    b.HasIndex("UpdatedAt");
+
+                    b.ToTable("AlertBuckets");
+                });
+
             modelBuilder.Entity("Sentinel.Server.Data.AllowlistEntry", b =>
                 {
                     b.Property<Guid>("Id")
@@ -164,6 +194,55 @@ namespace Sentinel.Server.Data.Migrations.Postgres
                     b.HasIndex("At");
 
                     b.ToTable("Audit");
+                });
+
+            modelBuilder.Entity("Sentinel.Server.Data.BlocklistSourceState", b =>
+                {
+                    b.Property<string>("SourceId")
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.Property<int>("ConsecutiveFailures")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Content")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("ContentHash")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<int>("EntryCount")
+                        .HasColumnType("integer");
+
+                    b.Property<long>("Ipv4Addresses")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTime?>("LastAttemptAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("LastChangedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("LastError")
+                        .HasColumnType("text");
+
+                    b.Property<DateTime?>("LastSuccessAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("NextAttemptAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("Skipped")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Validators")
+                        .HasColumnType("text");
+
+                    b.HasKey("SourceId");
+
+                    b.ToTable("BlocklistSources");
                 });
 
             modelBuilder.Entity("Sentinel.Server.Data.EnrollmentToken", b =>
@@ -710,6 +789,108 @@ namespace Sentinel.Server.Data.Migrations.Postgres
                     b.ToTable("Hosts");
                 });
 
+            modelBuilder.Entity("Sentinel.Server.Data.NotificationChannel", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Capabilities")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("ConfigProtected")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("DigestSchedule")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<bool>("Enabled")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("Immediate")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateTime?>("LastAttemptAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("LastDigestAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("LastError")
+                        .HasColumnType("text");
+
+                    b.Property<DateTime?>("LastSuccessAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("MinSeverity")
+                        .HasMaxLength(32)
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("NotificationChannels");
+                });
+
+            modelBuilder.Entity("Sentinel.Server.Data.NotificationDelivery", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<DateTime>("At")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("Attempts")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("ChannelId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Error")
+                        .HasColumnType("text");
+
+                    b.Property<int>("EventCount")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<bool>("Success")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("At");
+
+                    b.HasIndex("ChannelId");
+
+                    b.ToTable("NotificationDeliveries");
+                });
+
             modelBuilder.Entity("Sentinel.Server.Data.PolicyLayer", b =>
                 {
                     b.Property<Guid>("Id")
@@ -776,6 +957,11 @@ namespace Sentinel.Server.Data.Migrations.Postgres
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
+
+                    b.Property<string>("Alert")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
 
                     b.Property<string>("Capability")
                         .IsRequired()
@@ -916,6 +1102,15 @@ namespace Sentinel.Server.Data.Migrations.Postgres
                         .OnDelete(DeleteBehavior.SetNull);
 
                     b.Navigation("Group");
+                });
+
+            modelBuilder.Entity("Sentinel.Server.Data.NotificationDelivery", b =>
+                {
+                    b.HasOne("Sentinel.Server.Data.NotificationChannel", null)
+                        .WithMany()
+                        .HasForeignKey("ChannelId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("Sentinel.Server.Data.PolicyVersion", b =>

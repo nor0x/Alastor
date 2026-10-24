@@ -92,6 +92,8 @@
   {#if canWrite()}<div class="actions"><button class="btn solid-danger" onclick={() => (banOpen = true)}>+ Ban IP or CIDR</button></div>{/if}
 </div>
 
+<nav class="tabs" aria-label="Bans sections"><a href="/bans" class="on" aria-current="page">Bans &amp; allowlist</a><a href="/blocklists">Blocklists</a></nav>
+
 <div class="layout">
   <section class="main">
     <div class="filterbar">
@@ -127,7 +129,7 @@
   <aside class="card side">
     <header><h2>Allowlist</h2><span class="hint">never banned</span></header>
     <div class="card-body">
-      <p class="muted small intro">Addresses here are added to every jail's <code>ignoreip</code> and can't be banned manually. Put your office, VPN and monitoring IPs here.</p>
+      <p class="muted small intro">Addresses here are added to every jail's <code>ignoreip</code>, can't be banned manually and are taken out of every blocklist. Put your office, VPN and monitoring IPs here.</p>
       {#if allowlist.length}
         <ul class="allow">
           {#each allowlist as a (a.id)}

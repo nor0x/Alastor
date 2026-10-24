@@ -46,6 +46,7 @@ public sealed class ThreatFeedTests : IDisposable
             builder.UseSetting("AdminPassword", "test-password-123");
             builder.UseSetting("SecureCookies", "false");
             builder.UseSetting("ThreatFeedEnabled", "false"); // the tests drive ThreatFeedService directly
+            builder.UseSetting("BlocklistsEnabled", "false"); // no list downloads in tests; BlocklistApiTests drives them itself
             builder.ConfigureTestServices(s =>
             {
                 s.RemoveAll<TimeProvider>();

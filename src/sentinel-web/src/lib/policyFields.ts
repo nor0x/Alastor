@@ -36,6 +36,7 @@ export const fieldSections: FieldSection[] = [
       { path: ['updates', 'checkSchedule'], label: 'Check for security updates', kind: 'schedule', help: 'Counts pending security updates.', placeholderDefault: 'every 6h' },
       { path: ['updates', 'applySchedule'], label: 'Auto-install security updates', kind: 'schedule', help: '"off" reports only; you apply with "Apply now".', placeholderDefault: 'off' },
       { path: ['vulnerabilities', 'scanSchedule'], label: 'CVE scan (Trivy/Grype)', kind: 'schedule', help: 'Scans the installed package inventory.', placeholderDefault: '0 3 * * *' },
+      { path: ['blocklists', 'refreshSchedule'], label: 'Blocklist refresh', kind: 'schedule', help: 'How often agents ask the server for a newer blocklist (a cheap conditional request).', placeholderDefault: 'every 1h' },
       { path: ['baseline', 'checkSchedule'], label: 'Security baseline checks', kind: 'schedule', help: 'Also runs on agent start, after policy changes, and on "Re-check now".', placeholderDefault: 'every 1h' },
       { path: ['hardening', 'auditSchedule'], label: 'Hardening audit (Lynis)', kind: 'schedule', help: 'Produces the hardening index and checklist.', placeholderDefault: '0 5 * * 0' },
       { path: ['malware', 'scanSchedule'], label: 'Malware scan (ClamAV)', kind: 'schedule', help: 'Opt-in. Scans web roots and upload directories.', placeholderDefault: 'off' },

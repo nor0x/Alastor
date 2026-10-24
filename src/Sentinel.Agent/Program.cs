@@ -1,4 +1,5 @@
 using Sentinel.Core.Baseline;
+using Sentinel.Core.Blocklists;
 using Microsoft.Extensions.Logging.Abstractions;
 using Sentinel.Agent;
 using Sentinel.Core.Contracts;
@@ -67,6 +68,7 @@ builder.Services.AddSingleton(new ServerClient(ServerClient.CreateHttpClient(con
 builder.Services.AddSingleton<HostMetricsCollector>();
 builder.Services.AddSingleton<IToolIntegration>(sp => platform.CreateFail2Ban(sp.GetRequiredService<ILogger<Fail2BanIntegration>>()));
 builder.Services.AddSingleton<IToolIntegration>(sp => platform.CreateBaseline(sp.GetRequiredService<ILogger<BaselineIntegration>>()));
+builder.Services.AddSingleton<IToolIntegration>(sp => platform.CreateBlocklist(sp.GetRequiredService<ILogger<BlocklistIntegration>>()));
 builder.Services.AddSingleton<Supervisor>();
 builder.Services.AddHostedService(sp => sp.GetRequiredService<Supervisor>());
 builder.Services.AddHostedService<HubListener>();
@@ -135,7 +137,12 @@ async Task<int> StatusAsync()
 async Task<int> UninstallAsync()
 {
     var platform = await PlatformServices.CreateAsync(stateDir);
-    IToolIntegration[] tools = [platform.CreateFail2Ban(NullLogger<Fail2BanIntegration>.Instance), platform.CreateBaseline(NullLogger<BaselineIntegration>.Instance)];
+    IToolIntegration[] tools =
+    [
+        platform.CreateFail2Ban(NullLogger<Fail2BanIntegration>.Instance),
+        platform.CreateBaseline(NullLogger<BaselineIntegration>.Instance),
+        platform.CreateBlocklist(NullLogger<BlocklistIntegration>.Instance),
+    ];
     foreach (var t in tools)
     {
         var r = await t.RemoveManagedStateAsync(CancellationToken.None);
@@ -148,13 +155,16 @@ async Task<int> UninstallAsync()
 }
 
 /// <summary>Shared construction of OS-facing services for both the daemon and the CLI subcommands.</summary>
-internal sealed record PlatformServices(OsInfo Os, ICommandRunner Runner, IFileSystem Fs, IStateStore State)
+internal sealed record PlatformServices(OsInfo Os, ICommandRunner Runner, IFileSystem Fs, IStateStore State, string StateDir)
 {
     public static async Task<PlatformServices> CreateAsync(string stateDir)
     {
         var fs = new PhysicalFileSystem();
-        return new PlatformServices(await OsInfo.DetectAsync(fs), new ProcessCommandRunner(), fs, new JsonFileStateStore(stateDir));
+        return new PlatformServices(await OsInfo.DetectAsync(fs), new ProcessCommandRunner(), fs, new JsonFileStateStore(stateDir), stateDir);
     }
+
+    public BlocklistIntegration CreateBlocklist(ILogger<BlocklistIntegration> logger) =>
+        new(Runner, Fs, PackageManagers.For(Os.Family, Runner), State, StateDir, logger, TimeProvider.System);
 
     public Fail2BanIntegration CreateFail2Ban(ILogger<Fail2BanIntegration> logger) =>
         new(Runner, Fs, PackageManagers.For(Os.Family, Runner), ServiceManagers.For(Runner), State, logger, TimeProvider.System);

@@ -113,7 +113,7 @@ export async function layerValue(layer: Layer, path: string[]): Promise<unknown>
  * Sets (or with `value === undefined` removes) one key in a policy layer and saves a new version. Comments and
  * the rest of the layer stay as they are; parents emptied by a removal are dropped.
  */
-export async function setLayerKey(layer: Layer, path: string[], value: string | boolean | undefined, comment: string): Promise<PolicyVersion> {
+export async function setLayerKey(layer: Layer, path: string[], value: string | boolean | string[] | undefined, comment: string): Promise<PolicyVersion> {
   const current = await api<PolicyLayerDetail>(layerEndpoint(layer));
   const d = parseDocument(current.yaml || '');
   if (d.errors.length) throw new Error('This policy layer has YAML errors. Fix it in the policy editor first.');

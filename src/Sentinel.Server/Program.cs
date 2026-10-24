@@ -12,7 +12,9 @@ using Sentinel.Server.Data;
 using Sentinel.Server.Endpoints;
 using Sentinel.Server.Hubs;
 using Sentinel.Server.Services;
+using Sentinel.Server.Services.Alerts;
 using Sentinel.Server.Services.ThreatFeed;
+using Sentinel.Server.Services.Blocklists;
 using Sentinel.Server.Workers;
 using Serilog;
 
@@ -92,6 +94,20 @@ builder.Services.Configure<ForwardedHeadersOptions>(o =>
 builder.Services.AddScoped<PolicyService>();
 builder.Services.AddScoped<CommandService>();
 builder.Services.AddScoped<EventIngestService>();
+builder.Services.AddScoped<IEventSink, AlertPipeline>();
+builder.Services.AddSingleton<AlertQueue>();
+builder.Services.AddSingleton<ChannelSecrets>();
+builder.Services.AddSingleton<ISmtpTransport, MailKitSmtpTransport>();
+builder.Services.AddSingleton<IChannelSender, EmailSender>();
+builder.Services.AddSingleton<IChannelSender, WebhookSender>();
+builder.Services.AddSingleton<IChannelSender, NtfySender>();
+builder.Services.AddSingleton<NotificationDispatcher>();
+builder.Services.AddHostedService(sp => sp.GetRequiredService<NotificationDispatcher>());
+builder.Services.AddHttpClient(WebhookSender.HttpClientName, c =>
+{
+    c.Timeout = TimeSpan.FromSeconds(15);
+    c.DefaultRequestHeaders.UserAgent.ParseAdd($"SentinelVPS/{typeof(Program).Assembly.GetName().Version?.ToString(3) ?? "dev"} (notifications)");
+});
 builder.Services.AddSingleton<DashboardNotifier>();
 builder.Services.AddHostedService<PresenceWorker>();
 builder.Services.AddHostedService<RetentionWorker>();
@@ -103,6 +119,15 @@ builder.Services.AddHttpClient(ThreatFeedService.HttpClientName, c =>
     c.DefaultRequestHeaders.UserAgent.ParseAdd($"SentinelVPS/{typeof(Program).Assembly.GetName().Version?.ToString(3) ?? "dev"} (self-hosted; threat feed)");
 }).ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler { AutomaticDecompression = System.Net.DecompressionMethods.All });
 if (options.ThreatFeedEnabled) builder.Services.AddHostedService<ThreatFeedWorker>();
+builder.Services.AddScoped<BlocklistService>();
+builder.Services.AddSingleton<BlocklistMerger>();
+builder.Services.AddHttpClient(BlocklistService.HttpClientName, c =>
+{
+    c.Timeout = TimeSpan.FromSeconds(60);
+    c.MaxResponseContentBufferSize = 32 * 1024 * 1024;
+    c.DefaultRequestHeaders.UserAgent.ParseAdd($"SentinelVPS/{typeof(Program).Assembly.GetName().Version?.ToString(3) ?? "dev"} (self-hosted; blocklists)");
+}).ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler { AutomaticDecompression = System.Net.DecompressionMethods.All });
+if (options.BlocklistsEnabled) builder.Services.AddHostedService<BlocklistWorker>();
 
 var app = builder.Build();
 
@@ -145,6 +170,8 @@ app.MapBanEndpoints();
 app.MapPolicyEndpoints();
 app.MapEventEndpoints();
 app.MapFeedEndpoints();
+app.MapNotificationEndpoints();
+app.MapBlocklistEndpoints();
 app.MapHub<AgentHub>("/hubs/agent");
 app.MapHub<DashboardHub>("/hubs/dashboard");
 app.MapInstallScripts();

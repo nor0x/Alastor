@@ -30,6 +30,10 @@ public abstract class SentinelDbContext(DbContextOptions options) : DbContext(op
     public DbSet<FeedItem> FeedItems => Set<FeedItem>();
     public DbSet<KevEntry> KevEntries => Set<KevEntry>();
     public DbSet<FeedSourceState> FeedSources => Set<FeedSourceState>();
+    public DbSet<BlocklistSourceState> BlocklistSources => Set<BlocklistSourceState>();
+    public DbSet<NotificationChannel> NotificationChannels => Set<NotificationChannel>();
+    public DbSet<AlertBucket> AlertBuckets => Set<AlertBucket>();
+    public DbSet<NotificationDelivery> NotificationDeliveries => Set<NotificationDelivery>();
 
     protected override void ConfigureConventions(ModelConfigurationBuilder b)
     {
@@ -122,6 +126,25 @@ public abstract class SentinelDbContext(DbContextOptions options) : DbContext(op
             e.HasIndex(x => new { x.Source, x.SourceItemId }).IsUnique();
         });
 
+        m.Entity<NotificationChannel>(e =>
+        {
+            e.Property(x => x.Name).HasMaxLength(64);
+            e.Property(x => x.Type).HasMaxLength(16);
+            e.Property(x => x.MinSeverity).HasConversion<int>();
+            e.Property(x => x.DigestSchedule).HasMaxLength(64);
+        });
+        m.Entity<AlertBucket>(e =>
+        {
+            e.HasKey(x => x.Key);
+            e.Property(x => x.Key).HasMaxLength(300);
+            e.HasIndex(x => x.UpdatedAt);
+        });
+        m.Entity<NotificationDelivery>(e =>
+        {
+            e.HasIndex(x => x.At);
+            e.HasOne<NotificationChannel>().WithMany().HasForeignKey(x => x.ChannelId).OnDelete(DeleteBehavior.Cascade);
+        });
+
         m.Entity<KevEntry>(e =>
         {
             e.HasKey(x => x.CveId);
@@ -133,6 +156,13 @@ public abstract class SentinelDbContext(DbContextOptions options) : DbContext(op
         {
             e.HasKey(x => x.SourceId);
             e.Property(x => x.SourceId).HasMaxLength(32);
+        });
+
+        m.Entity<BlocklistSourceState>(e =>
+        {
+            e.HasKey(x => x.SourceId);
+            e.Property(x => x.SourceId).HasMaxLength(32);
+            e.Property(x => x.ContentHash).HasMaxLength(64);
         });
     }
 

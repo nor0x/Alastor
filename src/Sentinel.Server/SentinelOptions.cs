@@ -81,6 +81,21 @@ public sealed class SentinelOptions
     /// <summary>Optional NVD API key (free, https://nvd.nist.gov/developers/request-an-api-key). Raises NVD's rate limit tenfold.</summary>
     public string? NvdApiKey { get; set; }
 
+    // ---- blocklists (pulled by the server, merged per host, served to agents) ----
+
+    /// <summary>Fetch public IP blocklists. Only lists some policy uses are fetched. Turn off for air-gapped servers (extra entries still work).</summary>
+    public bool BlocklistsEnabled { get; set; } = true;
+
+    /// <summary>How often each list in use is re-fetched (conditional GET). Providers ask for no more than hourly.</summary>
+    public string BlocklistRefreshInterval { get; set; } = "4h";
+
+    // ---- alerts ----
+
+    /// <summary>Leaky-bucket dedup: the same alert (host + event key) is sent at most <see cref="AlertBurst"/> times per window; repeats are counted and summarized.</summary>
+    public string AlertDedupWindow { get; set; } = "1h";
+
+    public int AlertBurst { get; set; } = 1;
+
     // Parsed values. Validate() runs at startup, so these never see bad input.
     public TimeSpan HeartbeatIntervalValue => Parse(HeartbeatInterval);
     public TimeSpan PresenceCheckIntervalValue => Parse(PresenceCheckInterval);
@@ -93,6 +108,8 @@ public sealed class SentinelOptions
     public TimeSpan SessionLifetimeValue => Parse(SessionLifetime);
     public TimeSpan ThreatFeedIntervalValue => Parse(ThreatFeedInterval);
     public TimeSpan ThreatFeedRetentionValue => Parse(ThreatFeedRetention);
+    public TimeSpan AlertDedupWindowValue => Parse(AlertDedupWindow);
+    public TimeSpan BlocklistRefreshIntervalValue => Parse(BlocklistRefreshInterval);
 
     /// <summary>When a host with the given heartbeat interval counts as offline.</summary>
     public TimeSpan OfflineAfter(TimeSpan heartbeat) => heartbeat * OfflineAfterMissedHeartbeats + TimeSpan.FromSeconds(15);
@@ -118,6 +135,9 @@ public sealed class SentinelOptions
         Check(nameof(SessionLifetime), SessionLifetime, TimeSpan.FromMinutes(5), TimeSpan.FromDays(30));
         Check(nameof(ThreatFeedInterval), ThreatFeedInterval, TimeSpan.FromMinutes(5), TimeSpan.FromDays(1));
         Check(nameof(ThreatFeedRetention), ThreatFeedRetention, TimeSpan.FromDays(1), TimeSpan.FromDays(365));
+        Check(nameof(BlocklistRefreshInterval), BlocklistRefreshInterval, TimeSpan.FromHours(1), TimeSpan.FromDays(7));
+        Check(nameof(AlertDedupWindow), AlertDedupWindow, TimeSpan.FromMinutes(1), TimeSpan.FromDays(7));
+        if (AlertBurst is < 1 or > 100) errors.Add("AlertBurst must be between 1 and 100.");
         if (OfflineAfterMissedHeartbeats is < 1 or > 100) errors.Add("OfflineAfterMissedHeartbeats must be between 1 and 100.");
         if (CommandMaxAttempts is < 1 or > 100) errors.Add("CommandMaxAttempts must be between 1 and 100.");
         if (AuthRateLimitPerMinute is < 1 or > 10_000) errors.Add("AuthRateLimitPerMinute must be between 1 and 10000.");

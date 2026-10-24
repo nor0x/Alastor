@@ -196,6 +196,8 @@ export interface SecurityEvent {
   message: string;
   raw: string | null;
   metadata: Record<string, string>;
+  /** Whether the alert pipeline sent this event to notification channels, or deduped it. */
+  alert: 'None' | 'Notified' | 'Suppressed';
 }
 
 export interface EventPage {
@@ -348,6 +350,102 @@ export interface About {
 }
 
 /** Error text for a failed write: validation problems list their fields, conflicts carry `error`. */
+export interface BlocklistList {
+  id: string;
+  name: string;
+  homepage: string;
+  description: string;
+  terms: string;
+  usedBy: string[];
+  entries: number;
+  ipv4Addresses: number;
+  skipped: number;
+  lastSuccessAt: string | null;
+  lastChangedAt: string | null;
+  lastAttemptAt: string | null;
+  nextAttemptAt: string | null;
+  lastError: string | null;
+}
+
+export interface HostBlocklist {
+  hostId: string;
+  name: string;
+  online: boolean;
+  wanted: boolean;
+  active: boolean;
+  backend: string | null;
+  entries: string | null;
+  lists: string | null;
+  dropped: number | null;
+  configState: ConfigState | null;
+  lastError: string | null;
+  lastAppliedAt: string | null;
+}
+
+export interface BlocklistOverview {
+  fetchingEnabled: boolean;
+  refreshInterval: string;
+  lists: BlocklistList[];
+  hosts: HostBlocklist[];
+}
+
+export interface BlocklistLookup {
+  target: string;
+  reserved: boolean;
+  allowlisted: boolean;
+  lists: string[];
+  extra: string[];
+}
+
+export type ChannelType = 'email' | 'webhook' | 'ntfy';
+
+export interface ChannelConfig {
+  smtpHost?: string | null;
+  smtpPort?: number | null;
+  smtpSecurity?: 'starttls' | 'ssl' | 'none' | null;
+  smtpUsername?: string | null;
+  smtpPassword?: string | null;
+  from?: string | null;
+  to?: string[] | null;
+  url?: string | null;
+  format?: 'json' | 'slack' | 'discord' | null;
+  secret?: string | null;
+  ntfyServer?: string | null;
+  topic?: string | null;
+  token?: string | null;
+}
+
+export interface NotificationChannel {
+  id: string;
+  name: string;
+  type: ChannelType;
+  enabled: boolean;
+  minSeverity: Severity;
+  capabilities: Capability[];
+  immediate: boolean;
+  digestSchedule: string;
+  nextDigestAt: string | null;
+  config: ChannelConfig;
+  secretsSet: { smtpPassword: boolean; secret: boolean; token: boolean };
+  createdAt: string;
+  lastAttemptAt: string | null;
+  lastSuccessAt: string | null;
+  lastError: string | null;
+}
+
+export interface NotificationDelivery {
+  id: number;
+  channelId: string;
+  channelName: string;
+  at: string;
+  kind: 'alert' | 'digest' | 'test';
+  title: string;
+  eventCount: number;
+  success: boolean;
+  attempts: number;
+  error: string | null;
+}
+
 export function errorText(e: unknown): string {
   return e instanceof Error ? e.message : 'Something went wrong.';
 }

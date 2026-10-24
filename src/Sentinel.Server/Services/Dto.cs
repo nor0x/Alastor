@@ -84,7 +84,8 @@ public sealed record EventDto(
     string? Subject,
     string Message,
     string? Raw,
-    IReadOnlyDictionary<string, string> Metadata);
+    IReadOnlyDictionary<string, string> Metadata,
+    AlertDisposition Alert);
 
 public sealed record BanDto(
     long Id,
@@ -202,7 +203,7 @@ public static class Dto
     public static double Percent(long used, long total) => total <= 0 ? 0 : Math.Round(used * 100.0 / total, 1);
 
     public static EventDto Event(StoredEvent e) =>
-        new(e.Id, e.HostId, e.OccurredAt, e.Capability, e.Severity, e.SourceTool, e.Kind, e.Subject, e.Message, e.Raw, e.Metadata);
+        new(e.Id, e.HostId, e.OccurredAt, e.Capability, e.Severity, e.SourceTool, e.Kind, e.Subject, e.Message, e.Raw, e.Metadata, e.Alert);
 
     public static FeedItemDto FeedItem(FeedItem i) =>
         new(i.Id, i.Source, FeedSources.Find(i.Source)?.Name ?? i.Source, i.Type, i.Title, i.Url, i.PublishedAt, i.Summary, i.Severity, i.CvssScore,

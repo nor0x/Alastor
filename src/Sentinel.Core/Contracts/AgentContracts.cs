@@ -64,6 +64,15 @@ public sealed record EventBatchResult(int Accepted, int Duplicates);
 
 public sealed record BanSnapshot(string ToolId, IReadOnlyList<BanEntry> Bans);
 
+/// <summary>
+/// The merged blocklist for one host: its policy's lists plus extra entries, minus the allowlist and reserved ranges,
+/// as minimal CIDRs. Addressed by <see cref="Etag"/>: the agent sends <c>If-None-Match</c> and gets 304 when nothing changed.
+/// </summary>
+public sealed record BlocklistPayload(string Etag, DateTime GeneratedAtUtc, IReadOnlyList<BlocklistListInfo> Lists, IReadOnlyList<string> V4, IReadOnlyList<string> V6);
+
+/// <summary>One source list as merged into a payload. <see cref="UpdatedAtUtc"/> is null if the server hasn't fetched it yet.</summary>
+public sealed record BlocklistListInfo(string Id, int Entries, DateTime? UpdatedAtUtc, string? Error);
+
 public static class AgentCommandTypes
 {
     public const string Ban = "ban";
@@ -111,4 +120,5 @@ public static class AgentHubMethods
 [JsonSerializable(typeof(string))]
 [JsonSerializable(typeof(List<ToolStatus>))]
 [JsonSerializable(typeof(Sentinel.Core.Baseline.BaselineReport))]
+[JsonSerializable(typeof(BlocklistPayload))]
 public sealed partial class AgentJsonContext : JsonSerializerContext;
