@@ -161,6 +161,87 @@ public sealed class StoredEvent
     public string? Raw { get; set; }
     public Dictionary<string, string> Metadata { get; set; } = [];
     public required string DedupKey { get; set; }
+
+    /// <summary>What the alert pipeline did with the event: sent to channels, or held back as a repeat.</summary>
+    public AlertDisposition Alert { get; set; }
+}
+
+public enum AlertDisposition
+{
+    /// <summary>Below every channel's threshold, or no channel is configured.</summary>
+    None,
+    Notified,
+
+    /// <summary>A repeat of an alert sent recently (leaky-bucket dedup). Counted in the next notification for the same key.</summary>
+    Suppressed,
+}
+
+public static class ChannelTypes
+{
+    public const string Email = "email";
+    public const string Webhook = "webhook";
+    public const string Ntfy = "ntfy";
+    public static readonly string[] All = [Email, Webhook, Ntfy];
+}
+
+/// <summary>A place alerts go. Type-specific settings live in <see cref="ConfigProtected"/>, encrypted with ASP.NET Core data protection.</summary>
+public sealed class NotificationChannel
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public required string Name { get; set; }
+
+    /// <summary>One of <see cref="ChannelTypes"/>.</summary>
+    public required string Type { get; set; }
+
+    public bool Enabled { get; set; } = true;
+
+    /// <summary>Events below this severity are never sent to the channel.</summary>
+    public Severity MinSeverity { get; set; } = Severity.Medium;
+
+    /// <summary>Only these capabilities (empty: all).</summary>
+    public List<string> Capabilities { get; set; } = [];
+
+    /// <summary>Send each alert as it happens (after dedup). Turn off for a digest-only channel.</summary>
+    public bool Immediate { get; set; } = true;
+
+    /// <summary>Summary of everything since the last digest, as a <see cref="Sentinel.Core.Policy.Schedule"/> ("0 8 * * *", "every 1d", "off"). Server time zone.</summary>
+    public string DigestSchedule { get; set; } = "off";
+
+    public DateTime? LastDigestAt { get; set; }
+
+    /// <summary>The <c>ChannelConfig</c> JSON, encrypted. Holds SMTP passwords, webhook secrets and ntfy tokens.</summary>
+    public required string ConfigProtected { get; set; }
+
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    public DateTime? LastAttemptAt { get; set; }
+    public DateTime? LastSuccessAt { get; set; }
+    public string? LastError { get; set; }
+}
+
+/// <summary>Leaky-bucket state for one alert key (host + event dedup key). See <c>AlertBucketMath</c>.</summary>
+public sealed class AlertBucket
+{
+    public required string Key { get; set; }
+    public double Level { get; set; }
+    public DateTime UpdatedAt { get; set; }
+    public DateTime? LastNotifiedAt { get; set; }
+    public Severity LastSeverity { get; set; }
+
+    /// <summary>Repeats held back since the last notification for this key.</summary>
+    public int Suppressed { get; set; }
+}
+
+public sealed class NotificationDelivery
+{
+    public long Id { get; set; }
+    public Guid ChannelId { get; set; }
+    public DateTime At { get; set; }
+    public required string Kind { get; set; }
+    public required string Title { get; set; }
+    public int EventCount { get; set; }
+    public bool Success { get; set; }
+    public int Attempts { get; set; }
+    public string? Error { get; set; }
 }
 
 /// <summary>An active ban on a host, rebuilt from the agent's ban snapshots. History lives in <see cref="StoredEvent"/>.</summary>
@@ -328,6 +409,32 @@ public sealed class KevEntry
 }
 
 /// <summary>Fetch bookkeeping per threat-feed source: schedule, backoff, HTTP validators and the NVD cursor.</summary>
+/// <summary>One public blocklist as last fetched by the server. <see cref="Content"/> holds the normalized CIDRs, one per line.</summary>
+public sealed class BlocklistSourceState
+{
+    public required string SourceId { get; set; }
+    public DateTime? LastAttemptAt { get; set; }
+    public DateTime? LastSuccessAt { get; set; }
+
+    /// <summary>When the content last changed (a 304 or identical body counts as a success, not a change).</summary>
+    public DateTime? LastChangedAt { get; set; }
+
+    public DateTime? NextAttemptAt { get; set; }
+    public int ConsecutiveFailures { get; set; }
+    public string? LastError { get; set; }
+    public int EntryCount { get; set; }
+    public long Ipv4Addresses { get; set; }
+
+    /// <summary>Lines that weren't an address, and entries refused as wider than /8 (IPv4) or /16 (IPv6).</summary>
+    public int Skipped { get; set; }
+
+    /// <summary>ETag / Last-Modified per URL, as JSON, for conditional requests.</summary>
+    public string? Validators { get; set; }
+
+    public string Content { get; set; } = "";
+    public string? ContentHash { get; set; }
+}
+
 public sealed class FeedSourceState
 {
     public required string SourceId { get; set; }

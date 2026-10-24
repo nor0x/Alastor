@@ -10,6 +10,7 @@ public sealed class PolicyDocument
 {
     public AgentPolicy? Agent { get; set; }
     public BanningPolicy? Banning { get; set; }
+    public BlocklistsPolicy? Blocklists { get; set; }
     public UpdatesPolicy? Updates { get; set; }
     public VulnerabilitiesPolicy? Vulnerabilities { get; set; }
     public HardeningPolicy? Hardening { get; set; }
@@ -49,6 +50,24 @@ public sealed class AgentPolicy
     /// so a fleet doesn't run heavy work in the same minute.
     /// </summary>
     public string? ScheduleSpread { get; set; }
+}
+
+/// <summary>
+/// Public IP blocklists. The server pulls the lists, merges them, takes out the allowlist and reserved ranges, and
+/// serves one set per host; the agent loads it into its own nftables table (or ipset) and drops matching traffic.
+/// </summary>
+public sealed class BlocklistsPolicy
+{
+    public bool? Enabled { get; set; }
+
+    /// <summary>List ids from the catalog (spamhaus-drop, firehol-level1, …). A layer that sets this replaces the lower layer's choice.</summary>
+    public List<string>? Lists { get; set; }
+
+    /// <summary>Your own IPs/CIDRs to block on every host in scope. Merged as a union across layers.</summary>
+    public List<string>? Extra { get; set; }
+
+    /// <summary>How often the agent asks the server for a newer set (a cheap conditional request).</summary>
+    public string? RefreshSchedule { get; set; }
 }
 
 // Schedules for capabilities that land in later deliverables. Every recurring action has a Schedule-typed key

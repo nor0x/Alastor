@@ -98,6 +98,9 @@ public sealed class RetentionWorker(IServiceScopeFactory scopes, IOptions<Sentin
                 var c = await db.Commands.Where(x => x.CompletedAt != null && x.CompletedAt < eventsBefore).ExecuteDeleteAsync(ct);
                 var feedBefore = now - options.Value.ThreatFeedRetentionValue;
                 var f = await db.FeedItems.Where(x => x.PublishedAt < feedBefore).ExecuteDeleteAsync(ct);
+                // Drained dedup buckets carry no information once the window has long passed.
+                var bucketsBefore = now - options.Value.AlertDedupWindowValue * 4 - TimeSpan.FromDays(1);
+                await db.AlertBuckets.Where(x => x.UpdatedAt < bucketsBefore && x.Suppressed == 0).ExecuteDeleteAsync(ct);
                 if (m + e + b + c + f > 0)
                     logger.LogInformation("Retention: removed {Metrics} samples, {Events} events, {Bans} expired bans, {Commands} commands, {FeedItems} feed items", m, e, b, c, f);
             }
@@ -127,6 +130,27 @@ public sealed class ThreatFeedWorker(IServiceScopeFactory scopes, TimeProvider t
                 await scope.ServiceProvider.GetRequiredService<ThreatFeedService>().RunDueAsync(ct);
             }
             catch (Exception ex) when (ex is not OperationCanceledException) { logger.LogError(ex, "Threat feed run failed"); }
+        } while (await timer.WaitForNextTickAsync(ct));
+    }
+}
+
+/// <summary>Checks every 5 minutes which blocklists in use are due (<see cref="SentinelOptions.BlocklistRefreshInterval"/>, with backoff on failure).</summary>
+public sealed class BlocklistWorker(IServiceScopeFactory scopes, TimeProvider time, ILogger<BlocklistWorker> logger) : BackgroundService
+{
+    private static readonly TimeSpan CheckInterval = TimeSpan.FromMinutes(5);
+
+    protected override async Task ExecuteAsync(CancellationToken ct)
+    {
+        await Task.Yield();
+        using var timer = new PeriodicTimer(CheckInterval, time);
+        do
+        {
+            try
+            {
+                await using var scope = scopes.CreateAsyncScope();
+                await scope.ServiceProvider.GetRequiredService<Sentinel.Server.Services.Blocklists.BlocklistService>().RunDueAsync(ct);
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException) { logger.LogError(ex, "Blocklist run failed"); }
         } while (await timer.WaitForNextTickAsync(ct));
     }
 }

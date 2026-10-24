@@ -2,7 +2,9 @@ using System.Collections.Concurrent;
 using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Channels;
+using System.Net;
 using Sentinel.Core.Baseline;
+using Sentinel.Core.Blocklists;
 using Sentinel.Core.Contracts;
 using Sentinel.Core.Events;
 using Sentinel.Core.Integrations;
@@ -49,6 +51,7 @@ public sealed class Supervisor(
     private DateTime? _lastBaselineRun;
     private bool _baselineDirty = true;
     private BaselineReport? _pendingBaseline;
+    private DateTime? _lastBlocklistFetch;
 
     /// <summary>Called by the SignalR listener. Wakes the main loop without waiting for the next interval.</summary>
     public void Wake(string reason) => _wake.Writer.TryWrite(reason);
@@ -124,6 +127,10 @@ public sealed class Supervisor(
         if (hb.PendingCommands > 0 || wakeReason == "command")
             await ProcessCommandsAsync(ct);
 
+        // A newer blocklist on the server (lists refreshed) is applied like a policy change, just for that tool.
+        if (_policy is not null && await RefreshBlocklistAsync(_policy, force: false, ct))
+            await ReconcileAsync(reclaim: false, ct);
+
         await RunBaselineIfDueAsync(force: false, ct);
     }
 
@@ -159,6 +166,41 @@ public sealed class Supervisor(
         {
             await server.SendBaselineAsync(report, ct);
             _pendingBaseline = null;
+        }
+    }
+
+    /// <summary>
+    /// Asks the server for this host's merged blocklist when the policy enables blocklists and blocklists.refreshSchedule
+    /// is due (or <paramref name="force"/>). Conditional on the ETag, so an unchanged list costs one 304. Returns true when a new set arrived.
+    /// </summary>
+    private async Task<bool> RefreshBlocklistAsync(PolicyDocument policy, bool force, CancellationToken ct)
+    {
+        var consumer = _tools.OfType<IBlocklistConsumer>().FirstOrDefault();
+        if (consumer is null || policy.Blocklists?.Enabled != true) return false;
+        var now = time.GetUtcNow().UtcDateTime;
+        var schedule = ScheduleDefaults.For(policy, "blocklists.refreshSchedule");
+        if (!force && _lastBlocklistFetch is { } last && !schedule.IsDue(last, last, now, TimeZoneInfo.Local, TimeSpan.Zero)) return false;
+        var payload = await server.GetBlocklistAsync(consumer.DesiredEtag, ct);
+        _lastBlocklistFetch = now;
+        if (payload is null) return false;
+        consumer.SetDesired(payload, await ServerAddressesAsync(ct));
+        logger.LogInformation("Blocklist {Etag}: {V4} IPv4 and {V6} IPv6 networks", payload.Etag, payload.V4.Count, payload.V6.Count);
+        return true;
+    }
+
+    /// <summary>The server's own addresses. The blocklist never blocks them, whatever a list says.</summary>
+    private async Task<IReadOnlyList<IPAddress>> ServerAddressesAsync(CancellationToken ct)
+    {
+        var host = new Uri(config.ServerUrl).Host;
+        if (IPAddress.TryParse(host.Trim('[', ']'), out var literal)) return [literal];
+        try
+        {
+            return await Dns.GetHostAddressesAsync(host, ct);
+        }
+        catch (System.Net.Sockets.SocketException ex)
+        {
+            logger.LogWarning("Resolving {Host} failed ({Message}); the blocklist is loaded without a server exception", host, ex.Message);
+            return [];
         }
     }
 
@@ -207,6 +249,14 @@ public sealed class Supervisor(
             var desired = await server.GetDesiredStateAsync(ct);
             _policy = desired.Policy;
             var request = new ReconcileRequest(desired.Policy, desired.Revision) { Reclaim = reclaim };
+            try
+            {
+                await RefreshBlocklistAsync(desired.Policy, force: _lastReport?.Revision != desired.Revision || _lastBlocklistFetch is null, ct);
+            }
+            catch (HttpRequestException ex)
+            {
+                logger.LogWarning("Fetching the blocklist failed, keeping the current one: {Message}", ex.Message);
+            }
             var reports = new List<ToolApplyReport>();
 
             foreach (var tool in _tools)
@@ -236,7 +286,8 @@ public sealed class Supervisor(
                     _lastWarnings[id] = warnings;
                     reports.Add(new ToolApplyReport(id, result.Success, result.State, result.Error, warnings.ToList(),
                         plan.Changes.Select(c => c.Description).ToList()));
-                    if (!plan.IsNoop) logger.LogInformation("{Tool}: applied revision {Revision} ({Changes})", id, desired.Revision, string.Join(", ", plan.Changes.Select(c => c.Description)));
+                    if (!plan.IsNoop && result.Success) logger.LogInformation("{Tool}: applied revision {Revision} ({Changes})", id, desired.Revision, string.Join(", ", plan.Changes.Select(c => c.Description)));
+                    else if (!plan.IsNoop) logger.LogWarning("{Tool}: revision {Revision} not applied: {Error}", id, desired.Revision, result.Error);
                 }
                 catch (Exception ex) when (ex is not OperationCanceledException)
                 {
@@ -388,17 +439,28 @@ public sealed class Supervisor(
         }
     }
 
-    private Task CheckServerLossAsync(CancellationToken ct)
+    private async Task CheckServerLossAsync(CancellationToken ct)
     {
         var grace = Timings.OfflineGracePeriod;
         var since = time.GetUtcNow().UtcDateTime - _lastServerContact;
-        if (since > grace)
+        if (since <= grace) return;
+        // Server-pushed firewall state (the blocklist) is released: a stale list nobody can update shouldn't keep
+        // dropping traffic forever. fail2ban keeps protecting the host locally: its config needs no server.
+        foreach (var consumer in _tools.OfType<IBlocklistConsumer>())
         {
-            // Server-pushed firewall state (blocklist ipsets, deliverable 5) is released here. fail2ban keeps
-            // protecting the host locally: its config is self-contained and needs no server.
-            logger.LogWarning("No server contact for {Since}, beyond the {Grace} grace period. Server-pushed firewall state would be released now.", since, grace);
+            try
+            {
+                if (!await consumer.ReleaseAfterServerLossAsync(since, ct)) continue;
+                logger.LogWarning("No server contact for {Since}, beyond the {Grace} grace period: blocklist released", since, grace);
+                // Reconcile right after the server is back, instead of waiting for the next drift check.
+                _lastReconcile = DateTime.MinValue;
+                _lastBlocklistFetch = null;
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                logger.LogError(ex, "Releasing the blocklist failed");
+            }
         }
-        return Task.CompletedTask;
     }
 
     private SecurityEvent Lifecycle(IToolIntegration tool, string kind, Severity severity, string message, string? raw) => new()

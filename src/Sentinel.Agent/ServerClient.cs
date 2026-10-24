@@ -14,6 +14,7 @@ public sealed class ServerClient(HttpClient http)
     public static HttpMessageHandler CreateHandler(string? certificatePin) => new SocketsHttpHandler
     {
         PooledConnectionLifetime = TimeSpan.FromMinutes(10),
+        AutomaticDecompression = System.Net.DecompressionMethods.All,
         SslOptions = new SslClientAuthenticationOptions
         {
             RemoteCertificateValidationCallback = certificatePin is null
@@ -66,6 +67,17 @@ public sealed class ServerClient(HttpClient http)
     {
         using var resp = await http.PostAsJsonAsync("api/agent/baseline", report, Json.BaselineReport, ct);
         resp.EnsureSuccessStatusCode();
+    }
+
+    /// <summary>The merged blocklist for this host, or null when it still matches <paramref name="etag"/> (304).</summary>
+    public async Task<BlocklistPayload?> GetBlocklistAsync(string? etag, CancellationToken ct)
+    {
+        using var req = new HttpRequestMessage(HttpMethod.Get, "api/agent/blocklist");
+        if (etag is not null) req.Headers.IfNoneMatch.Add(new EntityTagHeaderValue($"\"{etag}\""));
+        using var resp = await http.SendAsync(req, ct);
+        if (resp.StatusCode == System.Net.HttpStatusCode.NotModified) return null;
+        resp.EnsureSuccessStatusCode();
+        return await resp.Content.ReadFromJsonAsync(Json.BlocklistPayload, ct);
     }
 
     public async Task<List<AgentCommand>> GetCommandsAsync(CancellationToken ct) =>

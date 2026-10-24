@@ -10,6 +10,7 @@ public static class PolicyMerger
     {
         Agent = Merge(baseDoc.Agent, overlay.Agent),
         Banning = Merge(baseDoc.Banning, overlay.Banning),
+        Blocklists = Merge(baseDoc.Blocklists, overlay.Blocklists),
         Updates = baseDoc.Updates is null && overlay.Updates is null ? null : new UpdatesPolicy
         {
             CheckSchedule = overlay.Updates?.CheckSchedule ?? baseDoc.Updates?.CheckSchedule,
@@ -43,6 +44,21 @@ public static class PolicyMerger
         {
             CheckSchedule = o?.CheckSchedule ?? b?.CheckSchedule,
             Mitigations = mitigations,
+        };
+    }
+
+    private static BlocklistsPolicy? Merge(BlocklistsPolicy? b, BlocklistsPolicy? o)
+    {
+        if (b is null && o is null) return null;
+        List<string>? extra = null;
+        if (b?.Extra is not null || o?.Extra is not null)
+            extra = (b?.Extra ?? []).Concat(o?.Extra ?? []).Distinct(StringComparer.Ordinal).ToList();
+        return new BlocklistsPolicy
+        {
+            Enabled = o?.Enabled ?? b?.Enabled,
+            Lists = (o?.Lists ?? b?.Lists)?.ToList(),
+            Extra = extra,
+            RefreshSchedule = o?.RefreshSchedule ?? b?.RefreshSchedule,
         };
     }
 

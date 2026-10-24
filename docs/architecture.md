@@ -140,6 +140,10 @@ Cookie-authenticated writes must also send `X-Sentinel-Request: 1` (CSRF guard o
 | `GET/PUT /api/policies/global` · `/group/{id}` · `/host/{id}` | R/A | current YAML + version list · save new version (422 with issues if invalid) |
 | `POST /api/policies/preview` `{scope, targetId, yaml}` | R | validation issues, merged result, rendered fail2ban fragment |
 | `GET /api/policies/layers/{layerId}/versions/{v}` · `POST …/revert/{v}` | R · A | history · revert (creates a new version) |
+| `GET/POST /api/notifications/channels` · `PUT/DELETE …/{id}` | A | email, webhook and ntfy channels; secret fields are write-only (empty on update = keep) |
+| `POST /api/notifications/channels/{id}/test` · `GET /api/notifications/deliveries?channelId&limit` | A | send a test now → `{success, error}` · delivery log |
+| `GET /api/blocklists` · `GET /api/blocklists/lookup?ip=` | R | list health and usage, per-host enforcement (backend, entries, dropped packets) · which lists contain an address |
+| `POST /api/blocklists/{id}/refresh` | A | fetch one list now |
 | `GET /api/audit` | A | audit log |
 | `GET /api/about` · `GET /healthz` · `GET /install/{agent.sh,server.sh}` | – | licenses · liveness · installers |
 | `POST /api/agent/enroll` | – (token) | consume single-use token → `{agentId, agentSecret}` |
@@ -147,6 +151,7 @@ Cookie-authenticated writes must also send `X-Sentinel-Request: 1` (CSRF guard o
 | `GET /api/agent/desired-state` | Ag | effective policy + revision |
 | `POST /api/agent/events` | Ag | batch of `SecurityEvent` (≤1000), idempotent |
 | `POST /api/agent/baseline` | Ag | one baseline run; the server replaces the host's result set and recomputes the score |
+| `GET /api/agent/blocklist` | Ag | this host's merged blocklist as minimal CIDRs; `ETag`/`If-None-Match` (304), gzip |
 | `POST /api/agent/bans` | Ag | full ban snapshot per tool (server replaces that host's active set) |
 | `GET /api/agent/commands` · `POST /api/agent/commands/{id}/result` | Ag | pull pending commands · report outcome |
 | `/hubs/agent` · `/hubs/dashboard` | Ag · R | SignalR: `Wake(reason)` to agents · `hostUpdated`, `eventsCreated`, `bansChanged`, `policyChanged`, `commandUpdated`, `feedUpdated`, `baselineUpdated` to browsers |
@@ -198,13 +203,14 @@ times, so the editor can show `0 4 * * 1-5` as "Mon 04:00, Tue 04:00, …".
 | `agent.banSnapshotInterval` | `5m` | 30s–1d | full ban-list resync |
 | `agent.scheduleSpread` | `30m` | 0–12h | per-host offset for scheduled jobs |
 | `agent.offlineGracePeriod` | `24h` | any, or `permanent` | release server-pushed firewall state |
+| `blocklists.refreshSchedule` | `every 1h` | ≥1m | agent asks the server for a newer blocklist (conditional, usually a 304) |
 | `baseline.checkSchedule` | `every 1h` | ≥1m | security baseline checks; also run at agent start, after policy changes, and on "Re-check now" |
 | `updates.checkSchedule` | `every 6h` | ≥1m | pending security update count (D6) |
 | `updates.applySchedule` | `off` | ≥1m | auto-apply security updates (D6) |
 | `vulnerabilities.scanSchedule` | `0 3 * * *` | ≥1m | Trivy/Grype (D7) |
 | `hardening.auditSchedule` | `0 5 * * 0` | ≥1m | Lynis (D8) |
 | `malware.scanSchedule` | `off` | ≥1m | ClamAV, opt-in (D10) |
-| *notification digest* | `0 8 * * *` (planned) | | daily digest (D4). Fleet-wide, set on the Settings page, same `Schedule` type |
+| *notification digest* | `off` | ≥1m | per channel, set on *Settings → Notifications*; same `Schedule` type, server time zone |
 
 | Server env var | Default | |
 |---|---|---|
@@ -218,6 +224,9 @@ times, so the editor can show `0 4 * * 1-5` as "Mon 04:00, Tue 04:00, …".
 | `SENTINEL_PENDINGCOMMANDTTL` | `24h` | commands for hosts that stay offline |
 | `SENTINEL_SESSIONLIFETIME` | `12h` | dashboard login |
 | `SENTINEL_AUTHRATELIMITPERMINUTE` | `10` | login/enroll attempts per IP |
+| `SENTINEL_BLOCKLISTSENABLED` | `true` | download public blocklists; `false` for air-gapped servers (own entries still work) |
+| `SENTINEL_BLOCKLISTREFRESHINTERVAL` | `4h` | per-list refetch while some policy uses it (1h–7d); failures back off from 5 min |
+| `SENTINEL_ALERTDEDUPWINDOW` / `SENTINEL_ALERTBURST` | `1h` / `1` | alert dedup: per host and dedup key, `burst` notifications per window (§5a) |
 | `SENTINEL_THREATFEEDENABLED` | `true` | fetch NVD, CISA KEV and news RSS (§5) |
 | `SENTINEL_THREATFEEDINTERVAL` | `20m` | per-source refetch after a success (5m–1d) |
 | `SENTINEL_THREATFEEDRETENTION` | `30d` | feed items older than this are pruned and not fetched |
@@ -256,6 +265,57 @@ the worker runs off the request path starting right after startup: the API only 
 or failing source never delays the dashboard. The SPA shows per-source health and gets a `feedUpdated`
 SignalR hint when new items arrive.
 
+## 5a. Alert pipeline
+
+Code: `src/Sentinel.Server/Services/Alerts/`. Every event the server stores (from agents or its own presence
+checks) goes through `AlertPipeline` right after the insert:
+
+1. **Threshold.** Events below the lowest `minSeverity` of any enabled channel are never considered.
+2. **Dedup: a leaky bucket per `hostId|dedupKey`.** The bucket holds `AlertBurst` notifications and drains one per
+   `AlertDedupWindow`. An event that fits is sent; one that doesn't is *suppressed* and counted, and the count rides
+   along with the next notification for that key ("4 similar suppressed since the last alert"). An event more severe
+   than the last one sent for its key always goes out, so escalation is never hidden. Each event records its
+   outcome (`alert: None | Notified | Suppressed`), shown in the timeline.
+3. **Delivery** runs off the request path (a bounded in-memory queue drained by `NotificationDispatcher`), so a slow
+   SMTP server never delays an agent. Each channel gets one message per batch of matching events (severity and
+   optional capability filter), 3 attempts with 2 s / 15 s backoff, and the outcome lands in the delivery log
+   (newest 1000 kept) and on the channel (`lastError`, shown as *failing* on the dashboard).
+4. **Digests** (optional, per channel): everything matching the channel since its last digest, grouped by severity
+   and host, on the channel's schedule. A channel can be digest-only.
+
+| Channel | Transport | Notes |
+|---|---|---|
+| Email | SMTP via MailKit (MIT): STARTTLS, implicit TLS or plain | High and Critical are sent with `Priority: urgent` |
+| Webhook | `POST` JSON | formats: `json` (stable SentinelVPS payload: `source, kind, title, text, severity, link, events[]`), `slack` (Slack and Mattermost), `discord`. With a secret: `X-Sentinel-Signature: sha256=<hex HMAC-SHA256 of the body>` |
+| ntfy | ntfy's JSON publish API on ntfy.sh or a self-hosted server | severity → ntfy priority (Critical 5 … Info 1), optional access token, click opens the host |
+
+Channel configs are encrypted with ASP.NET Data Protection (keys in the data dir) and only decrypted in memory
+to send. The API never returns the SMTP password, webhook secret or ntfy token; it says which are set.
+
+## 5b. Blocklists
+
+Code: `src/Sentinel.Core/Blocklists/` (catalog, parser, agent enforcement), `src/Sentinel.Core/Net/IpRangeSet.cs`
+(range math), `src/Sentinel.Server/Services/Blocklists/`. Policy: `blocklists: {enabled, lists, extra, refreshSchedule}`;
+`lists` replaces across layers (a host can pick its own), `extra` is a union.
+
+1. **The server pulls** only lists some policy layer uses: Spamhaus DROP (its JSON feed), FireHOL level 1, abuse.ch Feodo,
+   ET compromised, blocklist.de, CINS Army (their documented netset text). Conditional GET per URL. A download that
+   shrinks a list below 10 % of its last good size, or parses to nothing, is refused and the last good copy kept.
+   Entries wider than /8 (IPv4) or /16 (IPv6) are skipped.
+2. **Per host**, the server unions the host's lists and `extra`, then subtracts the special-purpose ranges (private,
+   CGNAT/Tailscale `100.64.0.0/10`, loopback, link-local, documentation, multicast: FireHOL level 1 carries the bogons)
+   and the allowlist (server-wide plus `banning.allowlist`), and emits the minimal CIDR list. The result is cached by
+   content and addressed by an ETag.
+3. **The agent** fetches it on `blocklists.refreshSchedule` and after policy changes, and owns exactly one kernel
+   object: nftables table `inet sentinel_vps` (interval sets `blocklist4/6`, a `prerouting` chain at priority -300, so
+   packets are dropped before conntrack for the host and for containers alike, with counters for the dashboard), or on
+   hosts without `nft`, ipsets `sentinel-vps4/6` filled off to the side and swapped in, matched from a `SENTINEL-VPS`
+   chain in iptables' raw table. The server's own addresses are always accepted first. Updates are one `nft -f`
+   transaction after `nft -c` validates it, so a failure leaves the previous set loading. The table is removed when
+   blocklists are turned off, on `sentinel-agent uninstall`, and after `agent.offlineGracePeriod` without server
+   contact (restored on reconnect). Containers and LXC/OpenVZ plans usually refuse firewall changes; the agent reports
+   that once as `config.rejected` with an explanation, and the dashboard shows the host as *refused*.
+
 ## 6. Security model
 
 | Secret | At rest |
@@ -265,6 +325,7 @@ SignalR hint when new items arrive.
 | Agent credentials (`{hostId}.sva_…`) | SHA-256; constant-time compare; deleting a host revokes it |
 | API keys (`svk_…`) | SHA-256; reader role only. Writes return 403 |
 | JWT signing key | `data/jwt.key` (0600) or `SENTINEL_JWTKEY` |
+| Notification channel credentials | Data Protection (AES-256-CBC + HMAC), keys in `data/keys`; write-only over the API |
 
 Agents refuse plain HTTP unless enrolled with `--insecure`, and support certificate pinning (`--pin <sha256>`)
 for self-signed servers. Manual bans refuse ranges wider than /8 (v4) or /32 (v6), anything overlapping the
@@ -283,6 +344,12 @@ allowlist, and the operator's own address.
 
 * **Supervisor, policy engine, event normalization.** This *is* the product: no existing tool unifies these
   engines.
+* **Blocklist merging and loading.** FireHOL's `update-ipsets`/`iprange` do this on a single box but fetch from every
+  host and need bash plus a dozen helpers; CrowdSec's bouncers only load CrowdSec decisions. The spec requires that only
+  the server talks to list providers, so the server merges (about 150 lines of range math, `IpRangeSet`) and the agent
+  hands the result to `nft -f` / `ipset restore`, the tools' own bulk loaders.
+* **Alert channels.** Email goes through MailKit; webhook and ntfy are one HTTP POST each. A notification router such as
+  Apprise would add a Python runtime to the server for three transports.
 * **Ban snapshots and manual-ban jail.** These use fail2ban's own mechanisms (`banip`, jail DB). We add no
   firewall code for banning.
 * **Security baseline.** About twenty checks that matter most on an internet-facing server (SSH, firewall,
