@@ -112,10 +112,13 @@ public sealed class PolicyService(SentinelDbContext db, CommandService commands,
         if (hostId is { } h) groupId = await db.Hosts.Where(x => x.Id == h).Select(x => x.GroupId).FirstOrDefaultAsync(ct);
 
         var effective = await ComputeAsync(groupId, hostId, ct, (scope, targetId, parsed.Document));
-        var issues = parsed.Issues.Concat(PolicyYaml.Validate(effective.Document)
-            .Where(i => i.Level == IssueLevel.Warning)
-            .Select(i => i with { Message = $"(effective) {i.Message}" }))
-            .DistinctBy(i => (i.Path, i.Message.Replace("(effective) ", "")))
+        // Errors come from the layer itself (with line numbers). Warnings are judged on the merged result: a layer
+        // without an allowlist is fine when the global layer or the Bans page provides one.
+        var effectiveWarnings = PolicyYaml.Validate(effective.Document).Where(i => i.Level == IssueLevel.Warning).ToList();
+        var issues = parsed.Issues.Where(i => i.Level == IssueLevel.Error)
+            .Concat(parsed.Issues.Where(i => i.Level == IssueLevel.Warning && effectiveWarnings.Any(w => w.Path == i.Path && w.Message == i.Message)))
+            .Concat(effectiveWarnings.Where(w => !parsed.Issues.Any(i => i.Path == w.Path && i.Message == w.Message))
+                .Select(i => i with { Message = $"(effective) {i.Message}" }))
             .ToList();
         var fail2ban = effective.Document.Banning is { } b && b.Enabled != false
             ? Fail2BanConfigRenderer.RenderJails(b, new HashSet<string>())

@@ -63,27 +63,6 @@
   }
   .source.cve { border-color: rgba(88, 166, 255, 0.4); color: var(--link); }
 
-  .sev {
-    display: inline-flex;
-    align-items: center;
-    gap: 5px;
-    padding: 0 7px;
-    border-radius: 999px;
-    font-weight: 600;
-    line-height: 18px;
-    text-transform: uppercase;
-    font-size: 11px;
-    letter-spacing: 0.02em;
-    color: var(--c);
-    background: color-mix(in srgb, var(--c) 16%, transparent);
-    border: 1px solid color-mix(in srgb, var(--c) 45%, transparent);
-  }
-  .score { font-family: var(--mono); font-weight: 500; }
-  .sev-critical { --c: var(--sev-critical); }
-  .sev-high { --c: var(--sev-high); }
-  .sev-medium { --c: var(--sev-medium); }
-  .sev-low { --c: var(--sev-low); }
-  .sev-info { --c: var(--sev-info); }
   .unscored { --c: var(--sev-info); font-weight: 500; text-transform: none; font-size: 12px; }
 
   .kev {

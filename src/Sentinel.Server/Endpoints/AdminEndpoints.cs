@@ -15,6 +15,7 @@ public static class AdminEndpoints
     public sealed record TokenDto(Guid Id, string? Note, Guid? GroupId, IReadOnlyList<string> Tags, DateTime CreatedAt, DateTime ExpiresAt, DateTime? ConsumedAt, Guid? ConsumedByHostId, string CreatedBy);
     public sealed record CreatedTokenDto(TokenDto Token, string Secret, string InstallCommand);
     public sealed record CreateApiKeyRequest(string Name);
+    public sealed record ServerSetting(string Group, string Key, string EnvVar, string Value, string Description);
     public sealed record ApiKeyDto(Guid Id, string Name, string Prefix, DateTime CreatedAt, DateTime? LastUsedAt, DateTime? RevokedAt, string CreatedBy);
 
     public static void MapAdminEndpoints(this IEndpointRouteBuilder app)
@@ -108,6 +109,38 @@ public static class AdminEndpoints
             await db.SaveChangesAsync(ct);
             return Results.NoContent();
         });
+
+        // Read-only view of the server's own configuration (environment variables / appsettings). Secrets are
+        // never returned, only whether they are set. Changing these needs a restart, so the UI doesn't edit them.
+        app.MapGet("/api/system/settings", (IOptions<SentinelOptions> opt) =>
+        {
+            var o = opt.Value;
+            ServerSetting S(string group, string key, string value, string description) =>
+                new(group, key, "SENTINEL_" + key.ToUpperInvariant(), value, description);
+            return new[]
+            {
+                S("General", nameof(o.PublicUrl), o.PublicUrl ?? "(from request)", "URL agents and browsers use; shown in install commands."),
+                S("General", nameof(o.DatabaseProvider), o.DatabaseProvider, "sqlite or postgres."),
+                S("General", nameof(o.DataDir), o.DataDir, "Database, signing and data-protection keys."),
+                S("General", nameof(o.SecureCookies), o.SecureCookies ? "true" : "false", "Secure flag on the session cookie."),
+                S("Agents", nameof(o.HeartbeatInterval), o.HeartbeatInterval, "Default heartbeat when the policy sets no agent.heartbeatInterval."),
+                S("Agents", nameof(o.OfflineAfterMissedHeartbeats), o.OfflineAfterMissedHeartbeats.ToString(System.Globalization.CultureInfo.InvariantCulture), "Missed heartbeats (of the host's own interval) before a host is offline."),
+                S("Agents", nameof(o.PresenceCheckInterval), o.PresenceCheckInterval, "How often the server looks for silent hosts."),
+                S("Agents", nameof(o.EnrollmentTokenTtl), o.EnrollmentTokenTtl, "Default lifetime of a new enrollment token."),
+                S("Commands", nameof(o.CommandRedeliverAfter), o.CommandRedeliverAfter, "Re-deliver a fetched but unacknowledged command after this long."),
+                S("Commands", nameof(o.CommandMaxAttempts), o.CommandMaxAttempts.ToString(System.Globalization.CultureInfo.InvariantCulture), "Delivery attempts before a command expires."),
+                S("Commands", nameof(o.PendingCommandTtl), o.PendingCommandTtl, "Commands for offline hosts expire after this."),
+                S("Retention", nameof(o.RetentionRunInterval), o.RetentionRunInterval, "How often old data is pruned."),
+                S("Retention", nameof(o.MetricRetention), o.MetricRetention, "Keep host metrics this long."),
+                S("Retention", nameof(o.EventRetention), o.EventRetention, "Keep events this long."),
+                S("Security", nameof(o.SessionLifetime), o.SessionLifetime, "Dashboard session length."),
+                S("Security", nameof(o.AuthRateLimitPerMinute), o.AuthRateLimitPerMinute.ToString(System.Globalization.CultureInfo.InvariantCulture), "Login and enrollment attempts per IP per minute."),
+                S("Threat feed", nameof(o.ThreatFeedEnabled), o.ThreatFeedEnabled ? "true" : "false", "Fetch NVD, CISA KEV and security news."),
+                S("Threat feed", nameof(o.ThreatFeedInterval), o.ThreatFeedInterval, "How often each source is fetched."),
+                S("Threat feed", nameof(o.ThreatFeedRetention), o.ThreatFeedRetention, "Keep feed items this long."),
+                S("Threat feed", nameof(o.NvdApiKey), string.IsNullOrEmpty(o.NvdApiKey) ? "(not set)" : "(set)", "Optional NVD API key for a higher rate limit."),
+            };
+        }).WithTags("Settings").RequireAuthorization(AuthPolicies.Admin);
 
         app.MapGet("/api/audit", async (int? limit, SentinelDbContext db, CancellationToken ct) =>
             await db.Audit.OrderByDescending(a => a.At).Take(Math.Clamp(limit ?? 100, 1, 500)).ToListAsync(ct))

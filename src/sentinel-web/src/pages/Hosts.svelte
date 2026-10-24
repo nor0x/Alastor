@@ -1,0 +1,142 @@
+<script lang="ts">
+  import { fleet, refreshFleet } from '../lib/fleet.svelte';
+  import { refreshOn } from '../lib/live.svelte';
+  import { route } from '../lib/router.svelte';
+  import { canWrite } from '../lib/session.svelte';
+  import Meter from '../lib/ui/Meter.svelte';
+  import Time from '../lib/ui/Time.svelte';
+
+  type Filter = '' | 'online' | 'offline' | 'problems' | 'pending';
+
+  const params = new URLSearchParams(route.search);
+  let q = $state(params.get('q') ?? '');
+  let filter = $state<Filter>((params.get('filter') as Filter) ?? '');
+  let group = $state(params.get('group') ?? '');
+
+  $effect(() => {
+    refreshFleet();
+    return refreshOn(['hostUpdated'], refreshFleet, 30_000);
+  });
+
+  $effect(() => {
+    const p = new URLSearchParams();
+    if (q.trim()) p.set('q', q.trim());
+    if (filter) p.set('filter', filter);
+    if (group) p.set('group', group);
+    const qs = p.toString();
+    history.replaceState(null, '', qs ? `/hosts?${qs}` : '/hosts');
+  });
+
+  const shown = $derived(
+    fleet.hosts.filter((h) => {
+      const needle = q.trim().toLowerCase();
+      if (needle && ![h.name, h.hostname, h.osPrettyName, h.groupName ?? '', ...h.tags].some((s) => s.toLowerCase().includes(needle))) return false;
+      if (group === 'none' ? h.groupId !== null : group && h.groupId !== group) return false;
+      switch (filter) {
+        case 'online': return h.isOnline;
+        case 'offline': return !h.isOnline;
+        case 'problems': return h.toolsWithProblems > 0;
+        case 'pending': return h.policySync !== 'in-sync';
+        default: return true;
+      }
+    }),
+  );
+</script>
+
+<div class="page-head">
+  <div>
+    <h1>Hosts</h1>
+    <p class="sub">{fleet.hosts.length} enrolled · {fleet.hosts.filter((h) => h.isOnline).length} online</p>
+  </div>
+  {#if canWrite()}
+    <div class="actions"><a class="btn primary" href="/settings/enrollment">+ Add host</a></div>
+  {/if}
+</div>
+
+<div class="filterbar">
+  <input class="field grow" type="search" placeholder="Search name, OS, group, tag…" bind:value={q} aria-label="Search hosts" />
+  <select class="field" bind:value={filter} aria-label="Status">
+    <option value="">Any status</option>
+    <option value="online">Online</option>
+    <option value="offline">Offline</option>
+    <option value="problems">Tool problems</option>
+    <option value="pending">Policy not applied</option>
+  </select>
+  <select class="field" bind:value={group} aria-label="Group">
+    <option value="">All groups</option>
+    <option value="none">No group</option>
+    {#each fleet.groups as g (g.id)}<option value={g.id}>{g.name}</option>{/each}
+  </select>
+</div>
+
+{#if fleet.error}<div class="banner bad" role="alert"><p>{fleet.error}</p></div>{/if}
+
+<div class="card table-wrap">
+  {#if !fleet.loaded}
+    <div class="skeleton-block"></div>
+  {:else if shown.length === 0}
+    <div class="empty">
+      {#if fleet.hosts.length === 0}
+        No hosts enrolled yet. {#if canWrite()}<a href="/settings/enrollment">Create an enrollment token</a> to add one.{/if}
+      {:else}
+        No hosts match these filters.
+      {/if}
+    </div>
+  {:else}
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Host</th>
+          <th class="hide-sm">Group · tags</th>
+          <th>CPU</th>
+          <th class="hide-sm">Memory</th>
+          <th class="hide-sm">Disk</th>
+          <th class="num">Bans</th>
+          <th>Tools</th>
+          <th>Policy</th>
+          <th class="hide-sm">Last seen</th>
+        </tr>
+      </thead>
+      <tbody>
+        {#each shown as h (h.id)}
+          <tr>
+            <td>
+              <div class="host">
+                <span class="dot" class:ok={h.isOnline} class:bad={!h.isOnline} title={h.isOnline ? 'Online' : 'Offline'}></span>
+                <div>
+                  <a href="/hosts/{h.id}" class="name">{h.name}</a>
+                  <div class="muted small">{h.osPrettyName} · {h.architecture}{h.isOnline ? '' : ' · offline'}</div>
+                </div>
+              </div>
+            </td>
+            <td class="hide-sm">
+              {#if h.groupName}<span class="pill info">{h.groupName}</span>{/if}
+              {#each h.tags as t (t)}<span class="pill muted tag">{t}</span>{/each}
+              {#if !h.groupName && !h.tags.length}<span class="muted">—</span>{/if}
+            </td>
+            <td><Meter value={h.cpuPercent} /></td>
+            <td class="hide-sm"><Meter value={h.memoryPercent} /></td>
+            <td class="hide-sm"><Meter value={h.diskPercent} warn={85} /></td>
+            <td class="num">{#if h.activeBans}<a href="/bans?host={h.id}">{h.activeBans}</a>{:else}<span class="muted">0</span>{/if}</td>
+            <td>
+              {#if h.toolsWithProblems > 0}<span class="pill warn">⚠ {h.toolsWithProblems} problem{h.toolsWithProblems > 1 ? 's' : ''}</span>
+              {:else}<span class="pill ok">✓ {h.toolsRunning} running</span>{/if}
+            </td>
+            <td>
+              {#if h.policySync === 'in-sync'}<span class="pill ok">✓ in sync</span>
+              {:else if h.policySync === 'failed'}<span class="pill bad">✕ failed</span>
+              {:else}<span class="pill info">… pending</span>{/if}
+            </td>
+            <td class="hide-sm nowrap"><Time iso={h.lastSeenAt} /></td>
+          </tr>
+        {/each}
+      </tbody>
+    </table>
+  {/if}
+</div>
+
+<style>
+  .host { display: flex; align-items: center; gap: 10px; }
+  .name { font-weight: 600; }
+  .tag { margin-left: 4px; }
+</style>

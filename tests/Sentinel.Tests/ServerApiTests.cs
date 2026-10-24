@@ -24,6 +24,7 @@ public sealed class ServerApiTests : IClassFixture<ServerApiTests.Factory>
             builder.UseSetting("AdminPassword", "test-password-123");
             builder.UseSetting("SecureCookies", "false");
             builder.UseSetting("ThreatFeedEnabled", "false"); // no internet in tests; ThreatFeedTests drives the feed itself
+            builder.UseSetting("AuthRateLimitPerMinute", "1000"); // every test signs in and enrolls; the default 10/min is for real clients
         }
 
         protected override void Dispose(bool disposing)
@@ -165,6 +166,41 @@ public sealed class ServerApiTests : IClassFixture<ServerApiTests.Factory>
         var after = await admin.GetFromJsonAsync<JsonElement>("/api/policies/global");
         Assert.Equal(original, after.GetProperty("yaml").GetString());
         Assert.Equal(v1 + 2, after.GetProperty("layer").GetProperty("currentVersion").GetInt32());
+    }
+
+    [Fact]
+    public async Task Preview_judges_warnings_on_the_merged_policy()
+    {
+        var admin = await AdminAsync();
+        await admin.PostAsJsonAsync("/api/allowlist", new { target = "203.0.113.0/24", note = "vpn" }); // 201, or 409 if another test added it
+
+        // The layer itself lists no allowlist, but the Bans page does, so "allowlist is empty" would be wrong.
+        var preview = await (await admin.PostAsJsonAsync("/api/policies/preview", new { scope = "Global", yaml = "banning:\n  jails:\n    sshd: {enabled: true}\n" }))
+            .Content.ReadFromJsonAsync<JsonElement>();
+        var paths = preview.GetProperty("issues").EnumerateArray().Select(i => i.GetProperty("path").GetString()).ToList();
+        Assert.DoesNotContain("banning.allowlist", paths);
+
+        // A warning that still holds after merging is kept.
+        var risky = await (await admin.PostAsJsonAsync("/api/policies/preview", new { scope = "Global", yaml = "banning:\n  jails:\n    sshd: {enabled: true, maxretry: 2}\n" }))
+            .Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Contains(risky.GetProperty("issues").EnumerateArray(), i => i.GetProperty("path").GetString() == "banning.jails.sshd.maxretry");
+    }
+
+    [Fact]
+    public async Task Server_settings_are_admin_only_and_never_return_secrets()
+    {
+        var admin = await AdminAsync();
+        var settings = await admin.GetFromJsonAsync<JsonElement>("/api/system/settings");
+        var byKey = settings.EnumerateArray().ToDictionary(s => s.GetProperty("key").GetString()!, s => s.GetProperty("value").GetString()!);
+        Assert.Equal("SENTINEL_HEARTBEATINTERVAL", settings.EnumerateArray().First(s => s.GetProperty("key").GetString() == "HeartbeatInterval").GetProperty("envVar").GetString());
+        Assert.DoesNotContain("AdminPassword", byKey.Keys);
+        Assert.DoesNotContain("ConnectionString", byKey.Keys);
+        Assert.Equal("(not set)", byKey["NvdApiKey"]);
+
+        var created = await (await admin.PostAsJsonAsync("/api/api-keys", new { name = "settings-probe" })).Content.ReadFromJsonAsync<JsonElement>();
+        var reader = _factory.CreateClient();
+        reader.DefaultRequestHeaders.Add("X-Api-Key", created.GetProperty("secret").GetString());
+        Assert.Equal(HttpStatusCode.Forbidden, (await reader.GetAsync("/api/system/settings")).StatusCode);
     }
 
     [Fact]

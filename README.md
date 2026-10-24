@@ -6,8 +6,11 @@ tools (fail2ban, CrowdSec, Trivy, Lynis, unattended-upgrades, …): it installs 
 configuration declaratively, and turns their output into one normalized alert pipeline.
 
 **Status:** deliverables 1–3 backend complete (server API, SQLite/PostgreSQL migrations, agent with heartbeat,
-fail2ban integration end to end), threat feed (NVD CVEs, CISA KEV, security news). The Svelte dashboard has
-started: sign-in and the *Threat feed* page; fleet views come next.
+fail2ban integration end to end), threat feed (NVD CVEs, CISA KEV, security news), and the Svelte dashboard for
+all of it: overview, hosts and host detail (live metrics, capability matrix, bans, events, commands), event
+timeline, bans and allowlist, policy editor (form and YAML views with live validation, schedule preview, rendered
+fail2ban config, version history and revert), threat feed, settings (groups, enrollment tokens, API keys, server
+configuration, audit log) and About/licenses. Live updates over SignalR, with polling when the hub is unreachable.
 See [docs/architecture.md](docs/architecture.md) for the event model, integration interface and API surface.
 
 ## Repository layout

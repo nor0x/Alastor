@@ -23,3 +23,29 @@ export function fullDate(iso: string): string {
 }
 
 export const number = new Intl.NumberFormat('en');
+
+const bytesUnits = ['B', 'KB', 'MB', 'GB', 'TB'];
+export function bytes(n: number): string {
+  let i = 0;
+  while (n >= 1024 && i < bytesUnits.length - 1) {
+    n /= 1024;
+    i++;
+  }
+  return `${n.toFixed(n >= 100 || i === 0 ? 0 : 1)} ${bytesUnits[i]}`;
+}
+
+export function uptime(seconds: number): string {
+  const d = Math.floor(seconds / 86400);
+  const h = Math.floor((seconds % 86400) / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  return d > 0 ? `${d}d ${h}h` : h > 0 ? `${h}h ${m}m` : `${m}m`;
+}
+
+export function shortTime(iso: string): string {
+  return new Date(iso).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
+}
+
+/** "permanent" for a ban without expiry, else a relative time. */
+export function expires(iso: string | null, now = Date.now()): string {
+  return iso ? timeAgo(iso, now) : 'permanent';
+}
