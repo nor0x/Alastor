@@ -31,7 +31,11 @@ public sealed record HostSummaryDto(
     int BaselineFailing,
     int? PendingUpdates,
     int? SecurityUpdates,
-    bool RebootRequired);
+    bool RebootRequired,
+    int? VulnCritical,
+    int? VulnHigh,
+    int? VulnTotal,
+    int? VulnFixable);
 
 public sealed record ToolStatusDto(
     string ToolId,

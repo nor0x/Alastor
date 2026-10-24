@@ -9,14 +9,18 @@ normalizes everything into one event model, one policy model and one dashboard.
           ┌──────────────── sentinel-server (one binary) ───────────────────────┐
 browser ──┤ Svelte SPA (embedded) · REST /api · SignalR /hubs/dashboard          │
           │ EF Core → SQLite (WAL) | PostgreSQL · workers (presence, retention,  │
-          │ threat feed ← NVD, CISA KEV, security news RSS)                      │
+          │ threat feed ← NVD, CISA KEV, security news RSS; blocklists; Trivy/   │
+          │ Grype database mirror)                                               │
           └──────────▲───────────────────────────────▲──────────────────────────┘
                      │ HTTPS REST (pull)             │ SignalR /hubs/agent ("wake" only)
           ┌──────────┴───────────── sentinel-agent (per host) ───────────────────┐
           │ Supervisor: heartbeat → reconcile → commands      EventPump (5 s)     │
           │      │ IToolIntegration                                                │
           │      ├── Fail2BanIntegration ── fail2ban-client, jail.d/sentinel-vps.local, fail2ban.log
-          │      ├── (CrowdSec, nftables, unattended-upgrades, Trivy, Lynis, … later)
+          │      ├── BaselineIntegration, BlocklistIntegration (nft / ipset)
+          │      ├── UpdatesIntegration ── apt-get -s / dnf / apk, unattended-upgrade
+          │      ├── VulnerabilityIntegration ── trivy rootfs | grype dir:/ (offline, server db)
+          │      ├── (CrowdSec, Lynis, … later)
           └───────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -123,9 +127,12 @@ Cookie-authenticated writes must also send `X-Sentinel-Request: 1` (CSRF guard o
 | `GET /api/hosts/{id}/metrics?hours=` | R | downsampled CPU/mem/disk/load history |
 | `GET /api/hosts/{id}/effective-policy` · `/commands` | R | merged YAML and revision · command history |
 | `PATCH /api/hosts/{id}` · `DELETE /api/hosts/{id}` | A | rename, group, tags · remove (revokes the agent) |
-| `POST /api/hosts/{id}/actions/{reconcile\|reclaim\|refresh-bans\|recheck\|check-updates\|apply-updates}` | A | operator actions (`recheck` re-runs the security baseline; the update actions queue a `run-job` command) |
+| `POST /api/hosts/{id}/actions/{reconcile\|reclaim\|refresh-bans\|recheck\|check-updates\|apply-updates\|scan-vulnerabilities}` | A | operator actions (`recheck` re-runs the security baseline; the update and scan actions queue a `run-job` command) |
 | `GET /api/hosts/{id}/updates` | R | pending packages (security first), reboot flag, last install with its log tail, effective update schedules |
 | `GET /api/updates` · `POST /api/updates/apply` `{hostIds}` | R · A | per-host update counts across the fleet · "install now" on several hosts |
+| `GET /api/hosts/{id}/vulnerabilities` | R | every finding (package, installed → fixed, severity, CVSS, KEV flag, accepted), scanner and database info, ignored-package counts |
+| `GET /api/vulnerabilities?minSeverity&fixable&kev&q&limit` | R | fleet view: open CVEs ranked KEV → severity → hosts affected, per-host counts, database mirror status |
+| `GET /api/vulnerabilities/db` · `POST /api/vulnerabilities/db/{trivy\|grype}/refresh` | R · A | mirror status · check upstream now |
 | `GET /api/baseline` · `GET /api/baseline/catalog` | R | fleet baseline: per-check pass/fail counts with failing hosts, per-host scores · check catalog |
 | `GET /api/hosts/{id}/baseline` | R | every baseline check merged with this host's result, copy-paste commands and the policy key that fixes it |
 | `GET/POST/PUT/DELETE /api/groups[/{id}]` | R/A | host groups |
@@ -154,6 +161,7 @@ Cookie-authenticated writes must also send `X-Sentinel-Request: 1` (CSRF guard o
 | `POST /api/agent/events` | Ag | batch of `SecurityEvent` (≤1000), idempotent |
 | `POST /api/agent/baseline` | Ag | one baseline run; the server replaces the host's result set and recomputes the score |
 | `POST /api/agent/reports` | Ag | result of a scheduled job (`AgentReport`: updates now, CVE scans and audits later); the server keeps the latest per host and kind |
+| `GET /api/agent/vulndb/{trivy\|grype}` | Ag | mirrored scanner database; `ETag` = upstream sha256 (304 when current), range requests; 503 + `Retry-After` while the first mirror runs |
 | `GET /api/agent/blocklist` | Ag | this host's merged blocklist as minimal CIDRs; `ETag`/`If-None-Match` (304), gzip |
 | `POST /api/agent/bans` | Ag | full ban snapshot per tool (server replaces that host's active set) |
 | `GET /api/agent/commands` · `POST /api/agent/commands/{id}/result` | Ag | pull pending commands · report outcome |
@@ -210,7 +218,7 @@ times, so the editor can show `0 4 * * 1-5` as "Mon 04:00, Tue 04:00, …".
 | `baseline.checkSchedule` | `every 1h` | ≥1m | security baseline checks; also run at agent start, after policy changes, and on "Re-check now" |
 | `updates.checkSchedule` | `every 6h` | ≥1m | refresh package lists and count pending (security) updates; also at agent start and on "Check now" |
 | `updates.applySchedule` | `off` | ≥1m | install security updates automatically, e.g. `0 4 * * *`; `off` = report only plus "Install now" |
-| `vulnerabilities.scanSchedule` | `0 3 * * *` | ≥1m | Trivy/Grype (D7) |
+| `vulnerabilities.scanSchedule` | `0 3 * * *` | ≥1m | Trivy/Grype scan of installed packages; also at agent start and on "Scan now" |
 | `hardening.auditSchedule` | `0 5 * * 0` | ≥1m | Lynis (D8) |
 | `malware.scanSchedule` | `off` | ≥1m | ClamAV, opt-in (D10) |
 | *notification digest* | `off` | ≥1m | per channel, set on *Settings → Notifications*; same `Schedule` type, server time zone |
@@ -229,6 +237,9 @@ times, so the editor can show `0 4 * * 1-5` as "Mon 04:00, Tue 04:00, …".
 | `SENTINEL_AUTHRATELIMITPERMINUTE` | `10` | login/enroll attempts per IP |
 | `SENTINEL_BLOCKLISTSENABLED` | `true` | download public blocklists; `false` for air-gapped servers (own entries still work) |
 | `SENTINEL_BLOCKLISTREFRESHINTERVAL` | `4h` | per-list refetch while some policy uses it (1h–7d); failures back off from 5 min |
+| `SENTINEL_VULNDBENABLED` | `true` | mirror the Trivy/Grype databases agents ask for; `false` for air-gapped servers (place the files by hand, §5d) |
+| `SENTINEL_VULNDBREFRESHINTERVAL` | `12h` | how often a database in use is checked for a newer build (1h–7d); failures back off from 5 min |
+| `SENTINEL_TRIVYDBREPOSITORY` / `SENTINEL_GRYPEDBURL` | `ghcr.io/aquasecurity/trivy-db:2` / `https://grype.anchore.io/databases` | upstream sources (e.g. `mirror.gcr.io/aquasec/trivy-db:2`, or your own mirror) |
 | `SENTINEL_ALERTDEDUPWINDOW` / `SENTINEL_ALERTBURST` | `1h` / `1` | alert dedup: per host and dedup key, `burst` notifications per window (§5a) |
 | `SENTINEL_THREATFEEDENABLED` | `true` | fetch NVD, CISA KEV and news RSS (§5) |
 | `SENTINEL_THREATFEEDINTERVAL` | `20m` | per-source refetch after a success (5m–1d) |
@@ -343,6 +354,44 @@ server is unreachable. The server stores the latest report per host and kind, pl
   `updates.applied` / `updates.failed` after an install, and `updates.reboot-required`. They go through the normal
   alert pipeline (§5a).
 
+## 5d. Vulnerability scans (Trivy / Grype)
+
+Code: `src/Sentinel.Core/Vulnerabilities/`, `src/Sentinel.Server/Services/Vulnerabilities/`, `src/Sentinel.Server/Endpoints/VulnerabilityEndpoints.cs`.
+Policy: `vulnerabilities: {scanSchedule, scanner, languagePackages, ignorePackages, ignore, alertSeverity}`.
+
+* **Scanners are adopted, not bundled.** Neither Trivy nor Grype is in the Debian, Ubuntu or RHEL repositories, and the
+  spec forbids vendored binaries. So the agent uses whichever one the admin installed from its vendor's package
+  repository (Trivy preferred with `scanner: auto`), and installs one itself only where the distribution ships it
+  (Alpine's `trivy`, at most one attempt a day). A host without a scanner reports the tool as *disabled*, not as a
+  problem, and the host's CVEs tab shows the copy-paste repository setup.
+* **Databases come from the server.** Agents never contact Aqua or Anchore. The first time an agent asks
+  (`GET /api/agent/vulndb/{scanner}`), the server pulls the database: Trivy's is the OCI artifact
+  `ghcr.io/aquasecurity/trivy-db:2` (one `db.tar.gz` layer, ~130 MB, anonymous registry token); Grype's is named by
+  `{url}/v6/latest.json` (~190 MB `.tar.zst`). Each download is verified against the upstream sha256, which then serves
+  as the ETag, so the nightly agent check is usually a 304. The agent waits (up to 20 min, honoring `Retry-After`) for
+  the first mirror instead of failing. Databases nobody asked for in 7 days stop being refreshed. With
+  `SENTINEL_VULNDBENABLED=false`, an admin places `data/vulndb/trivy/db.tar.gz` or `data/vulndb/grype/db.tar.zst` by
+  hand; the server hashes it and serves it.
+* **Scanning** runs offline at low CPU priority: `trivy rootfs --skip-db-update --offline-scan --scanners vuln
+  --list-all-pkgs=false --format json /` against the documented air-gapped layout (`{state}/vulndb/trivy/db/trivy.db`),
+  or `grype db import` followed by `grype dir:/ -o json` with auto-update, update checks and age validation off.
+  Pseudo-filesystems, caches, container storage and the agent's own state are skipped. Java archives are skipped too,
+  because they need Trivy's separate ~900 MB Java database, which isn't mirrored. A scan of this repo's dev container
+  (Ubuntu 26.04 with .NET, Node and Go tooling) takes about 35 s.
+* **Normalization:** both JSON formats map to one finding shape (id, package, installed, fixed, severity, CVSS, fix
+  state, package type, path). Grype's GHSA/ALSA ids are mapped to their CVE where it names one, so hosts and the threat
+  feed line up. `ignorePackages` defaults to `linux-libc-dev`: distributions track every kernel CVE against the kernel
+  *headers* package (3151 of 3741 findings on a stock Ubuntu 26.04), though no kernel code runs from it. Dropped
+  findings are counted and shown. Reports carry at most 15,000 findings, least severe dropped first.
+* **Server side:** findings are stored per host (`HostVulnerabilities`, replaced per scan, `FirstSeenAt` kept); a failed
+  scan keeps the last good set. Accepted CVEs (`vulnerabilities.ignore`, a union across layers) are applied by the server,
+  and re-applied whenever a policy layer is saved, so "Accept risk" in the dashboard takes effect without a rescan. Counts
+  are per distinct CVE.
+* **Alerts:** the agent raises `vulnerabilities.found` once per newly appearing *fixable* finding at or above
+  `alertSeverity` (default `high`): an alert should come with something to do. The server raises
+  `vulnerabilities.exploited` (Critical) when a host has a CVE in CISA's KEV catalog, which it already mirrors for the
+  threat feed: at scan time for new findings, and when CISA adds a CVE that hosts already have.
+
 ## 6. Security model
 
 | Secret | At rest |
@@ -380,6 +429,11 @@ allowlist, and the operator's own address.
 * **Update checks and installs.** unattended-upgrades and dnf-automatic install updates, but neither reports to a
   central place or can be triggered remotely. The agent adds only the scheduling and the report. Installing is still
   done by `unattended-upgrade` (or `dnf`/`apk`), and counting reads the package manager's own simulation output.
+* **Vulnerability database mirror.** Trivy and Grype can each be pointed at a mirror, but that needs a registry or a web
+  server with their exact layout, and both would still check the vendor for updates. The server downloads each database
+  once, verifies its checksum and serves it over the agents' authenticated channel (about 200 lines). The agent hands it
+  to the scanner's own documented air-gapped mechanisms (`--skip-db-update` with the cache layout, `grype db import`).
+  Scanning and matching remain entirely the scanners' work.
 * **Ban snapshots and manual-ban jail.** These use fail2ban's own mechanisms (`banip`, jail DB). We add no
   firewall code for banning.
 * **Security baseline.** About twenty checks that matter most on an internet-facing server (SSH, firewall,

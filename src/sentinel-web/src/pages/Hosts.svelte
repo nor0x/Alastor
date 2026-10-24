@@ -9,9 +9,10 @@
   import { confirm } from '../lib/ui/confirm.svelte';
   import Meter from '../lib/ui/Meter.svelte';
   import UpdatesBadge from '../lib/ui/UpdatesBadge.svelte';
+  import VulnBadge from '../lib/ui/VulnBadge.svelte';
   import Time from '../lib/ui/Time.svelte';
 
-  type Filter = '' | 'online' | 'offline' | 'problems' | 'pending' | 'baseline' | 'updates' | 'reboot';
+  type Filter = '' | 'online' | 'offline' | 'problems' | 'pending' | 'baseline' | 'updates' | 'reboot' | 'cves';
 
   const params = new URLSearchParams(route.search);
   let q = $state(params.get('q') ?? '');
@@ -45,6 +46,7 @@
         case 'baseline': return h.baselineFailing > 0;
         case 'updates': return (h.securityUpdates ?? h.pendingUpdates ?? 0) > 0;
         case 'reboot': return h.rebootRequired;
+        case 'cves': return (h.vulnCritical ?? 0) + (h.vulnHigh ?? 0) > 0;
         default: return true;
       }
     }),
@@ -86,6 +88,7 @@
     <option value="baseline">Failing baseline checks</option>
     <option value="updates">Security updates pending</option>
     <option value="reboot">Reboot required</option>
+    <option value="cves">Critical or high CVEs</option>
   </select>
   {#if filter === 'updates' && shown.length && canWrite()}
     <button class="btn primary" onclick={installShown}>Install on {shown.length} host{shown.length === 1 ? '' : 's'}</button>
@@ -124,6 +127,7 @@
           <th>Policy</th>
           <th class="num hide-sm" title="Security baseline score">Baseline</th>
           <th class="hide-sm">Updates</th>
+          <th class="hide-sm">CVEs</th>
           <th class="hide-sm">Last seen</th>
         </tr>
       </thead>
@@ -164,6 +168,10 @@
             <td class="hide-sm nowrap">
               {#if h.pendingUpdates !== null}<a href="/hosts/{h.id}?tab=updates"><UpdatesBadge pending={h.pendingUpdates} security={h.securityUpdates} /></a>
                 {#if h.rebootRequired}<span class="pill warn" title="Reboot required">↻</span>{/if}
+              {:else}<span class="muted">—</span>{/if}
+            </td>
+            <td class="hide-sm nowrap">
+              {#if h.vulnTotal !== null}<a href="/hosts/{h.id}?tab=vulnerabilities"><VulnBadge critical={h.vulnCritical} high={h.vulnHigh} total={h.vulnTotal} /></a>
               {:else}<span class="muted">—</span>{/if}
             </td>
             <td class="hide-sm nowrap"><Time iso={h.lastSeenAt} /></td>

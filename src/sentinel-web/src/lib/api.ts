@@ -123,6 +123,10 @@ export interface HostSummary {
   pendingUpdates: number | null;
   securityUpdates: number | null;
   rebootRequired: boolean;
+  vulnCritical: number | null;
+  vulnHigh: number | null;
+  vulnTotal: number | null;
+  vulnFixable: number | null;
 }
 
 export interface ToolStatus {
@@ -402,6 +406,107 @@ export interface FleetUpdatesRow {
   lastAppliedAt: string | null;
   lastApplySucceeded: boolean | null;
   lastCheckError: string | null;
+}
+
+export type FixState = 'Fixable' | 'NoFix' | 'WontFix' | 'Unknown';
+
+export interface VulnFinding {
+  id: string;
+  package: string;
+  installed: string;
+  fixed: string | null;
+  severity: Severity;
+  cvss: number | null;
+  fix: FixState;
+  title: string | null;
+  pkgType: string;
+  path: string | null;
+  accepted: boolean;
+  kev: boolean;
+  ransomware: boolean;
+  firstSeenAt: string;
+}
+
+export interface HostVulnerabilities {
+  hostId: string;
+  hostName: string;
+  scanner: {
+    setting: string;
+    active: string | null;
+    version: string | null;
+    availability: Availability | null;
+    reason: string | null;
+    languagePackages: boolean;
+    ignorePackages: string[];
+    alertSeverity: string;
+  };
+  os: string | null;
+  dbUpdatedAt: string | null;
+  ignored: Record<string, number>;
+  truncated: boolean;
+  scannedAt: string | null;
+  lastScanSucceeded: boolean | null;
+  lastScanError: string | null;
+  lastAttemptAt: string | null;
+  schedule: { key: string; value: string; isDefault: boolean };
+  findings: VulnFinding[];
+}
+
+export interface VulnDbStatus {
+  scanner: string;
+  available: boolean;
+  downloadsEnabled: boolean;
+  etag: string | null;
+  builtAt: string | null;
+  fetchedAt: string | null;
+  size: number;
+  lastCheckedAt: string | null;
+  lastError: string | null;
+  lastRequestedAt: string | null;
+  source: string;
+}
+
+export interface FleetCve {
+  id: string;
+  severity: Severity;
+  cvss: number | null;
+  title: string | null;
+  kev: boolean;
+  ransomware: boolean;
+  fixable: boolean;
+  hostCount: number;
+  packages: string[];
+  hosts: { id: string; name: string }[];
+}
+
+export interface FleetVulnHost {
+  hostId: string;
+  name: string;
+  online: boolean;
+  groupName: string | null;
+  critical: number | null;
+  high: number | null;
+  total: number | null;
+  fixable: number | null;
+  kev: number;
+  scannedAt: string | null;
+  scanner: string | null;
+  error: string | null;
+  availability: Availability | null;
+}
+
+export interface FleetVulnerabilities {
+  cves: FleetCve[];
+  totalCves: number;
+  hosts: FleetVulnHost[];
+  databases: VulnDbStatus[];
+}
+
+/** NVD for CVEs, GitHub for GHSA advisories, OSV for distro advisories (ALSA, DSA, …). */
+export function vulnUrl(id: string): string {
+  if (id.startsWith('CVE-')) return `https://nvd.nist.gov/vuln/detail/${id}`;
+  if (id.startsWith('GHSA-')) return `https://github.com/advisories/${id}`;
+  return `https://osv.dev/vulnerability/${encodeURIComponent(id)}`;
 }
 
 export interface BlocklistList {

@@ -105,6 +105,39 @@ public sealed class ManagedHost
 
     public bool RebootRequired { get; set; }
     public DateTime? UpdatesCheckedAt { get; set; }
+
+    // Latest CVE scan, denormalized for list views (accepted risks excluded). Null until a scan succeeds.
+    public int? VulnCritical { get; set; }
+    public int? VulnHigh { get; set; }
+    public int? VulnTotal { get; set; }
+
+    /// <summary>Findings a package update fixes.</summary>
+    public int? VulnFixable { get; set; }
+
+    public DateTime? VulnScannedAt { get; set; }
+}
+
+/// <summary>One CVE in one installed package on one host, from the latest successful scan. Replaced as a set per scan.</summary>
+public sealed class HostVulnerability
+{
+    public long Id { get; set; }
+    public Guid HostId { get; set; }
+    public required string VulnId { get; set; }
+    public required string Package { get; set; }
+    public string Installed { get; set; } = "";
+    public string? Fixed { get; set; }
+    public Severity Severity { get; set; }
+    public double? Cvss { get; set; }
+    public Sentinel.Core.Vulnerabilities.FixState Fix { get; set; }
+    public string? Title { get; set; }
+    public string PkgType { get; set; } = "";
+    public string? Path { get; set; }
+
+    /// <summary>Listed in the host's effective <c>vulnerabilities.ignore</c>. Refreshed when policy changes.</summary>
+    public bool Accepted { get; set; }
+
+    /// <summary>First scan that reported this (id, package, path) on the host. Kept across scans.</summary>
+    public DateTime FirstSeenAt { get; set; }
 }
 
 /// <summary>The latest report of one kind (updates, vulnerabilities, hardening, …) from one host's scheduled jobs, as JSON.</summary>

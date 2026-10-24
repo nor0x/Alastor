@@ -15,6 +15,7 @@ using Sentinel.Server.Services;
 using Sentinel.Server.Services.Alerts;
 using Sentinel.Server.Services.ThreatFeed;
 using Sentinel.Server.Services.Blocklists;
+using Sentinel.Server.Services.Vulnerabilities;
 using Sentinel.Server.Workers;
 using Serilog;
 
@@ -128,6 +129,14 @@ builder.Services.AddHttpClient(BlocklistService.HttpClientName, c =>
     c.DefaultRequestHeaders.UserAgent.ParseAdd($"SentinelVPS/{typeof(Program).Assembly.GetName().Version?.ToString(3) ?? "dev"} (self-hosted; blocklists)");
 }).ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler { AutomaticDecompression = System.Net.DecompressionMethods.All });
 if (options.BlocklistsEnabled) builder.Services.AddHostedService<BlocklistWorker>();
+builder.Services.AddSingleton<VulnDbMirror>();
+builder.Services.AddScoped<VulnerabilityService>();
+builder.Services.AddHttpClient(VulnDbMirror.HttpClientName, c =>
+{
+    c.Timeout = Timeout.InfiniteTimeSpan; // 100-200 MB archives; each request is bounded by the worker's token
+    c.DefaultRequestHeaders.UserAgent.ParseAdd($"SentinelVPS/{typeof(Program).Assembly.GetName().Version?.ToString(3) ?? "dev"} (self-hosted; vulnerability db mirror)");
+});
+if (options.VulnDbEnabled) builder.Services.AddHostedService<VulnDbWorker>();
 
 var app = builder.Build();
 
@@ -136,7 +145,9 @@ await Bootstrap.RunAsync(app.Services);
 app.UseForwardedHeaders();
 app.UseExceptionHandler();
 app.UseSerilogRequestLogging(o => o.GetLevel = (ctx, _, ex) =>
-    ex is not null || ctx.Response.StatusCode >= 500 ? Serilog.Events.LogEventLevel.Error
+    // A 503 with Retry-After is a planned "not yet" (vulnerability database still mirroring), not a failure.
+    ex is null && ctx.Response.StatusCode == 503 && ctx.Response.Headers.RetryAfter.Count > 0 ? Serilog.Events.LogEventLevel.Debug
+    : ex is not null || ctx.Response.StatusCode >= 500 ? Serilog.Events.LogEventLevel.Error
     : ctx.Request.Path.StartsWithSegments("/api/agent") ? Serilog.Events.LogEventLevel.Verbose
     : Serilog.Events.LogEventLevel.Debug);
 
@@ -173,6 +184,7 @@ app.MapFeedEndpoints();
 app.MapNotificationEndpoints();
 app.MapBlocklistEndpoints();
 app.MapReportEndpoints();
+app.MapVulnerabilityEndpoints();
 app.MapHub<AgentHub>("/hubs/agent");
 app.MapHub<DashboardHub>("/hubs/dashboard");
 app.MapInstallScripts();

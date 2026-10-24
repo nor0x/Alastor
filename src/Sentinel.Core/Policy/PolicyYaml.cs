@@ -67,6 +67,7 @@ public static partial class PolicyYaml
             if (b.Jails is not null) b.Jails = b.Jails.OrderBy(kv => kv.Key, StringComparer.Ordinal).ToDictionary(StringComparer.Ordinal);
             if (b.Allowlist is not null) b.Allowlist = b.Allowlist.Order(StringComparer.Ordinal).ToList();
         }
+        if (canonical.Vulnerabilities?.Ignore is { } vi) canonical.Vulnerabilities.Ignore = vi.Order(StringComparer.OrdinalIgnoreCase).ToList();
         if (canonical.Blocklists?.Extra is { } extra) canonical.Blocklists.Extra = extra.Order(StringComparer.Ordinal).ToList();
         if (canonical.Baseline?.Mitigations is { } m)
             canonical.Baseline.Mitigations = m.OrderBy(kv => kv.Key, StringComparer.Ordinal).ToDictionary(StringComparer.Ordinal);
@@ -123,6 +124,19 @@ public static partial class PolicyYaml
             }
             if (bl.Enabled == true && (bl.Lists ?? []).Count == 0 && (bl.Extra ?? []).Count == 0)
                 Warn("blocklists", "Blocklists are enabled but no list and no extra entry is set, so nothing is blocked.");
+        }
+        if (doc.Vulnerabilities is { } vp)
+        {
+            if (vp.Scanner is { } sc && sc is not ("auto" or "trivy" or "grype" or "off"))
+                Error("vulnerabilities.scanner", "Use 'auto' (Trivy if installed, else Grype), 'trivy', 'grype' or 'off'.");
+            if (vp.AlertSeverity is { } sev && sev is not ("low" or "medium" or "high" or "critical" or "off"))
+                Error("vulnerabilities.alertSeverity", "Use 'low', 'medium', 'high', 'critical' or 'off'.");
+            foreach (var (id, i) in (vp.Ignore ?? []).Select((id, i) => (id, i)))
+                if (!System.Text.RegularExpressions.Regex.IsMatch(id, @"^[A-Za-z][A-Za-z0-9]*-[A-Za-z0-9][A-Za-z0-9:._-]{2,63}$"))
+                    Error($"vulnerabilities.ignore[{i}]", $"'{id}' doesn't look like a vulnerability id (CVE-2024-1234, GHSA-xxxx-xxxx-xxxx).");
+            foreach (var (pkg, i) in (vp.IgnorePackages ?? []).Select((p, i) => (p, i)))
+                if (string.IsNullOrWhiteSpace(pkg) || pkg.Length > 200)
+                    Error($"vulnerabilities.ignorePackages[{i}]", "Package names must be non-empty.");
         }
         foreach (var (id, value) in doc.Baseline?.Mitigations ?? [])
         {

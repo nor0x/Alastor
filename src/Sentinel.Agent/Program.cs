@@ -1,6 +1,7 @@
 using Sentinel.Core.Baseline;
 using Sentinel.Core.Blocklists;
 using Sentinel.Core.Updates;
+using Sentinel.Core.Vulnerabilities;
 using Microsoft.Extensions.Logging.Abstractions;
 using Sentinel.Agent;
 using Sentinel.Core.Contracts;
@@ -71,6 +72,7 @@ builder.Services.AddSingleton<IToolIntegration>(sp => platform.CreateFail2Ban(sp
 builder.Services.AddSingleton<IToolIntegration>(sp => platform.CreateBaseline(sp.GetRequiredService<ILogger<BaselineIntegration>>()));
 builder.Services.AddSingleton<IToolIntegration>(sp => platform.CreateBlocklist(sp.GetRequiredService<ILogger<BlocklistIntegration>>()));
 builder.Services.AddSingleton<IToolIntegration>(sp => platform.CreateUpdates(sp.GetRequiredService<ILogger<UpdatesIntegration>>()));
+builder.Services.AddSingleton<IToolIntegration>(sp => platform.CreateVulnerabilities(sp.GetRequiredService<ServerClient>(), sp.GetRequiredService<ILogger<VulnerabilityIntegration>>()));
 builder.Services.AddSingleton<Supervisor>();
 builder.Services.AddHostedService(sp => sp.GetRequiredService<Supervisor>());
 builder.Services.AddHostedService<HubListener>();
@@ -144,6 +146,7 @@ async Task<int> UninstallAsync()
         platform.CreateFail2Ban(NullLogger<Fail2BanIntegration>.Instance),
         platform.CreateBaseline(NullLogger<BaselineIntegration>.Instance),
         platform.CreateBlocklist(NullLogger<BlocklistIntegration>.Instance),
+        platform.CreateVulnerabilities(null, NullLogger<VulnerabilityIntegration>.Instance),
     ];
     foreach (var t in tools)
     {
@@ -167,6 +170,17 @@ internal sealed record PlatformServices(OsInfo Os, ICommandRunner Runner, IFileS
 
     public UpdatesIntegration CreateUpdates(ILogger<UpdatesIntegration> logger) =>
         new(Runner, Fs, PackageManagers.For(Os.Family, Runner), State, Os, logger, TimeProvider.System);
+
+    public VulnerabilityIntegration CreateVulnerabilities(IVulnDbSource? dbSource, ILogger<VulnerabilityIntegration> logger) =>
+        new(Runner, PackageManagers.For(Os.Family, Runner), State, Os, StateDir, dbSource ?? NoVulnDb.Instance, logger, TimeProvider.System);
+
+    /// <summary>For CLI subcommands (uninstall) that never scan.</summary>
+    private sealed class NoVulnDb : IVulnDbSource
+    {
+        public static readonly NoVulnDb Instance = new();
+        public Task<VulnDbFetch> FetchAsync(string scanner, string? etag, string destinationPath, CancellationToken ct) =>
+            Task.FromResult(new VulnDbFetch(VulnDbFetchStatus.Unavailable));
+    }
 
     public BlocklistIntegration CreateBlocklist(ILogger<BlocklistIntegration> logger) =>
         new(Runner, Fs, PackageManagers.For(Os.Family, Runner), State, StateDir, logger, TimeProvider.System);

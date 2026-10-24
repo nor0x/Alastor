@@ -82,10 +82,26 @@ public sealed class UpdatesPolicy
     public string? ApplySchedule { get; set; }
 }
 
+/// <summary>CVE scans of the installed packages with Trivy or Grype, against a vulnerability database the server mirrors.</summary>
 public sealed class VulnerabilitiesPolicy
 {
     /// <summary>Trivy/Grype scan of the package inventory.</summary>
     public string? ScanSchedule { get; set; }
+
+    /// <summary><c>auto</c> (Trivy if installed, else Grype), <c>trivy</c>, <c>grype</c>, or <c>off</c>.</summary>
+    public string? Scanner { get; set; }
+
+    /// <summary>Also scan language packages the scanner finds on disk (npm, pip, gems, Go binaries, jars), not only OS packages.</summary>
+    public bool? LanguagePackages { get; set; }
+
+    /// <summary>Packages whose findings are dropped (counted, not listed). A layer that sets this replaces the lower layer's list.</summary>
+    public List<string>? IgnorePackages { get; set; }
+
+    /// <summary>CVE ids accepted as risks: still listed, not counted or alerted. Merged as a union across layers.</summary>
+    public List<string>? Ignore { get; set; }
+
+    /// <summary>New fixable findings at or above this severity raise an alert: <c>low</c>, <c>medium</c>, <c>high</c>, <c>critical</c> or <c>off</c>.</summary>
+    public string? AlertSeverity { get; set; }
 }
 
 public sealed class HardeningPolicy

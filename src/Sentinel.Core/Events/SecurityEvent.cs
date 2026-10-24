@@ -113,6 +113,12 @@ public static class EventKinds
     public const string UpdatesFailed = "updates.failed";
     public const string RebootRequired = "updates.reboot-required";
 
+    // Vulnerabilities
+    /// <summary>A scan found new fixable vulnerabilities at or above <c>vulnerabilities.alertSeverity</c>.</summary>
+    public const string VulnerabilitiesFound = "vulnerabilities.found";
+    /// <summary>Raised by the server: a host has a CVE that is in CISA's Known Exploited Vulnerabilities catalog.</summary>
+    public const string VulnerabilitiesExploited = "vulnerabilities.exploited";
+
     // Reserved for later deliverables.
     public const string VulnerabilityFound = "vuln.found";
     public const string HardeningFinding = "hardening.finding";

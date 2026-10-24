@@ -26,6 +26,7 @@ public sealed class ThreatFeedService(
     IOptions<SentinelOptions> options,
     TimeProvider time,
     DashboardNotifier notifier,
+    Vulnerabilities.VulnerabilityService vulnerabilities,
     ILogger<ThreatFeedService> logger)
 {
     public const string HttpClientName = "threat-feed";
@@ -208,6 +209,8 @@ public sealed class ThreatFeedService(
         foreach (var item in news) item.Exploited = item.CveIds.Any(byId.ContainsKey);
 
         await db.SaveChangesAsync(ct);
+        // Hosts that already have a CVE CISA just added hear about it now, not at their next scan.
+        if (stored.Count > 0) await vulnerabilities.OnKevAddedAsync(byId.Keys.Where(id => !stored.ContainsKey(id)).ToList(), ct);
         return new FetchResult(entries.Count, added);
     }
 

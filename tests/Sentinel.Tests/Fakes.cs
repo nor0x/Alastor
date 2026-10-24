@@ -10,6 +10,9 @@ public sealed class FakeCommandRunner : ICommandRunner
     public List<string> Calls { get; } = [];
     public HashSet<string> Installed { get; } = ["fail2ban-client"];
 
+    /// <summary>Consulted for commands without an exact match (long lines with temp paths); null means "unexpected".</summary>
+    public Func<string, IReadOnlyList<string>, CommandResult?>? Fallback { get; set; }
+
     public FakeCommandRunner On(string commandLine, string stdout, int exitCode = 0, string stderr = "")
     {
         _responses[commandLine] = () => new CommandResult(exitCode, stdout, stderr);
@@ -26,7 +29,8 @@ public sealed class FakeCommandRunner : ICommandRunner
     {
         var line = string.Join(' ', new[] { fileName }.Concat(args));
         Calls.Add(line);
-        return Task.FromResult(_responses.TryGetValue(line, out var r) ? r() : new CommandResult(127, "", $"unexpected command: {line}"));
+        return Task.FromResult(_responses.TryGetValue(line, out var r) ? r()
+            : Fallback?.Invoke(fileName, args) ?? new CommandResult(127, "", $"unexpected command: {line}"));
     }
 
     public string? Which(string fileName) => Installed.Contains(fileName) ? "/usr/bin/" + fileName : null;

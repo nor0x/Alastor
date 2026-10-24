@@ -186,3 +186,9 @@ h1, h2, h3 { color: var(--text-strong); }
 @media (max-width: 640px) {
   .table .hide-sm { display: none; }
 }
+
+/* Segmented toggle (By check / By host, By CVE / By host). */
+.seg { display: inline-flex; border: 1px solid var(--border-strong); border-radius: var(--radius); overflow: hidden; align-self: flex-start; }
+.seg button { padding: 4px 12px; border: 0; background: var(--bg); color: var(--muted); cursor: pointer; font-size: 13px; }
+.seg button + button { border-left: 1px solid var(--border-strong); }
+.seg button.on { background: var(--surface-2); color: var(--text-strong); }

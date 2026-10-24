@@ -80,6 +80,7 @@ public sealed record BlocklistListInfo(string Id, int Entries, DateTime? Updated
 public sealed record AgentReport(string JobId, DateTime StartedAtUtc, DateTime FinishedAtUtc, bool Success, string? Error)
 {
     public Sentinel.Core.Updates.UpdatesReport? Updates { get; init; }
+    public Sentinel.Core.Vulnerabilities.VulnScanReport? Vulnerabilities { get; init; }
 }
 
 public static class AgentCommandTypes

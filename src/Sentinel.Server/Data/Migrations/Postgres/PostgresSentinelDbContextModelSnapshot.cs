@@ -660,6 +660,76 @@ namespace Sentinel.Server.Data.Migrations.Postgres
                     b.ToTable("ToolStatuses");
                 });
 
+            modelBuilder.Entity("Sentinel.Server.Data.HostVulnerability", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<bool>("Accepted")
+                        .HasColumnType("boolean");
+
+                    b.Property<double?>("Cvss")
+                        .HasColumnType("double precision");
+
+                    b.Property<DateTime>("FirstSeenAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Fix")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.Property<string>("Fixed")
+                        .HasMaxLength(400)
+                        .HasColumnType("character varying(400)");
+
+                    b.Property<Guid>("HostId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Installed")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("Package")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("Path")
+                        .HasMaxLength(1024)
+                        .HasColumnType("character varying(1024)");
+
+                    b.Property<string>("PkgType")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.Property<int>("Severity")
+                        .HasMaxLength(32)
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Title")
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
+
+                    b.Property<string>("VulnId")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("HostId");
+
+                    b.HasIndex("VulnId");
+
+                    b.ToTable("Vulnerabilities");
+                });
+
             modelBuilder.Entity("Sentinel.Server.Data.KevEntry", b =>
                 {
                     b.Property<string>("CveId")
@@ -829,6 +899,21 @@ namespace Sentinel.Server.Data.Migrations.Postgres
 
                     b.Property<long>("UptimeSeconds")
                         .HasColumnType("bigint");
+
+                    b.Property<int?>("VulnCritical")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("VulnFixable")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("VulnHigh")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("VulnScannedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("VulnTotal")
+                        .HasColumnType("integer");
 
                     b.HasKey("Id");
 
@@ -1148,6 +1233,15 @@ namespace Sentinel.Server.Data.Migrations.Postgres
                 {
                     b.HasOne("Sentinel.Server.Data.ManagedHost", null)
                         .WithMany("Tools")
+                        .HasForeignKey("HostId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Sentinel.Server.Data.HostVulnerability", b =>
+                {
+                    b.HasOne("Sentinel.Server.Data.ManagedHost", null)
+                        .WithMany()
                         .HasForeignKey("HostId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();

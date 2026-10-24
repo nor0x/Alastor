@@ -90,11 +90,11 @@
       <span class="big">{data.hostsWithPendingSecurityUpdates ?? '—'}</span>
       <span class="foot muted">{data.hostsWithPendingSecurityUpdates === null ? 'not checked yet' : `host${data.hostsWithPendingSecurityUpdates === 1 ? '' : 's'} need updates`}</span>
     </a>
-    <div class="tile later" title="Arrives with the Trivy/Grype integration (deliverable 7)">
-      <span class="label">Hosts with CVSS ≥ 7</span>
+    <a class="tile" href="/vulnerabilities">
+      <span class="label">Critical &amp; high CVEs</span>
       <span class="big">{data.hostsWithHighCves ?? '—'}</span>
-      <span class="foot muted">{data.hostsWithHighCves === null ? 'not scanned yet' : 'hosts'}</span>
-    </div>
+      <span class="foot muted">{data.hostsWithHighCves === null ? 'not scanned yet' : `host${data.hostsWithHighCves === 1 ? '' : 's'} affected`}</span>
+    </a>
     <div class="tile later" title="Arrives with the Lynis integration (deliverable 8)">
       <span class="label">Hardening index</span>
       <span class="big">{data.averageHardeningIndex?.toFixed(0) ?? '—'}</span>

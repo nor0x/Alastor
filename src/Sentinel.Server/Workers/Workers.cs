@@ -154,3 +154,31 @@ public sealed class BlocklistWorker(IServiceScopeFactory scopes, TimeProvider ti
         } while (await timer.WaitForNextTickAsync(ct));
     }
 }
+
+/// <summary>Keeps the scanner databases agents use up to date, and fetches one right away when an agent first asks for it.</summary>
+public sealed class VulnDbWorker(Sentinel.Server.Services.Vulnerabilities.VulnDbMirror mirror, ILogger<VulnDbWorker> logger) : BackgroundService
+{
+    private static readonly TimeSpan CheckInterval = TimeSpan.FromMinutes(15);
+
+    protected override async Task ExecuteAsync(CancellationToken ct)
+    {
+        await Task.Yield();
+        while (!ct.IsCancellationRequested)
+        {
+            try
+            {
+                await mirror.RunDueAsync(ct);
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException) { logger.LogError(ex, "Vulnerability database refresh failed"); }
+
+            using var wait = CancellationTokenSource.CreateLinkedTokenSource(ct);
+            wait.CancelAfter(CheckInterval);
+            try
+            {
+                var scanner = await mirror.Requests.ReadAsync(wait.Token);
+                if (mirror.State(scanner).Etag is null) await mirror.RefreshAsync(scanner, ct);
+            }
+            catch (OperationCanceledException) when (!ct.IsCancellationRequested) { }
+        }
+    }
+}

@@ -16,10 +16,7 @@ public static class PolicyMerger
             CheckSchedule = overlay.Updates?.CheckSchedule ?? baseDoc.Updates?.CheckSchedule,
             ApplySchedule = overlay.Updates?.ApplySchedule ?? baseDoc.Updates?.ApplySchedule,
         },
-        Vulnerabilities = baseDoc.Vulnerabilities is null && overlay.Vulnerabilities is null ? null : new VulnerabilitiesPolicy
-        {
-            ScanSchedule = overlay.Vulnerabilities?.ScanSchedule ?? baseDoc.Vulnerabilities?.ScanSchedule,
-        },
+        Vulnerabilities = Merge(baseDoc.Vulnerabilities, overlay.Vulnerabilities),
         Hardening = baseDoc.Hardening is null && overlay.Hardening is null ? null : new HardeningPolicy
         {
             AuditSchedule = overlay.Hardening?.AuditSchedule ?? baseDoc.Hardening?.AuditSchedule,
@@ -30,6 +27,23 @@ public static class PolicyMerger
         },
         Baseline = Merge(baseDoc.Baseline, overlay.Baseline),
     };
+
+    private static VulnerabilitiesPolicy? Merge(VulnerabilitiesPolicy? b, VulnerabilitiesPolicy? o)
+    {
+        if (b is null && o is null) return null;
+        List<string>? ignore = null;
+        if (b?.Ignore is not null || o?.Ignore is not null)
+            ignore = (b?.Ignore ?? []).Concat(o?.Ignore ?? []).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+        return new VulnerabilitiesPolicy
+        {
+            ScanSchedule = o?.ScanSchedule ?? b?.ScanSchedule,
+            Scanner = o?.Scanner ?? b?.Scanner,
+            LanguagePackages = o?.LanguagePackages ?? b?.LanguagePackages,
+            IgnorePackages = (o?.IgnorePackages ?? b?.IgnorePackages)?.ToList(),
+            Ignore = ignore,
+            AlertSeverity = o?.AlertSeverity ?? b?.AlertSeverity,
+        };
+    }
 
     private static BaselinePolicy? Merge(BaselinePolicy? b, BaselinePolicy? o)
     {
