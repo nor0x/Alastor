@@ -123,7 +123,9 @@ Cookie-authenticated writes must also send `X-Sentinel-Request: 1` (CSRF guard o
 | `GET /api/hosts/{id}/metrics?hours=` | R | downsampled CPU/mem/disk/load history |
 | `GET /api/hosts/{id}/effective-policy` · `/commands` | R | merged YAML and revision · command history |
 | `PATCH /api/hosts/{id}` · `DELETE /api/hosts/{id}` | A | rename, group, tags · remove (revokes the agent) |
-| `POST /api/hosts/{id}/actions/{reconcile\|reclaim\|refresh-bans\|recheck}` | A | operator actions (`recheck` re-runs the security baseline) |
+| `POST /api/hosts/{id}/actions/{reconcile\|reclaim\|refresh-bans\|recheck\|check-updates\|apply-updates}` | A | operator actions (`recheck` re-runs the security baseline; the update actions queue a `run-job` command) |
+| `GET /api/hosts/{id}/updates` | R | pending packages (security first), reboot flag, last install with its log tail, effective update schedules |
+| `GET /api/updates` · `POST /api/updates/apply` `{hostIds}` | R · A | per-host update counts across the fleet · "install now" on several hosts |
 | `GET /api/baseline` · `GET /api/baseline/catalog` | R | fleet baseline: per-check pass/fail counts with failing hosts, per-host scores · check catalog |
 | `GET /api/hosts/{id}/baseline` | R | every baseline check merged with this host's result, copy-paste commands and the policy key that fixes it |
 | `GET/POST/PUT/DELETE /api/groups[/{id}]` | R/A | host groups |
@@ -151,6 +153,7 @@ Cookie-authenticated writes must also send `X-Sentinel-Request: 1` (CSRF guard o
 | `GET /api/agent/desired-state` | Ag | effective policy + revision |
 | `POST /api/agent/events` | Ag | batch of `SecurityEvent` (≤1000), idempotent |
 | `POST /api/agent/baseline` | Ag | one baseline run; the server replaces the host's result set and recomputes the score |
+| `POST /api/agent/reports` | Ag | result of a scheduled job (`AgentReport`: updates now, CVE scans and audits later); the server keeps the latest per host and kind |
 | `GET /api/agent/blocklist` | Ag | this host's merged blocklist as minimal CIDRs; `ETag`/`If-None-Match` (304), gzip |
 | `POST /api/agent/bans` | Ag | full ban snapshot per tool (server replaces that host's active set) |
 | `GET /api/agent/commands` · `POST /api/agent/commands/{id}/result` | Ag | pull pending commands · report outcome |
@@ -205,8 +208,8 @@ times, so the editor can show `0 4 * * 1-5` as "Mon 04:00, Tue 04:00, …".
 | `agent.offlineGracePeriod` | `24h` | any, or `permanent` | release server-pushed firewall state |
 | `blocklists.refreshSchedule` | `every 1h` | ≥1m | agent asks the server for a newer blocklist (conditional, usually a 304) |
 | `baseline.checkSchedule` | `every 1h` | ≥1m | security baseline checks; also run at agent start, after policy changes, and on "Re-check now" |
-| `updates.checkSchedule` | `every 6h` | ≥1m | pending security update count (D6) |
-| `updates.applySchedule` | `off` | ≥1m | auto-apply security updates (D6) |
+| `updates.checkSchedule` | `every 6h` | ≥1m | refresh package lists and count pending (security) updates; also at agent start and on "Check now" |
+| `updates.applySchedule` | `off` | ≥1m | install security updates automatically, e.g. `0 4 * * *`; `off` = report only plus "Install now" |
 | `vulnerabilities.scanSchedule` | `0 3 * * *` | ≥1m | Trivy/Grype (D7) |
 | `hardening.auditSchedule` | `0 5 * * 0` | ≥1m | Lynis (D8) |
 | `malware.scanSchedule` | `off` | ≥1m | ClamAV, opt-in (D10) |
@@ -316,6 +319,30 @@ Code: `src/Sentinel.Core/Blocklists/` (catalog, parser, agent enforcement), `src
    contact (restored on reconnect). Containers and LXC/OpenVZ plans usually refuse firewall changes; the agent reports
    that once as `config.rejected` with an explanation, and the dashboard shows the host as *refused*.
 
+## 5c. Security updates
+
+Code: `src/Sentinel.Core/Updates/`, `src/Sentinel.Core/Integrations/ScheduledJobs.cs`, `src/Sentinel.Server/Endpoints/ReportEndpoints.cs`.
+
+Updates are the first user of the agent's **scheduled-job** framework, which CVE scans, Lynis audits and ClamAV
+reuse: an integration exposes `ScheduledJob`s, each tied to a policy schedule key. The supervisor runs a job when it
+is due (with the per-host spread), at first start if the job asks for it, or on a `run-job` command from the
+dashboard. The result goes to `POST /api/agent/reports` as an `AgentReport`, retried from a small outbox if the
+server is unreachable. The server stores the latest report per host and kind, plus summary columns for list views.
+
+* **Check (`updates.check`)** asks the host's own package manager, with no output scraping beyond its documented
+  formats: apt `apt-get update` then `apt-get -s dist-upgrade` (the `Inst` lines carry the origin, so packages
+  from a `-security` pocket are marked as security updates), plus `/var/run/reboot-required(.pkgs)`; dnf
+  `check-update` and `check-update --security` (exit code 100 = updates available), plus `needs-restarting -r`;
+  apk `list --upgradable`. Alpine doesn't mark security updates, so every pending update counts as a possible one there.
+* **Install (`updates.apply`)**, on `updates.applySchedule` or "Install now": Debian/Ubuntu run `unattended-upgrade`,
+  so its configured origins, blacklist and dpkg conffile handling apply exactly as they would from its own timer.
+  If it isn't installed (and `autoInstall` is off), the fallback is `apt-get install --only-upgrade` of the security
+  packages only, keeping existing config files. RHEL family runs `dnf upgrade --security`, Alpine runs `apk upgrade`.
+  The agent never reboots. It reports `updates.reboot-required` once, and the dashboard shows it.
+* **Events:** `updates.pending` when the set of pending security updates changes (not on every check),
+  `updates.applied` / `updates.failed` after an install, and `updates.reboot-required`. They go through the normal
+  alert pipeline (§5a).
+
 ## 6. Security model
 
 | Secret | At rest |
@@ -350,6 +377,9 @@ allowlist, and the operator's own address.
   hands the result to `nft -f` / `ipset restore`, the tools' own bulk loaders.
 * **Alert channels.** Email goes through MailKit; webhook and ntfy are one HTTP POST each. A notification router such as
   Apprise would add a Python runtime to the server for three transports.
+* **Update checks and installs.** unattended-upgrades and dnf-automatic install updates, but neither reports to a
+  central place or can be triggered remotely. The agent adds only the scheduling and the report. Installing is still
+  done by `unattended-upgrade` (or `dnf`/`apk`), and counting reads the package manager's own simulation output.
 * **Ban snapshots and manual-ban jail.** These use fail2ban's own mechanisms (`banip`, jail DB). We add no
   firewall code for banning.
 * **Security baseline.** About twenty checks that matter most on an internet-facing server (SSH, firewall,

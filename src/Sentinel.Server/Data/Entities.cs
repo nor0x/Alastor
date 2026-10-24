@@ -96,6 +96,29 @@ public sealed class ManagedHost
     public int? BaselineScore { get; set; }
     public DateTime? BaselineCheckedAt { get; set; }
     public string? BaselineRevision { get; set; }
+
+    // Latest update check, denormalized for list views. Null until the agent reports one.
+    public int? PendingUpdates { get; set; }
+
+    /// <summary>Null when the distribution doesn't mark security updates (Alpine).</summary>
+    public int? SecurityUpdates { get; set; }
+
+    public bool RebootRequired { get; set; }
+    public DateTime? UpdatesCheckedAt { get; set; }
+}
+
+/// <summary>The latest report of one kind (updates, vulnerabilities, hardening, …) from one host's scheduled jobs, as JSON.</summary>
+public sealed class HostReport
+{
+    public Guid HostId { get; set; }
+    public required string Kind { get; set; }
+    public required string JobId { get; set; }
+    public bool Success { get; set; }
+    public string? Error { get; set; }
+    public DateTime StartedAt { get; set; }
+    public DateTime FinishedAt { get; set; }
+    public DateTime ReceivedAt { get; set; }
+    public required string Json { get; set; }
 }
 
 /// <summary>The latest result of one security baseline check on one host. Replaced as a set on every agent report.</summary>

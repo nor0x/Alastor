@@ -1,5 +1,6 @@
 using Sentinel.Core.Baseline;
 using Sentinel.Core.Blocklists;
+using Sentinel.Core.Updates;
 using Microsoft.Extensions.Logging.Abstractions;
 using Sentinel.Agent;
 using Sentinel.Core.Contracts;
@@ -69,6 +70,7 @@ builder.Services.AddSingleton<HostMetricsCollector>();
 builder.Services.AddSingleton<IToolIntegration>(sp => platform.CreateFail2Ban(sp.GetRequiredService<ILogger<Fail2BanIntegration>>()));
 builder.Services.AddSingleton<IToolIntegration>(sp => platform.CreateBaseline(sp.GetRequiredService<ILogger<BaselineIntegration>>()));
 builder.Services.AddSingleton<IToolIntegration>(sp => platform.CreateBlocklist(sp.GetRequiredService<ILogger<BlocklistIntegration>>()));
+builder.Services.AddSingleton<IToolIntegration>(sp => platform.CreateUpdates(sp.GetRequiredService<ILogger<UpdatesIntegration>>()));
 builder.Services.AddSingleton<Supervisor>();
 builder.Services.AddHostedService(sp => sp.GetRequiredService<Supervisor>());
 builder.Services.AddHostedService<HubListener>();
@@ -162,6 +164,9 @@ internal sealed record PlatformServices(OsInfo Os, ICommandRunner Runner, IFileS
         var fs = new PhysicalFileSystem();
         return new PlatformServices(await OsInfo.DetectAsync(fs), new ProcessCommandRunner(), fs, new JsonFileStateStore(stateDir), stateDir);
     }
+
+    public UpdatesIntegration CreateUpdates(ILogger<UpdatesIntegration> logger) =>
+        new(Runner, Fs, PackageManagers.For(Os.Family, Runner), State, Os, logger, TimeProvider.System);
 
     public BlocklistIntegration CreateBlocklist(ILogger<BlocklistIntegration> logger) =>
         new(Runner, Fs, PackageManagers.For(Os.Family, Runner), State, StateDir, logger, TimeProvider.System);

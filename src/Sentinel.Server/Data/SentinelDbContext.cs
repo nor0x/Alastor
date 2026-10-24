@@ -31,6 +31,7 @@ public abstract class SentinelDbContext(DbContextOptions options) : DbContext(op
     public DbSet<KevEntry> KevEntries => Set<KevEntry>();
     public DbSet<FeedSourceState> FeedSources => Set<FeedSourceState>();
     public DbSet<BlocklistSourceState> BlocklistSources => Set<BlocklistSourceState>();
+    public DbSet<HostReport> HostReports => Set<HostReport>();
     public DbSet<NotificationChannel> NotificationChannels => Set<NotificationChannel>();
     public DbSet<AlertBucket> AlertBuckets => Set<AlertBucket>();
     public DbSet<NotificationDelivery> NotificationDeliveries => Set<NotificationDelivery>();
@@ -62,6 +63,14 @@ public abstract class SentinelDbContext(DbContextOptions options) : DbContext(op
         });
 
         m.Entity<HostToolStatus>().HasKey(t => new { t.HostId, t.ToolId });
+
+        m.Entity<HostReport>(e =>
+        {
+            e.HasKey(r => new { r.HostId, r.Kind });
+            e.Property(r => r.Kind).HasMaxLength(32);
+            e.Property(r => r.JobId).HasMaxLength(64);
+            e.HasOne<ManagedHost>().WithMany().HasForeignKey(r => r.HostId).OnDelete(DeleteBehavior.Cascade);
+        });
 
         m.Entity<HostBaselineCheck>(e =>
         {

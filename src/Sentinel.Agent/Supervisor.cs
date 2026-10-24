@@ -52,6 +52,9 @@ public sealed class Supervisor(
     private bool _baselineDirty = true;
     private BaselineReport? _pendingBaseline;
     private DateTime? _lastBlocklistFetch;
+    private readonly Channel<string> _jobRequests = Channel.CreateBounded<string>(new BoundedChannelOptions(16) { FullMode = BoundedChannelFullMode.DropOldest });
+    private readonly ConcurrentQueue<AgentReport> _pendingReports = new();
+    private readonly ConcurrentDictionary<string, bool> _runningJobs = new();
 
     /// <summary>Called by the SignalR listener. Wakes the main loop without waiting for the next interval.</summary>
     public void Wake(string reason) => _wake.Writer.TryWrite(reason);
@@ -60,6 +63,7 @@ public sealed class Supervisor(
     {
         _lastServerContact = time.GetUtcNow().UtcDateTime;
         var pump = Task.Run(() => EventPumpAsync(ct), ct);
+        var jobs = Task.Run(() => JobLoopAsync(ct), ct);
         string? forced = "startup";
         while (!ct.IsCancellationRequested)
         {
@@ -84,6 +88,7 @@ public sealed class Supervisor(
             forced = await WaitForWakeAsync(Timings.HeartbeatInterval, ct);
         }
         await pump;
+        await jobs;
     }
 
     private async Task<string?> WaitForWakeAsync(TimeSpan interval, CancellationToken ct)
@@ -352,6 +357,13 @@ public sealed class Supervisor(
                 return new(_lastReport?.Success ?? false, $"Reclaimed managed files at revision {_lastReport?.Revision}");
             case AgentCommandTypes.RefreshBans:
                 return new(true, "Ban list refreshed");
+            case AgentCommandTypes.RunJob:
+                var jobId = cmd.Payload.GetValueOrDefault("job") ?? "";
+                var job = AllJobs().FirstOrDefault(j => j.Id == jobId);
+                if (job is null) return new(false, $"Unknown job '{jobId}' (agent {AgentInfo.Version})");
+                if (_runningJobs.ContainsKey(jobId)) return new(true, $"{job.DisplayName} is already running");
+                _jobRequests.Writer.TryWrite(jobId);
+                return new(true, $"{job.DisplayName} started; the result follows as a report");
             case AgentCommandTypes.BaselineCheck:
                 await RunBaselineIfDueAsync(force: true, ct);
                 return new(true, "Baseline checks ran");
@@ -362,6 +374,89 @@ public sealed class Supervisor(
 
     private IBanProvider? ActiveBanProvider() =>
         _tools.Where(t => _policy is not null && t.IsWanted(_policy)).OfType<IBanProvider>().FirstOrDefault();
+
+    // ---- scheduled jobs (update checks, scans, audits) ----
+
+    private IEnumerable<ScheduledJob> AllJobs() => _tools.OfType<IScheduledJobProvider>().SelectMany(p => p.Jobs);
+
+    /// <summary>
+    /// Runs scheduled jobs off the heartbeat loop: each on its policy schedule (per-host spread), once on first start
+    /// if it asks for that, and right away when the dashboard asks. Reports that can't be delivered are retried.
+    /// </summary>
+    private async Task JobLoopAsync(CancellationToken ct)
+    {
+        var started = time.GetUtcNow().UtcDateTime;
+        while (!ct.IsCancellationRequested)
+        {
+            string? forced = null;
+            using (var wait = CancellationTokenSource.CreateLinkedTokenSource(ct))
+            {
+                wait.CancelAfter(TimeSpan.FromSeconds(30));
+                try { forced = await _jobRequests.Reader.ReadAsync(wait.Token); }
+                catch (OperationCanceledException) when (!ct.IsCancellationRequested) { }
+            }
+            try
+            {
+                if (_policy is { } policy)
+                {
+                    var now = time.GetUtcNow().UtcDateTime;
+                    var spread = Schedule.HostSpread(Environment.MachineName, Timings.ScheduleSpread);
+                    foreach (var job in AllJobs())
+                    {
+                        var lastRun = DateTime.TryParse(state.Get($"job.{job.Id}.lastRunUtc"), System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.RoundtripKind, out var l) ? l : (DateTime?)null;
+                        var schedule = ScheduleDefaults.For(policy, job.ScheduleKey);
+                        var due = forced == job.Id
+                                  || (lastRun is null && job.RunOnFirstStart && !schedule.IsDisabled)
+                                  || schedule.IsDue(lastRun, lastRun ?? started, now, TimeZoneInfo.Local, spread);
+                        if (!due) continue;
+                        await RunJobAsync(job, policy, forced == job.Id, ct);
+                    }
+                }
+                while (_pendingReports.TryPeek(out var report))
+                {
+                    await server.SendReportAsync(report, ct);
+                    _pendingReports.TryDequeue(out _);
+                }
+            }
+            catch (HttpRequestException ex)
+            {
+                logger.LogDebug("Report delivery deferred: {Message}", ex.Message);
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                logger.LogError(ex, "Job loop failed");
+            }
+        }
+    }
+
+    private async Task RunJobAsync(ScheduledJob job, PolicyDocument policy, bool forced, CancellationToken ct)
+    {
+        if (!_runningJobs.TryAdd(job.Id, true)) return;
+        try
+        {
+            logger.LogInformation("Running {Job}{Forced}", job.Id, forced ? " (requested from the dashboard)" : "");
+            AgentReport report;
+            try
+            {
+                report = await job.RunAsync(policy, forced, ct);
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                logger.LogError(ex, "Job {Job} failed", job.Id);
+                var now = time.GetUtcNow().UtcDateTime;
+                report = new AgentReport(job.Id, now, now, false, ex.Message);
+            }
+            // Recorded even on failure, so a broken scanner isn't retried every 30 seconds; the error is in the report.
+            await state.SetAsync($"job.{job.Id}.lastRunUtc", time.GetUtcNow().UtcDateTime.ToString("O"), ct);
+            _pendingReports.Enqueue(report);
+            while (_pendingReports.Count > 20 && _pendingReports.TryDequeue(out _)) { }
+            Wake("report"); // fresh tool details (pending counts) with the next heartbeat
+        }
+        finally
+        {
+            _runningJobs.TryRemove(job.Id, out _);
+        }
+    }
 
     // ---- fast loop: events + ban snapshots ----
 

@@ -11,6 +11,8 @@
   import BanDialog from '../lib/BanDialog.svelte';
   import BanTable from '../lib/BanTable.svelte';
   import HostBaseline from '../lib/HostBaseline.svelte';
+  import HostUpdates from '../lib/HostUpdates.svelte';
+  import UpdatesBadge from '../lib/ui/UpdatesBadge.svelte';
   import EventList from '../lib/ui/EventList.svelte';
   import MetricChart from '../lib/ui/MetricChart.svelte';
   import Modal from '../lib/ui/Modal.svelte';
@@ -18,8 +20,8 @@
 
   let { id }: { id: string } = $props();
 
-  type Tab = 'overview' | 'baseline' | 'events' | 'bans' | 'policy' | 'commands';
-  const tabs: [Tab, string][] = [['overview', 'Overview'], ['baseline', 'Baseline'], ['events', 'Events'], ['bans', 'Bans'], ['policy', 'Policy'], ['commands', 'Commands']];
+  type Tab = 'overview' | 'baseline' | 'updates' | 'events' | 'bans' | 'policy' | 'commands';
+  const tabs: [Tab, string][] = [['overview', 'Overview'], ['baseline', 'Baseline'], ['updates', 'Updates'], ['events', 'Events'], ['bans', 'Bans'], ['policy', 'Policy'], ['commands', 'Commands']];
   const tab = $derived((new URLSearchParams(route.search).get('tab') as Tab) || 'overview');
 
   let host = $state<HostDetail | null>(null);
@@ -245,6 +247,7 @@
       <button class:on={tab === t} aria-current={tab === t ? 'page' : undefined} onclick={() => setTab(t)}>
         {label}
         {#if t === 'baseline' && s.baselineFailing}<span class="count">{s.baselineFailing}</span>{/if}
+        {#if t === 'updates' && (s.securityUpdates ?? s.pendingUpdates)}<span class="count">{s.securityUpdates ?? s.pendingUpdates}</span>{/if}
         {#if t === 'bans' && bans.length}<span class="count">{bans.length}</span>{/if}
         {#if t === 'commands' && commands.some((c) => c.status === 'Pending' || c.status === 'Delivered')}<span class="count">…</span>{/if}
       </button>
@@ -325,6 +328,13 @@
                 {#if s.baselineFailing}<span class="muted small">{s.baselineFailing} failing</span>{/if}
               {:else}<span class="muted">not checked yet</span>{/if}
             </dd>
+            <dt>Updates</dt>
+            <dd>
+              {#if s.pendingUpdates !== null}
+                <a href="/hosts/{id}?tab=updates"><UpdatesBadge pending={s.pendingUpdates} security={s.securityUpdates} /></a>
+                {#if s.rebootRequired}<span class="pill warn">reboot required</span>{/if}
+              {:else}<span class="muted">not checked yet</span>{/if}
+            </dd>
             <dt>Policy</dt>
             <dd>
               {#if s.policySync === 'in-sync'}<span class="pill ok">✓ in sync</span>{:else if s.policySync === 'failed'}<span class="pill bad">✕ failed</span>{:else}<span class="pill info">… pending</span>{/if}
@@ -336,6 +346,8 @@
     </div>
   {:else if tab === 'baseline'}
     <HostBaseline hostId={id} groupId={s.groupId} groupName={s.groupName} isOnline={s.isOnline} />
+  {:else if tab === 'updates'}
+    <HostUpdates hostId={id} isOnline={s.isOnline} />
   {:else if tab === 'events'}
     <section class="card">
       <header><h2>Events</h2><a class="hint" href="/events?hostId={id}">Open in event timeline →</a></header>

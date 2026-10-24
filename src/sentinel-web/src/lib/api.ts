@@ -120,6 +120,9 @@ export interface HostSummary {
   toolsWithProblems: number;
   baselineScore: number | null;
   baselineFailing: number;
+  pendingUpdates: number | null;
+  securityUpdates: number | null;
+  rebootRequired: boolean;
 }
 
 export interface ToolStatus {
@@ -350,6 +353,57 @@ export interface About {
 }
 
 /** Error text for a failed write: validation problems list their fields, conflicts carry `error`. */
+export interface PendingUpdate {
+  name: string;
+  installed: string | null;
+  candidate: string;
+  source: string | null;
+  /** null when the package manager can't tell (Alpine). */
+  security: boolean | null;
+}
+
+export interface UpdateApplyResult {
+  atUtc: string;
+  success: boolean;
+  upgraded: string[];
+  error: string | null;
+  logTail: string;
+}
+
+export interface UpdatesReport {
+  manager: string;
+  packages: PendingUpdate[];
+  rebootRequired: boolean;
+  rebootPackages: string[];
+  lastApply: UpdateApplyResult | null;
+  pending: number;
+  security: number | null;
+}
+
+export interface HostUpdates {
+  hostId: string;
+  hostName: string;
+  report: UpdatesReport | null;
+  lastCheckSucceeded: boolean | null;
+  lastCheckError: string | null;
+  checkedAt: string | null;
+  schedules: { key: string; value: string; isDefault: boolean }[];
+}
+
+export interface FleetUpdatesRow {
+  hostId: string;
+  name: string;
+  online: boolean;
+  groupName: string | null;
+  pending: number | null;
+  security: number | null;
+  rebootRequired: boolean;
+  checkedAt: string | null;
+  lastAppliedAt: string | null;
+  lastApplySucceeded: boolean | null;
+  lastCheckError: string | null;
+}
+
 export interface BlocklistList {
   id: string;
   name: string;

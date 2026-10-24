@@ -172,6 +172,7 @@ app.MapEventEndpoints();
 app.MapFeedEndpoints();
 app.MapNotificationEndpoints();
 app.MapBlocklistEndpoints();
+app.MapReportEndpoints();
 app.MapHub<AgentHub>("/hubs/agent");
 app.MapHub<DashboardHub>("/hubs/dashboard");
 app.MapInstallScripts();

@@ -107,9 +107,14 @@ public static class EventKinds
     public const string BaselineResolved = "baseline.resolved";
     public const string BaselineSummary = "baseline.summary";
 
+    // Updates
+    public const string UpdatesPending = "updates.pending";
+    public const string UpdatesApplied = "updates.applied";
+    public const string UpdatesFailed = "updates.failed";
+    public const string RebootRequired = "updates.reboot-required";
+
     // Reserved for later deliverables.
     public const string VulnerabilityFound = "vuln.found";
-    public const string UpdatesPending = "updates.pending";
     public const string HardeningFinding = "hardening.finding";
     public const string MalwareFound = "malware.found";
     public const string ExposureDetected = "exposure.detected";

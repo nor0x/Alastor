@@ -4,10 +4,14 @@
   import { route } from '../lib/router.svelte';
   import { canWrite } from '../lib/session.svelte';
   import { scoreTone } from '../lib/baseline';
+  import { api, errorText } from '../lib/api';
+  import { toast } from '../lib/toast.svelte';
+  import { confirm } from '../lib/ui/confirm.svelte';
   import Meter from '../lib/ui/Meter.svelte';
+  import UpdatesBadge from '../lib/ui/UpdatesBadge.svelte';
   import Time from '../lib/ui/Time.svelte';
 
-  type Filter = '' | 'online' | 'offline' | 'problems' | 'pending' | 'baseline';
+  type Filter = '' | 'online' | 'offline' | 'problems' | 'pending' | 'baseline' | 'updates' | 'reboot';
 
   const params = new URLSearchParams(route.search);
   let q = $state(params.get('q') ?? '');
@@ -39,10 +43,26 @@
         case 'problems': return h.toolsWithProblems > 0;
         case 'pending': return h.policySync !== 'in-sync';
         case 'baseline': return h.baselineFailing > 0;
+        case 'updates': return (h.securityUpdates ?? h.pendingUpdates ?? 0) > 0;
+        case 'reboot': return h.rebootRequired;
         default: return true;
       }
     }),
   );
+
+  async function installShown() {
+    const ids = shown.map((h) => h.id);
+    const ok = await confirm(`Install security updates on ${ids.length} host${ids.length === 1 ? '' : 's'}?`,
+      'Each agent installs its pending security updates with its own package manager (on Alpine: all pending updates). Services may restart; hosts are never rebooted.',
+      { confirmLabel: 'Install now' });
+    if (!ok) return;
+    try {
+      await api('/api/updates/apply', { method: 'POST', body: JSON.stringify({ hostIds: ids }) });
+      toast(`Queued on ${ids.length} host${ids.length === 1 ? '' : 's'}. Offline hosts install when they reconnect.`);
+    } catch (e) {
+      toast(errorText(e), 'error');
+    }
+  }
 </script>
 
 <div class="page-head">
@@ -64,7 +84,12 @@
     <option value="problems">Tool problems</option>
     <option value="pending">Policy not applied</option>
     <option value="baseline">Failing baseline checks</option>
+    <option value="updates">Security updates pending</option>
+    <option value="reboot">Reboot required</option>
   </select>
+  {#if filter === 'updates' && shown.length && canWrite()}
+    <button class="btn primary" onclick={installShown}>Install on {shown.length} host{shown.length === 1 ? '' : 's'}</button>
+  {/if}
   <select class="field" bind:value={group} aria-label="Group">
     <option value="">All groups</option>
     <option value="none">No group</option>
@@ -98,6 +123,7 @@
           <th>Tools</th>
           <th>Policy</th>
           <th class="num hide-sm" title="Security baseline score">Baseline</th>
+          <th class="hide-sm">Updates</th>
           <th class="hide-sm">Last seen</th>
         </tr>
       </thead>
@@ -133,6 +159,11 @@
             </td>
             <td class="num hide-sm">
               {#if h.baselineScore !== null}<a href="/hosts/{h.id}?tab=baseline" title="{h.baselineFailing} failing check{h.baselineFailing === 1 ? '' : 's'}"><span class="pill {scoreTone(h.baselineScore)}">{h.baselineScore}</span></a>
+              {:else}<span class="muted">—</span>{/if}
+            </td>
+            <td class="hide-sm nowrap">
+              {#if h.pendingUpdates !== null}<a href="/hosts/{h.id}?tab=updates"><UpdatesBadge pending={h.pendingUpdates} security={h.securityUpdates} /></a>
+                {#if h.rebootRequired}<span class="pill warn" title="Reboot required">↻</span>{/if}
               {:else}<span class="muted">—</span>{/if}
             </td>
             <td class="hide-sm nowrap"><Time iso={h.lastSeenAt} /></td>
