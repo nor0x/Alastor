@@ -80,11 +80,17 @@
       || (b.cvss ?? 0) - (a.cvss ?? 0) || a.id.localeCompare(b.id));
   });
   const open = $derived(groups.filter((g) => !g.accepted));
-  const counts = $derived(Object.fromEntries(severities.map((s) => [s, open.filter((g) => g.severity === s).length])) as Record<Sev, number>);
+  // The headline is about the host's own packages, like the server's counts: updating the host doesn't fix an image.
+  const hostOpen = $derived(open.filter((g) => g.packages.some((p) => !p.image)));
+  const counts = $derived(Object.fromEntries(severities.map((s) => [s, hostOpen.filter((g) => g.severity === s).length])) as Record<Sev, number>);
   const kevOpen = $derived(open.filter((g) => g.kev));
-  const fixableCount = $derived(open.filter((g) => g.fixable).length);
+  const fixableCount = $derived(hostOpen.filter((g) => g.packages.some((p) => !p.image && p.fix === 'Fixable')).length);
   const acceptedCount = $derived(groups.length - open.length);
   const ignoredTotal = $derived(Object.values(data?.ignored ?? {}).reduce((a, b) => a + b, 0));
+
+  // "" = everything, "host" = the host's own packages, else one container image.
+  let source = $state('');
+  const imageNames = $derived([...new Set((data?.findings ?? []).map((f) => f.image).filter((i): i is string => !!i))].sort());
 
   const filtered = $derived.by(() => {
     const needle = q.trim().toLowerCase();
@@ -92,6 +98,8 @@
       if (g.accepted && !showAccepted) return false;
       if (minSeverity && rank[g.severity] < rank[minSeverity]) return false;
       if (fixableOnly && !g.fixable) return false;
+      if (source === 'host' && g.packages.every((p) => p.image)) return false;
+      if (source && source !== 'host' && !g.packages.some((p) => p.image === source)) return false;
       if (kind === 'os' && !g.packages.some((p) => osTypes.has(p.pkgType))) return false;
       if (kind === 'lang' && g.packages.every((p) => osTypes.has(p.pkgType))) return false;
       if (needle && !(g.id.toLowerCase().includes(needle) || (g.title ?? '').toLowerCase().includes(needle) || g.packages.some((p) => p.package.toLowerCase().includes(needle) || (p.path ?? '').toLowerCase().includes(needle)))) return false;
@@ -99,7 +107,7 @@
     });
   });
   $effect(() => {
-    void q; void minSeverity; void fixableOnly; void showAccepted; void kind;
+    void q; void minSeverity; void fixableOnly; void showAccepted; void kind; void source;
     limit = 100;
   });
 
@@ -237,6 +245,26 @@
     {/if}
 
     {#if data.scannedAt}
+      {#if data.images?.length}
+        <section class="card">
+          <header><h2>Container images</h2><span class="hint">scanned locally with the host; host updates don't reach them</span></header>
+          <div class="table-wrap">
+            <table class="table">
+              <thead><tr><th>Image</th><th class="hide-sm">Containers</th><th class="num">Findings</th></tr></thead>
+              <tbody>
+                {#each data.images as i (i.runtime + i.image)}
+                  <tr>
+                    <td><span class="mono small">{i.image}</span> <span class="muted small">{i.runtime}</span>{#if i.error}<div class="small bad-text">{i.error}</div>{/if}</td>
+                    <td class="hide-sm small">{i.containers.join(', ')}</td>
+                    <td class="num">{#if i.error}<span class="muted">—</span>{:else}<button class="btn ghost small" onclick={() => (source = i.image)}>{i.findings}</button>{/if}</td>
+                  </tr>
+                {/each}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      {/if}
+
       <section class="card">
         <header>
           <h2>Vulnerabilities</h2>
@@ -248,6 +276,13 @@
             <option value="">Any severity</option>
             {#each severities as s (s)}<option value={s}>{s}{s === 'Critical' ? '' : ' and above'}</option>{/each}
           </select>
+          {#if imageNames.length}
+            <select class="field" bind:value={source} aria-label="Source">
+              <option value="">Host and containers</option>
+              <option value="host">Host packages</option>
+              {#each imageNames as i (i)}<option value={i}>Image {i}</option>{/each}
+            </select>
+          {/if}
           <select class="field" bind:value={kind} aria-label="Package kind">
             <option value="">OS and language packages</option>
             <option value="os">OS packages</option>
@@ -280,6 +315,7 @@
                           <span class="mono small muted">{p.installed}</span>
                           <span class="small" class:ok-text={p.fix === 'Fixable'} class:muted={p.fix !== 'Fixable'}>→ {fixText(p)}</span>
                           {#if !osTypes.has(p.pkgType)}<span class="pill muted">{p.pkgType}</span>{/if}
+                          {#if p.image}<span class="pill info" title="In container image {p.image}: rebuild or pull a newer image to fix">{p.image}</span>{/if}
                         </div>
                       {/each}
                       {#if g.packages.length > 4}<div class="muted small">and {g.packages.length - 4} more</div>{/if}

@@ -885,6 +885,10 @@ namespace Alastor.Server.Data.Migrations.Sqlite
                     b.Property<Guid>("HostId")
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("Image")
+                        .HasMaxLength(256)
+                        .HasColumnType("TEXT");
+
                     b.Property<string>("Installed")
                         .IsRequired()
                         .HasMaxLength(200)
@@ -1027,6 +1031,15 @@ namespace Alastor.Server.Data.Migrations.Sqlite
                     b.Property<string>("Hostname")
                         .IsRequired()
                         .HasColumnType("TEXT");
+
+                    b.Property<int?>("ImageVulnCritical")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("ImageVulnHigh")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("ImagesScanned")
+                        .HasColumnType("INTEGER");
 
                     b.Property<int?>("IntegrityChanges")
                         .HasColumnType("INTEGER");

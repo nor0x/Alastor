@@ -31,6 +31,7 @@ public static class IssueRules
         ["service.public"] = "Unexpected public service",
         ["cve.exploited"] = "Known-exploited CVE",
         ["cve.critical"] = "Critical CVEs",
+        ["cve.image-critical"] = "Critical CVEs in container images",
         ["malware.found"] = "Malware found",
         ["integrity.changed"] = "Files changed since the baseline",
         ["rootkit.warning"] = "Rootkit check warnings",
@@ -76,6 +77,10 @@ public static class IssueRules
             open.Add(new("cve.critical", "", Severity.High, h.VulnCritical == 1 ? "1 critical CVE" : $"{h.VulnCritical} critical CVEs",
                 h.VulnFixable > 0 ? $"{h.VulnFixable} finding{(h.VulnFixable == 1 ? "" : "s")} can be fixed by updating packages." : null, "vulnerabilities"));
 
+        if (h.VulnScannedAt is not null && h.ImageVulnCritical > 0)
+            open.Add(new("cve.image-critical", "", Severity.High,
+                h.ImageVulnCritical == 1 ? "1 critical CVE in container images" : $"{h.ImageVulnCritical} critical CVEs in container images",
+                "Rebuild the images on a patched base (or pull a newer tag) and restart the containers; host updates don't reach them.", "vulnerabilities"));
         if (h.MalwareScannedAt is not null && h.MalwareFindings > 0)
             open.Add(new("malware.found", "", Severity.Critical, h.MalwareFindings == 1 ? "1 infected file" : $"{h.MalwareFindings} infected files",
                 "ClamAV matched a signature. Check the files before deleting anything.", "malware"));

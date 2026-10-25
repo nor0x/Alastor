@@ -24,7 +24,9 @@ Svelte dashboard cover:
   (needrestart / needs-restarting) and a kernel-reboot check.
 - **SSH logins:** successful logins from the journal or auth.log, with an alert on a user's first login from a new
   address (Critical for root) and trusted sources that never alert.
-- **CVE scans:** Trivy or Grype against a server-mirrored database, joined with CISA KEV.
+- **CVE scans:** Trivy or Grype against a server-mirrored database, joined with CISA KEV, plus the images of running
+  Docker/Podman containers (opt-in, local images only).
+- **Firewall:** ufw managed from policy (opt-in, Debian/Ubuntu) with lockout guards for SSH.
 - **Lynis audits:** hardening index and a remediation checklist.
 - **Exposure:** warnings when SSH is reachable from the internet, an inventory of every listening service (owner,
   systemd unit, `systemd-analyze security` score, firewall verdict) with alerts for public ports outside
@@ -128,7 +130,7 @@ you install them from their vendor's repository (Alpine's `trivy` package is the
 | Security baseline (built in) | Hardening | 21 checks via `sshd -T`, `sysctl`, `ufw status`, `nft -j`, … with reversible one-click fixes | MIT | ✅ |
 | [Caddy](https://caddyserver.com/) | Server TLS | optional, set up by `install.sh --domain` for automatic HTTPS | Apache-2.0 | ✅ |
 | [CrowdSec](https://github.com/crowdsecurity/crowdsec) + firewall bouncer | Banning | `banning.engine: crowdsec`: installs both from distro repos, owns a parser whitelist for the allowlist, bans and events via `cscli … -o json`; Central API off by default | MIT | ✅ opt-in |
-| [ufw](https://launchpad.net/ufw) | Firewall | managed firewall rules | GPL-3.0 | planned |
+| [ufw](https://launchpad.net/ufw) | Firewall | `firewall.manage`: the agent keeps its own allow rules (tagged `alastor`: SSH from `firewall.ssh`, `network.allowPublicPorts`, `firewall.allow`), validated with `--dry-run`, rolled back on failure, refused when SSH could be locked out | GPL-3.0 | ✅ opt-in |
 | [Tailscale](https://tailscale.com/) | Network | detected, never installed: tailnet state, IPs, Tailscale SSH, key expiry; SSH exposure check suggests limiting SSH to the tailnet | BSD-3-Clause | ✅ opt-in |
 | [AIDE](https://aide.github.io/) | Integrity | `integrity.checkSchedule`: runs with the agent's own config and database; reports added, removed and changed system files against an accepted baseline; "accept changes" re-records it | GPL-2.0-or-later | ✅ opt-in |
 | [rkhunter](https://rkhunter.sourceforge.net/) | Malware | `malware.rootkitSchedule`: `--check --rwo` after recording file properties; never updates from the internet; warnings ranked by severity, `rootkitIgnore` for known ones | GPL-2.0-or-later | ✅ opt-in |

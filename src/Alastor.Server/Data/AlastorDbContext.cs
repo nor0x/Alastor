@@ -92,6 +92,7 @@ public abstract class AlastorDbContext(DbContextOptions options) : DbContext(opt
             e.Property(v => v.Title).HasMaxLength(256);
             e.Property(v => v.PkgType).HasMaxLength(32);
             e.Property(v => v.Path).HasMaxLength(1024);
+            e.Property(v => v.Image).HasMaxLength(256);
             e.Property(v => v.Severity).HasConversion<int>(); // ordered: min-severity filters use >=
             e.HasIndex(v => v.HostId);
             e.HasIndex(v => v.VulnId);

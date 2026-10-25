@@ -29,7 +29,51 @@ public sealed record VulnFinding(
     FixState Fix,
     string? Title,
     string PkgType,
-    string? Path);
+    string? Path)
+{
+    /// <summary>The container image the package is in; null for the host's own packages.</summary>
+    public string? Image { get; init; }
+}
+
+/// <summary>One container image scanned alongside the host.</summary>
+/// <param name="Runtime"><c>docker</c> or <c>podman</c>.</param>
+/// <param name="Containers">Names of the running containers using it.</param>
+public sealed record ContainerImageScan(string Image, string Runtime, IReadOnlyList<string> Containers, int Findings, string? Error);
+
+/// <summary>Running containers from <c>docker ps --format '{{json .}}'</c> (one JSON object per line) or <c>podman ps --format json</c> (an array).</summary>
+public static class ContainerParsers
+{
+    public static List<(string Image, string Name)> ParseDockerPs(string output)
+    {
+        var result = new List<(string, string)>();
+        foreach (var line in output.Split('\n'))
+        {
+            if (line.Trim().Length == 0 || line.TrimStart()[0] != '{') continue;
+            using var doc = JsonDocument.Parse(line);
+            var image = Str(doc.RootElement, "Image");
+            if (image is not null) result.Add((image, Str(doc.RootElement, "Names") ?? Str(doc.RootElement, "ID") ?? "?"));
+        }
+        return result;
+    }
+
+    public static List<(string Image, string Name)> ParsePodmanPs(string output)
+    {
+        var result = new List<(string, string)>();
+        if (output.Trim().Length == 0) return result;
+        using var doc = JsonDocument.Parse(output);
+        if (doc.RootElement.ValueKind != JsonValueKind.Array) return result;
+        foreach (var c in doc.RootElement.EnumerateArray())
+        {
+            var image = Str(c, "Image");
+            var name = c.TryGetProperty("Names", out var n) && n.ValueKind == JsonValueKind.Array && n.GetArrayLength() > 0 ? n[0].GetString() : Str(c, "Id");
+            if (image is not null) result.Add((image, name ?? "?"));
+        }
+        return result;
+    }
+
+    private static string? Str(JsonElement e, string name) =>
+        e.TryGetProperty(name, out var v) && v.ValueKind == JsonValueKind.String ? v.GetString() : null;
+}
 
 /// <summary>The result of one scan.</summary>
 /// <param name="Ignored">Findings dropped by <c>vulnerabilities.ignorePackages</c>, per package, so the UI can say what was hidden.</param>
@@ -40,7 +84,11 @@ public sealed record VulnScanReport(
     string? Os,
     IReadOnlyList<VulnFinding> Findings,
     IReadOnlyDictionary<string, int> Ignored,
-    bool Truncated = false);
+    bool Truncated = false)
+{
+    /// <summary>Container images scanned with <c>vulnerabilities.scanContainers</c>; null when off.</summary>
+    public IReadOnlyList<ContainerImageScan>? Images { get; init; }
+}
 
 /// <summary>
 /// Reads the scanners' own JSON reports (<c>trivy --format json</c>, <c>grype -o json</c>). Both formats are documented and

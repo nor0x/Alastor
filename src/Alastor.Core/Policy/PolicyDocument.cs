@@ -17,6 +17,7 @@ public sealed class PolicyDocument
     public MalwarePolicy? Malware { get; set; }
     public LoginsPolicy? Logins { get; set; }
     public IntegrityPolicy? Integrity { get; set; }
+    public FirewallPolicy? Firewall { get; set; }
     public NetworkPolicy? Network { get; set; }
     public BaselinePolicy? Baseline { get; set; }
 
@@ -97,6 +98,9 @@ public sealed class VulnerabilitiesPolicy
     /// <summary>Also scan language packages the scanner finds on disk (npm, pip, gems, Go binaries, jars), not only OS packages.</summary>
     public bool? LanguagePackages { get; set; }
 
+    /// <summary>Also scan the images of running Docker or Podman containers (local images only; nothing is pulled). Off by default.</summary>
+    public bool? ScanContainers { get; set; }
+
     /// <summary>Packages whose findings are dropped (counted, not listed). A layer that sets this replaces the lower layer's list.</summary>
     public List<string>? IgnorePackages { get; set; }
 
@@ -129,6 +133,21 @@ public sealed class NetworkPolicy
     /// Other public services are reported as unexpected. Merged as a union across layers.
     /// </summary>
     public List<string>? AllowPublicPorts { get; set; }
+}
+
+public sealed class FirewallPolicy
+{
+    /// <summary>Let the agent manage ufw (Debian/Ubuntu): its own rules only, tagged <c>alastor</c>; everyone else's are left alone. Opt-in.</summary>
+    public bool? Manage { get; set; }
+
+    /// <summary>Where SSH is allowed from, per sshd port: <c>any</c>, <c>from CIDR</c>, <c>on tailscale0</c>. Never empty: the agent refuses to lock SSH out.</summary>
+    public List<string>? Ssh { get; set; }
+
+    /// <summary>Extra allow rules: <c>443/tcp</c>, <c>5432/tcp from 10.0.0.0/8</c>, <c>9100/tcp on tailscale0</c>. Merged as a union across layers. Ports in <c>network.allowPublicPorts</c> are allowed too.</summary>
+    public List<string>? Allow { get; set; }
+
+    /// <summary>What happens to incoming traffic no rule allows: <c>deny</c> (default, silently dropped) or <c>reject</c>.</summary>
+    public string? DefaultIncoming { get; set; }
 }
 
 public sealed class IntegrityPolicy

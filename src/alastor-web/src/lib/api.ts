@@ -461,6 +461,16 @@ export interface VulnFinding {
   kev: boolean;
   ransomware: boolean;
   firstSeenAt: string;
+  /** The container image the package is in; null for the host's own packages. */
+  image?: string | null;
+}
+
+export interface ContainerImageScan {
+  image: string;
+  runtime: 'docker' | 'podman';
+  containers: string[];
+  findings: number;
+  error: string | null;
 }
 
 export interface HostVulnerabilities {
@@ -486,6 +496,8 @@ export interface HostVulnerabilities {
   lastAttemptAt: string | null;
   schedule: { key: string; value: string; isDefault: boolean };
   findings: VulnFinding[];
+  images?: ContainerImageScan[] | null;
+  scanContainers?: boolean;
 }
 
 export interface VulnDbStatus {
@@ -529,6 +541,9 @@ export interface FleetVulnHost {
   scanner: string | null;
   error: string | null;
   availability: Availability | null;
+  images?: number | null;
+  imageCritical?: number | null;
+  imageHigh?: number | null;
 }
 
 export interface FleetVulnerabilities {
