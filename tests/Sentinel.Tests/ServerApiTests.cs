@@ -22,6 +22,7 @@ public sealed class ServerApiTests : IClassFixture<ServerApiTests.Factory>
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {
             builder.UseSetting("DataDir", DataDir);
+            builder.UseSetting("AgentDownloadDir", Path.Combine(DataDir, "agent"));
             builder.UseSetting("AdminPassword", "test-password-123");
             builder.UseSetting("SecureCookies", "false");
             builder.UseSetting("ThreatFeedEnabled", "false"); // no internet in tests; ThreatFeedTests drives the feed itself
@@ -66,6 +67,28 @@ public sealed class ServerApiTests : IClassFixture<ServerApiTests.Factory>
         var agent = _factory.CreateClient();
         agent.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", resp.AgentSecret);
         return (resp.AgentId, agent);
+    }
+
+    [Fact]
+    public async Task Installers_and_agent_binaries_are_served_anonymously()
+    {
+        var anon = _factory.CreateClient();
+        var script = await anon.GetAsync("/install/agent.sh");
+        Assert.Equal(HttpStatusCode.OK, script.StatusCode);
+        Assert.StartsWith("#!/usr/bin/env bash", await script.Content.ReadAsStringAsync());
+        Assert.Equal(HttpStatusCode.OK, (await anon.GetAsync("/install/server.sh")).StatusCode);
+
+        Directory.CreateDirectory(Path.Combine(_factory.DataDir, "agent"));
+        await File.WriteAllTextAsync(Path.Combine(_factory.DataDir, "agent", "sentinel-agent-linux-x64"), "binary");
+        Assert.Equal("binary", await anon.GetStringAsync("/install/agent/sentinel-agent-linux-x64"));
+        Assert.Equal(HttpStatusCode.NotFound, (await anon.GetAsync("/install/agent/sentinel-agent-linux-arm64")).StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, (await anon.GetAsync("/install/agent/..%2Fsentinel.db")).StatusCode);
+
+        // The test server is plain HTTP, so the generated command must opt in to it explicitly.
+        var admin = await AdminAsync();
+        var token = await (await admin.PostAsJsonAsync("/api/enrollment-tokens", new { note = "t" })).Content.ReadFromJsonAsync<JsonElement>();
+        var cmd = token.GetProperty("installCommand").GetString()!;
+        Assert.Matches(@"^curl -fsSL http://\S+/install/agent\.sh \| sudo bash -s -- --server http://\S+ --token sve_\S+ --insecure$", cmd);
     }
 
     [Fact]

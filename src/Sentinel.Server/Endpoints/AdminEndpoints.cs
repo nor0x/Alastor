@@ -77,7 +77,8 @@ public static class AdminEndpoints
             db.Audit.Add(new AuditEntry { Actor = user.Actor(), Action = "enrollment-token.create", Target = t.Id.ToString(), Details = req.Note });
             await db.SaveChangesAsync(ct);
             var baseUrl = (opt.Value.PublicUrl ?? $"{http.Request.Scheme}://{http.Request.Host}").TrimEnd('/');
-            var cmd = $"curl -fsSL {baseUrl}/install/agent.sh | sudo bash -s -- --server {baseUrl} --token {secret}";
+            var insecure = baseUrl.StartsWith("http://", StringComparison.OrdinalIgnoreCase) ? " --insecure" : "";
+            var cmd = $"curl -fsSL {baseUrl}/install/agent.sh | sudo bash -s -- --server {baseUrl} --token {secret}{insecure}";
             return Results.Ok(new CreatedTokenDto(ToDto(t), secret, cmd));
         });
         tokens.MapDelete("/{id:guid}", async (Guid id, SentinelDbContext db, CancellationToken ct) =>
@@ -122,6 +123,7 @@ public static class AdminEndpoints
                 S("General", nameof(o.PublicUrl), o.PublicUrl ?? "(from request)", "URL agents and browsers use; shown in install commands."),
                 S("General", nameof(o.DatabaseProvider), o.DatabaseProvider, "sqlite or postgres."),
                 S("General", nameof(o.DataDir), o.DataDir, "Database, signing and data-protection keys."),
+                S("General", nameof(o.AgentDownloadDir), o.AgentDownloadDir, "Agent binaries served to hosts at /install/agent/."),
                 S("General", nameof(o.SecureCookies), o.SecureCookies ? "true" : "false", "Secure flag on the session cookie."),
                 S("Agents", nameof(o.HeartbeatInterval), o.HeartbeatInterval, "Default heartbeat when the policy sets no agent.heartbeatInterval."),
                 S("Agents", nameof(o.OfflineAfterMissedHeartbeats), o.OfflineAfterMissedHeartbeats.ToString(System.Globalization.CultureInfo.InvariantCulture), "Missed heartbeats (of the host's own interval) before a host is offline."),

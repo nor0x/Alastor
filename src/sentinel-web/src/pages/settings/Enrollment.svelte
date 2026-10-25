@@ -67,9 +67,10 @@
         <div>
           <div class="lbl">Run on the new server</div>
           <div class="cmd"><pre class="mono">{created.installCommand}</pre><CopyButton text={created.installCommand} /></div>
-          <p class="muted small">The one-line installer ships with deliverable 10. Until then, copy the agent binary to the server and enroll it directly:</p>
+          <p class="muted small">It downloads the agent from this server, enrolls it and starts the <code>sentinel-agent</code> service. The host appears under <a href="/hosts">Hosts</a> within a minute.
+            If the agent is already on the machine, enroll it directly instead:</p>
           <div class="cmd"><pre class="mono">{manual}</pre><CopyButton text={manual} /></div>
-          <p class="muted small">then <code>sudo systemctl enable --now sentinel-agent</code>. The host appears under <a href="/hosts">Hosts</a> within a minute.</p>
+          <p class="muted small">then <code>sudo systemctl enable --now sentinel-agent</code>.</p>
         </div>
       </div>
     </section>
