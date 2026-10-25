@@ -29,6 +29,9 @@ public sealed class SentinelOptions
     /// <summary>The URL agents and browsers use to reach this server. Used in install commands shown in the UI.</summary>
     public string? PublicUrl { get; set; }
 
+    /// <summary>Agent binaries (sentinel-agent-linux-x64, -arm64, SHA256SUMS) served at /install/agent/ to hosts being installed. Defaults to ./agent next to the binary.</summary>
+    public string AgentDownloadDir { get; set; } = Path.Combine(AppContext.BaseDirectory, "agent");
+
     /// <summary>Set the session cookie's Secure flag. Turn off only for plain-HTTP local development.</summary>
     public bool SecureCookies { get; set; } = true;
 

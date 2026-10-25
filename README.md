@@ -16,6 +16,52 @@ Lynis hardening audits (index, remediation checklist grouped by category, accept
 configuration, audit log) and About/licenses. Live updates over SignalR, with polling when the hub is unreachable.
 See [docs/architecture.md](docs/architecture.md) for the event model, integration interface and API surface.
 
+## Install
+
+One command on the machine that runs the dashboard (a VPS, or any Linux box at home), as root:
+
+```bash
+# VPS with a domain pointing at it: HTTPS through Caddy, and protect this server too
+curl -fsSL https://raw.githubusercontent.com/nor0x/DefBox/main/install/install.sh | sudo bash -s -- --domain sentinel.example.com --with-agent
+
+# local machine or LAN, plain HTTP on :8080
+curl -fsSL https://raw.githubusercontent.com/nor0x/DefBox/main/install/install.sh | sudo bash
+```
+
+It prints the dashboard URL and a generated admin password. To add a server, open **Settings → Enrollment → New
+token** in the dashboard and run the command it shows on that server. That command comes from your own SentinelVPS
+server, which also hands out the agent binary:
+
+```bash
+curl -fsSL https://sentinel.example.com/install/agent.sh | sudo bash -s -- --server https://sentinel.example.com --token sve_…
+```
+
+Run either script again to upgrade; settings, data and enrollment are kept. `--uninstall` removes the server or agent
+(`--uninstall --purge` also deletes the server's database). `--help` lists all options. Supported: x86_64 and arm64 Linux with
+systemd and glibc (Debian, Ubuntu, RHEL/Alma/Rocky, Fedora).
+
+| Path | |
+|---|---|
+| `/opt/sentinel-vps/` | server binary, plus `agent/` with the agent binaries it serves |
+| `/etc/sentinel-vps/server.env` | server settings (env vars below); `systemctl restart sentinel-server` after editing |
+| `/var/lib/sentinel-vps/` | database and keys |
+| `/usr/local/bin/sentinel-agent`, `/etc/sentinel-agent/agent.json` | agent binary and enrollment |
+
+**While the repository is private,** the script and the release binaries need a GitHub token with read access
+(`gh auth token` prints yours):
+
+```bash
+export GITHUB_TOKEN=$(gh auth token)   # or a fine-grained PAT with Contents: read
+curl -fsSL -H "Authorization: Bearer $GITHUB_TOKEN" https://raw.githubusercontent.com/nor0x/DefBox/main/install/install.sh \
+  | sudo GITHUB_TOKEN="$GITHUB_TOKEN" bash
+```
+
+Agents need no token: they download the agent from your server. Binaries come from GitHub releases, built by
+`.github/workflows/release.yml` when a `v*` tag is pushed. `SENTINEL_DOWNLOAD_BASE=https://…` makes both scripts download
+`<base>/<version>/<asset>` instead, for a mirror or a future website. Without a release, build the binaries yourself
+(see [Build & test](#build--test)) and pass them in:
+`sudo bash install/install.sh --binary artifacts/server/sentinel-server --agent-dir <dir with sentinel-agent-linux-x64>`.
+
 ## Repository layout
 
 ```
@@ -25,6 +71,7 @@ src/Sentinel.Agent    supervisor daemon (Native AOT); enroll | run | status | un
 src/sentinel-web      Svelte 5 + Vite dashboard; builds into Sentinel.Server/wwwroot
 tests/Sentinel.Tests  xUnit: parsers and normalization on real fail2ban fixtures, reconciliation, policy, API e2e
 policy/default.yaml   global default policy (embedded into the server)
+install/              install.sh (server) and agent-install.sh, also served by the server at /install/{server,agent}.sh
 docs/                 architecture
 ```
 
@@ -64,6 +111,7 @@ and starts streaming ban events.
 | `SENTINEL_ADMINUSER` / `SENTINEL_ADMINPASSWORD` | `admin` / generated (printed once) | first-run admin |
 | `SENTINEL_DATABASEPROVIDER` | `sqlite` | or `postgres` with `SENTINEL_CONNECTIONSTRING` |
 | `SENTINEL_PUBLICURL` | request host | used in generated install commands |
+| `SENTINEL_AGENTDOWNLOADDIR` | `./agent` next to the binary | agent binaries served at `/install/agent/` to hosts being installed |
 | `SENTINEL_HEARTBEATINTERVAL` | `60s` | default heartbeat; per-host override via `agent.heartbeatInterval` |
 | `SENTINEL_RETENTIONRUNINTERVAL`, `…METRICRETENTION`, `…EVENTRETENTION`, … | `1h`, `7d`, `90d` | all server timings: see [docs/architecture.md](docs/architecture.md#timings-and-schedules) |
 | `SENTINEL_SECURECOOKIES` | `true` | set `false` only for plain-HTTP local dev |
