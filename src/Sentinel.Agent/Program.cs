@@ -1,6 +1,7 @@
 using Sentinel.Core.Baseline;
 using Sentinel.Core.Blocklists;
 using Sentinel.Core.Hardening;
+using Sentinel.Core.Malware;
 using Sentinel.Core.Network;
 using Sentinel.Core.Updates;
 using Sentinel.Core.Vulnerabilities;
@@ -8,6 +9,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using Sentinel.Agent;
 using Sentinel.Core.Contracts;
 using Sentinel.Core.Integrations;
+using Sentinel.Core.Integrations.CrowdSec;
 using Sentinel.Core.Integrations.Fail2Ban;
 using Sentinel.Core.Platform;
 using Serilog;
@@ -71,11 +73,13 @@ builder.Services.AddSingleton<IStateStore>(platform.State);
 builder.Services.AddSingleton(new ServerClient(ServerClient.CreateHttpClient(config.ServerUrl, config.Credential, config.CertificatePin)));
 builder.Services.AddSingleton<HostMetricsCollector>();
 builder.Services.AddSingleton<IToolIntegration>(sp => platform.CreateFail2Ban(sp.GetRequiredService<ILogger<Fail2BanIntegration>>()));
+builder.Services.AddSingleton<IToolIntegration>(sp => platform.CreateCrowdSec(sp.GetRequiredService<ILogger<CrowdSecIntegration>>()));
 builder.Services.AddSingleton<IToolIntegration>(sp => platform.CreateBaseline(sp.GetRequiredService<ILogger<BaselineIntegration>>()));
 builder.Services.AddSingleton<IToolIntegration>(sp => platform.CreateBlocklist(sp.GetRequiredService<ILogger<BlocklistIntegration>>()));
 builder.Services.AddSingleton<IToolIntegration>(sp => platform.CreateUpdates(sp.GetRequiredService<ILogger<UpdatesIntegration>>()));
 builder.Services.AddSingleton<IToolIntegration>(sp => platform.CreateHardening(sp.GetRequiredService<ILogger<HardeningIntegration>>()));
 builder.Services.AddSingleton<IToolIntegration>(sp => platform.CreateNetwork(sp.GetRequiredService<ILogger<NetworkIntegration>>()));
+builder.Services.AddSingleton<IToolIntegration>(sp => platform.CreateClamAv(sp.GetRequiredService<ServerClient>(), sp.GetRequiredService<ILogger<ClamAvIntegration>>()));
 builder.Services.AddSingleton<IToolIntegration>(sp => platform.CreateVulnerabilities(sp.GetRequiredService<ServerClient>(), sp.GetRequiredService<ILogger<VulnerabilityIntegration>>()));
 builder.Services.AddSingleton<Supervisor>();
 builder.Services.AddHostedService(sp => sp.GetRequiredService<Supervisor>());
@@ -148,9 +152,11 @@ async Task<int> UninstallAsync()
     IToolIntegration[] tools =
     [
         platform.CreateFail2Ban(NullLogger<Fail2BanIntegration>.Instance),
+        platform.CreateCrowdSec(NullLogger<CrowdSecIntegration>.Instance),
         platform.CreateBaseline(NullLogger<BaselineIntegration>.Instance),
         platform.CreateBlocklist(NullLogger<BlocklistIntegration>.Instance),
         platform.CreateVulnerabilities(null, NullLogger<VulnerabilityIntegration>.Instance),
+        platform.CreateClamAv(null, NullLogger<ClamAvIntegration>.Instance),
         platform.CreateHardening(NullLogger<HardeningIntegration>.Instance),
     ];
     foreach (var t in tools)
@@ -184,6 +190,9 @@ internal sealed record PlatformServices(OsInfo Os, ICommandRunner Runner, IFileS
     public VulnerabilityIntegration CreateVulnerabilities(IVulnDbSource? dbSource, ILogger<VulnerabilityIntegration> logger) =>
         new(Runner, PackageManagers.For(Os.Family, Runner), State, Os, StateDir, dbSource ?? NoVulnDb.Instance, logger, TimeProvider.System);
 
+    public ClamAvIntegration CreateClamAv(IVulnDbSource? dbSource, ILogger<ClamAvIntegration> logger) =>
+        new(Runner, Fs, PackageManagers.For(Os.Family, Runner), ServiceManagers.For(Runner), State, StateDir, dbSource ?? NoVulnDb.Instance, logger, TimeProvider.System);
+
     /// <summary>For CLI subcommands (uninstall) that never scan.</summary>
     private sealed class NoVulnDb : IVulnDbSource
     {
@@ -196,6 +205,9 @@ internal sealed record PlatformServices(OsInfo Os, ICommandRunner Runner, IFileS
         new(Runner, Fs, PackageManagers.For(Os.Family, Runner), State, StateDir, logger, TimeProvider.System);
 
     public Fail2BanIntegration CreateFail2Ban(ILogger<Fail2BanIntegration> logger) =>
+        new(Runner, Fs, PackageManagers.For(Os.Family, Runner), ServiceManagers.For(Runner), State, logger, TimeProvider.System);
+
+    public CrowdSecIntegration CreateCrowdSec(ILogger<CrowdSecIntegration> logger) =>
         new(Runner, Fs, PackageManagers.For(Os.Family, Runner), ServiceManagers.For(Runner), State, logger, TimeProvider.System);
 
     public BaselineIntegration CreateBaseline(ILogger<BaselineIntegration> logger) =>

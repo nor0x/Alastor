@@ -24,6 +24,7 @@ public static class EventEndpoints
         int? HostsWithPendingSecurityUpdates,
         int? HostsWithHighCves,
         int? HostsWithPublicSsh,
+        int? HostsWithMalware,
         double? AverageHardeningIndex,
         double? AverageBaselineScore,
         int HostsFailingBaselineHigh,
@@ -91,6 +92,7 @@ public static class EventEndpoints
                 hosts.Any(h => h.NetworkCheckedAt is not null)
                     ? hosts.Count(h => h.SshExposure is Sentinel.Core.Network.SshExposureLevel.Public or Sentinel.Core.Network.SshExposureLevel.PossiblyPublic && !h.SshExposureAccepted)
                     : null,
+                hosts.Any(h => h.MalwareScannedAt is not null) ? hosts.Count(h => h.MalwareFindings > 0) : null,
                 hosts.Any(h => h.HardeningIndex is not null) ? Math.Round(hosts.Where(h => h.HardeningIndex is not null).Average(h => h.HardeningIndex!.Value), 0) : null,
                 scored.Count == 0 ? null : Math.Round(scored.Average(h => h.BaselineScore!.Value), 0),
                 hostsFailingHigh,

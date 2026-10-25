@@ -132,6 +132,7 @@ export interface HostSummary {
   sshExposure: SshExposureLevel | null;
   sshExposureAccepted: boolean;
   tailscaleState: string | null;
+  malwareFindings: number | null;
 }
 
 export interface ToolStatus {
@@ -231,6 +232,7 @@ export interface Overview {
   hostsWithHighCves: number | null;
   averageHardeningIndex: number | null;
   hostsWithPublicSsh: number | null;
+  hostsWithMalware: number | null;
   averageBaselineScore: number | null;
   hostsFailingBaselineHigh: number;
   recentAlerts: SecurityEvent[];
@@ -643,6 +645,34 @@ export interface FleetNetworkRow {
   tailscaleSsh: boolean | null;
   checkedAt: string | null;
   error: string | null;
+}
+
+export interface MalwareReport {
+  engineVersion: string | null;
+  databases: { name: string; version: number; signatures: number; builtAt: string | null }[];
+  paths: string[];
+  missingPaths: string[];
+  filesScanned: number;
+  errors: number;
+  errorSamples: string[];
+  findings: { path: string; signature: string }[];
+  truncated: boolean;
+}
+
+export interface HostMalware {
+  hostId: string;
+  hostName: string;
+  report: MalwareReport | null;
+  scanner: { installed: boolean; version: string | null; availability: string | null; unavailableReason: string | null; warnings: string[] };
+  paths: string[];
+  exclude: string[];
+  maxFileSize: string;
+  scannedAt: string | null;
+  lastScanSucceeded: boolean | null;
+  lastScanError: string | null;
+  lastAttemptAt: string | null;
+  schedule: { key: string; value: string; isDefault: boolean };
+  signatures: VulnDbStatus[];
 }
 
 export interface BlocklistList {

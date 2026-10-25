@@ -907,6 +907,12 @@ namespace Sentinel.Server.Data.Migrations.Postgres
                     b.Property<string>("MachineId")
                         .HasColumnType("text");
 
+                    b.Property<int?>("MalwareFindings")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("MalwareScannedAt")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<long>("MemoryTotalBytes")
                         .HasColumnType("bigint");
 

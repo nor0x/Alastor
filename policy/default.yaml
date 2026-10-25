@@ -17,7 +17,8 @@ agent:
 
 banning:
   enabled: true
-  engine: fail2ban          # or "crowdsec" (opt-in)
+  engine: fail2ban          # or "crowdsec" (opt-in): CrowdSec + its firewall bouncer from distro repos; jail settings are fail2ban-only
+  crowdsecCentralApi: false # CrowdSec only: share signals with crowdsec.net and pull its community blocklist (off = no third-party traffic)
   manualBantime: permanent  # bans issued from the dashboard
   allowlist: []             # add your admin IP / tailnet (100.64.0.0/10) here or on the Bans page
 
@@ -44,7 +45,7 @@ blocklists:
   extra: []                 # your own IPs/CIDRs to block everywhere in scope
   refreshSchedule: every 1h # how often agents ask the server for a newer set (conditional request)
 
-# ---- Scheduled jobs. Each integration reads its key when it lands (deliverables 6-10). ----
+# ---- Scheduled jobs ----
 
 updates:
   checkSchedule: every 6h    # count pending security updates
@@ -63,7 +64,10 @@ hardening:
   ignore: []                 # accepted Lynis test ids, e.g. [BANN-7126]; still listed, not counted; merged across layers
 
 malware:
-  scanSchedule: "off"        # ClamAV is opt-in, e.g. "0 2 * * 6"
+  scanSchedule: "off"        # ClamAV is opt-in, e.g. "0 2 * * 6"; needs ~1 GB free RAM while it runs
+  paths: [/var/www, /srv, /home, /tmp, /var/tmp, /dev/shm]  # scanned recursively; missing ones are skipped
+  exclude: []                # directories to skip, e.g. [/srv/backups, node_modules]; merged across layers
+  maxFileSize: 25M           # larger files are skipped
 
 network:
   checkSchedule: every 1h    # is SSH reachable from the internet? is Tailscale up? (reads sockets, addresses, firewall)

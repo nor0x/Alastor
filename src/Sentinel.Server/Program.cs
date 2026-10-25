@@ -19,6 +19,22 @@ using Sentinel.Server.Services.Vulnerabilities;
 using Sentinel.Server.Workers;
 using Serilog;
 
+// `sentinel-server healthcheck`: for container HEALTHCHECKs, where the runtime image has no curl.
+if (args is ["healthcheck", ..])
+{
+    var port = Environment.GetEnvironmentVariable("SENTINEL_HEALTHCHECKPORT") ?? "8080";
+    using var http = new HttpClient { Timeout = TimeSpan.FromSeconds(4) };
+    try
+    {
+        return (await http.GetAsync($"http://127.0.0.1:{port}/healthz")).IsSuccessStatusCode ? 0 : 1;
+    }
+    catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException)
+    {
+        Console.Error.WriteLine(ex.Message);
+        return 1;
+    }
+}
+
 Log.Logger = new LoggerConfiguration().WriteTo.Console().CreateBootstrapLogger();
 
 var builder = WebApplication.CreateBuilder(args);
@@ -58,6 +74,8 @@ builder.Services.AddDataProtection()
     .SetApplicationName("sentinel-vps")
     .PersistKeysToFileSystem(new DirectoryInfo(Path.Combine(options.DataDir, "keys")));
 
+// Compose files pass unset variables as empty strings; treat those as unset.
+if (string.IsNullOrWhiteSpace(options.ConnectionString)) options.ConnectionString = null;
 if (options.DatabaseProvider.Equals("postgres", StringComparison.OrdinalIgnoreCase))
 {
     var cs = options.ConnectionString ?? throw new InvalidOperationException("SENTINEL_CONNECTIONSTRING is required for PostgreSQL.");
@@ -133,6 +151,7 @@ builder.Services.AddSingleton<VulnDbMirror>();
 builder.Services.AddScoped<VulnerabilityService>();
 builder.Services.AddScoped<Sentinel.Server.Services.Hardening.HardeningService>();
 builder.Services.AddScoped<Sentinel.Server.Services.Network.NetworkService>();
+builder.Services.AddScoped<Sentinel.Server.Services.Malware.MalwareService>();
 builder.Services.AddHttpClient(VulnDbMirror.HttpClientName, c =>
 {
     c.Timeout = Timeout.InfiniteTimeSpan; // 100-200 MB archives; each request is bounded by the worker's token
@@ -189,6 +208,7 @@ app.MapReportEndpoints();
 app.MapVulnerabilityEndpoints();
 app.MapHardeningEndpoints();
 app.MapNetworkEndpoints();
+app.MapMalwareEndpoints();
 app.MapHub<AgentHub>("/hubs/agent");
 app.MapHub<DashboardHub>("/hubs/dashboard");
 app.MapInstallScripts();

@@ -106,6 +106,12 @@ public sealed class SentinelOptions
     /// <summary>Base URL of Grype's database listing (<c>{url}/v6/latest.json</c>).</summary>
     public string GrypeDbUrl { get; set; } = "https://grype.anchore.io/databases";
 
+    /// <summary>freshclam binary the server runs to mirror ClamAV's signatures (only once some host scans for malware).</summary>
+    public string FreshclamPath { get; set; } = "freshclam";
+
+    /// <summary>The ClamAV mirror freshclam downloads from.</summary>
+    public string ClamAvMirror { get; set; } = "database.clamav.net";
+
     // ---- alerts ----
 
     /// <summary>Leaky-bucket dedup: the same alert (host + event key) is sent at most <see cref="AlertBurst"/> times per window; repeats are counted and summarized.</summary>

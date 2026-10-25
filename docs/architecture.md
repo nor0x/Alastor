@@ -129,7 +129,7 @@ Cookie-authenticated writes must also send `X-Sentinel-Request: 1` (CSRF guard o
 | `GET /api/hosts/{id}/metrics?hours=` | R | downsampled CPU/mem/disk/load history |
 | `GET /api/hosts/{id}/effective-policy` · `/commands` | R | merged YAML and revision · command history |
 | `PATCH /api/hosts/{id}` · `DELETE /api/hosts/{id}` | A | rename, group, tags · remove (revokes the agent) |
-| `POST /api/hosts/{id}/actions/{reconcile\|reclaim\|refresh-bans\|recheck\|check-updates\|apply-updates\|scan-vulnerabilities}` | A | operator actions (`recheck` re-runs the security baseline; the update and scan actions queue a `run-job` command) |
+| `POST /api/hosts/{id}/actions/{reconcile\|reclaim\|refresh-bans\|recheck\|check-updates\|apply-updates\|scan-vulnerabilities\|run-audit\|check-network\|scan-malware}` | A | operator actions (`recheck` re-runs the security baseline; the update and scan actions queue a `run-job` command) |
 | `GET /api/hosts/{id}/updates` | R | pending packages (security first), reboot flag, last install with its log tail, effective update schedules |
 | `GET /api/updates` · `POST /api/updates/apply` `{hostIds}` | R · A | per-host update counts across the fleet · "install now" on several hosts |
 | `GET /api/hosts/{id}/vulnerabilities` | R | every finding (package, installed → fixed, severity, CVSS, KEV flag, accepted), scanner and database info, ignored-package counts |
@@ -138,6 +138,8 @@ Cookie-authenticated writes must also send `X-Sentinel-Request: 1` (CSRF guard o
 | `GET /api/hosts/{id}/hardening` | R | latest Lynis audit: hardening index, every warning and suggestion (category, details, solution, accepted), test ids resolved since the previous audit, Lynis status and schedule |
 | `GET /api/hosts/{id}/network` | R | latest network check: SSH ports, auth settings, listeners, addresses, firewall verdict, Tailscale state, and the exposure re-assessed with the address the server sees and `network.allowPublicSsh` |
 | `GET /api/network` | R | fleet view: per-host SSH exposure, password logins, firewall verdict, Tailscale state |
+| `GET /api/hosts/{id}/malware` | R | latest ClamAV scan: findings (path, signature), files scanned, unreadable paths, signature versions, scan settings, ClamAV status and the server mirror's state |
+| `GET /api/malware`, `GET /api/malware/db` | R | fleet view (scans on, findings per host) and the ClamAV signature mirror |
 | `GET /api/hardening?limit` | R | fleet view: average index, per-host index and counts, warnings and suggestions ranked by hosts affected (accepted excluded) |
 | `GET /api/baseline` · `GET /api/baseline/catalog` | R | fleet baseline: per-check pass/fail counts with failing hosts, per-host scores · check catalog |
 | `GET /api/hosts/{id}/baseline` | R | every baseline check merged with this host's result, copy-paste commands and the policy key that fixes it |
@@ -167,7 +169,7 @@ Cookie-authenticated writes must also send `X-Sentinel-Request: 1` (CSRF guard o
 | `POST /api/agent/events` | Ag | batch of `SecurityEvent` (≤1000), idempotent |
 | `POST /api/agent/baseline` | Ag | one baseline run; the server replaces the host's result set and recomputes the score |
 | `POST /api/agent/reports` | Ag | result of a scheduled job (`AgentReport`: updates now, CVE scans and audits later); the server keeps the latest per host and kind |
-| `GET /api/agent/vulndb/{trivy\|grype}` | Ag | mirrored scanner database; `ETag` = upstream sha256 (304 when current), range requests; 503 + `Retry-After` while the first mirror runs |
+| `GET /api/agent/vulndb/{trivy\|grype\|clamav-main\|clamav-daily\|clamav-bytecode}` | Ag | mirrored scanner database or ClamAV signature file; `ETag` = sha256 (304 when current), range requests; 503 + `Retry-After` while the first mirror runs |
 | `GET /api/agent/blocklist` | Ag | this host's merged blocklist as minimal CIDRs; `ETag`/`If-None-Match` (304), gzip |
 | `POST /api/agent/bans` | Ag | full ban snapshot per tool (server replaces that host's active set) |
 | `GET /api/agent/commands` · `POST /api/agent/commands/{id}/result` | Ag | pull pending commands · report outcome |
@@ -462,6 +464,59 @@ Policy: `network: {checkSchedule, allowPublicSsh}`.
 * **Why built:** no bundled tool answers "can the internet reach this host's SSH?". Lynis and the baseline check
   sshd's *settings*; this combines sockets, addresses, firewall and the server's view of the host.
 
+## 5g. CrowdSec (opt-in banning engine)
+
+Code: `src/Sentinel.Core/Integrations/CrowdSec/`. Policy: `banning: {engine: crowdsec, crowdsecCentralApi, allowlist, manualBantime}`.
+
+* **Engine switch.** `banning.engine` picks exactly one engine per host: fail2ban (default) or CrowdSec. Both implement
+  `IBanProvider`, so manual bans, unbans, the Bans page and ban snapshots work the same; the supervisor routes commands
+  to whichever is wanted. Switching back to fail2ban removes CrowdSec's managed allowlist and leaves CrowdSec installed.
+* **Install.** `crowdsec` and `crowdsec-firewall-bouncer` from Debian/Ubuntu's repositories (the bouncer's package
+  registers itself with the Local API). Elsewhere CrowdSec isn't packaged, so a copy installed from CrowdSec's own
+  repository is adopted. A missing or stopped bouncer is a warning: decisions exist but nothing blocks them.
+* **No third-party traffic by default.** CrowdSec's Central API shares attack signals with crowdsec.net and pulls its
+  community blocklist. It stays off unless `banning.crowdsecCentralApi: true`: before installing, the agent writes
+  `online_api_credentials.yaml` itself (the Debian package skips registration when that file has content), and an
+  owned systemd drop-in (`crowdsec.service.d/sentinel-vps.conf`) starts the daemon with `-no-capi`. Turning it on
+  removes both and runs `cscli capi register`. The drop-in survives an engine switch, so data sharing never starts
+  as a side effect. The hub is the package's offline copy; the agent never runs `cscli hub update`.
+* **Owned config.** One parser whitelist, `parsers/s02-enrich/sentinel-vps-allowlist.yaml`, from `banning.allowlist`
+  (IPs and CIDRs; CrowdSec drops events from them before any scenario runs). Every change is validated with
+  `crowdsec -t` and rolled back if rejected; allowlist changes reload, drop-in changes restart. Hand edits are drift,
+  like every managed file. fail2ban's jail settings don't apply: CrowdSec's scenarios and its profile (4 h bans by
+  default) decide what is banned.
+* **Bans and events** come from cscli's JSON: `cscli decisions list -o json` for the ban list (time left, scenario,
+  manual or not), and `cscli alerts list -o json`, polled every 30 s, for new alerts (`ban.added` per alert; alerts
+  without a decision, such as simulation mode, as `auth.failures`). The last alert id is kept so a restart doesn't
+  replay a day of alerts; community-blocklist pulls are skipped. Manual bans are `cscli decisions add` with
+  `banning.manualBantime` (CrowdSec has no permanent decisions, so "permanent" is ten years) and a `sentinel-vps:` reason.
+
+## 5h. Malware scans (ClamAV, opt-in)
+
+Code: `src/Sentinel.Core/Malware/`, `src/Sentinel.Server/Services/Malware/`, `src/Sentinel.Server/Endpoints/MalwareEndpoints.cs`,
+the ClamAV part of `VulnDbMirror`. Policy: `malware: {scanSchedule, paths, exclude, maxFileSize}`.
+
+* **Opt-in by schedule.** `malware.scanSchedule` is `off` by default; any schedule makes the agent install `clamav`
+  from the distro repositories. Debian pulls in `clamav-freshclam`, which the agent stops and disables on hosts where it
+  installed ClamAV, so hosts never contact ClamAV's CDN. On adopted installs it is left alone, with a warning.
+* **Signatures come from the server.** ClamAV's CDN only serves its own update tools, so the server runs `freshclam`
+  (distro package `clamav-freshclam`, included in the Docker image) into `data/vulndb/clamav/` with its own config:
+  whole `.cvd` files (no incremental `.cld`), no test load (it would take ~1 GB of RAM). freshclam verifies each
+  file's signature. Agents fetch `clamav-main`, `clamav-daily` and `clamav-bytecode` through the same conditional,
+  authenticated endpoint as the CVE databases (`/api/agent/vulndb/{name}`, ETag = sha256), only when a scan runs, and
+  check the `ClamAV-VDB:` header before swapping a file in. The mirror runs only for databases some agent asked for in
+  the last 7 days, on `SENTINEL_VULNDBREFRESHINTERVAL`.
+* **Scan.** `nice -n 19 clamscan --database=<state>/clamav -r --infected --stdout --max-filesize=…`
+  over the configured paths that exist (missing ones are listed, not errors), with `--exclude-dir` regexes built from
+  `malware.exclude`. clamscan has no machine-readable output, so the agent reads its documented text format:
+  `<path>: <signature> FOUND` lines and the scan summary; unreadable paths are counted, not fatal.
+* **Memory guard.** clamscan holds every signature in RAM (measured peak 967 MB with ClamAV 1.5.4 and 3.6 M
+  signatures). The agent checks `MemAvailable` first and skips the scan with a clear error below 1.1 GB rather than push
+  a small VPS into the OOM killer. This is why the feature is opt-in.
+* **Report only.** Nothing is deleted or quarantined; a false positive in a web root would take a site down.
+  `malware.found` (High) fires once per new file and signature. The host's *Malware* tab lists findings, unreadable
+  paths, the scan settings and the mirror's state; the Hosts list and an overview tile flag hosts with findings.
+
 ## 6. Security model
 
 | Secret | At rest |
@@ -504,6 +559,9 @@ allowlist, and the operator's own address.
   once, verifies its checksum and serves it over the agents' authenticated channel (about 200 lines). The agent hands it
   to the scanner's own documented air-gapped mechanisms (`--skip-db-update` with the cache layout, `grype db import`).
   Scanning and matching remain entirely the scanners' work.
+* **ClamAV signature mirror.** freshclam does the downloading and verification; the server only runs it on a schedule
+  and serves its output over the agents' authenticated channel, which freshclam's `PrivateMirror` option can't use
+  (it has no way to send the agent's credential).
 * **Ban snapshots and manual-ban jail.** These use fail2ban's own mechanisms (`banip`, jail DB). We add no
   firewall code for banning.
 * **Security baseline.** About twenty checks that matter most on an internet-facing server (SSH, firewall,

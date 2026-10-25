@@ -11,7 +11,7 @@
 
   async function unban(b: Ban, everywhere: boolean) {
     const where = everywhere ? 'every host' : b.hostName;
-    if (!(await confirm(`Unban ${b.target}?`, `Removes the ban on ${where}. fail2ban can ban it again if it keeps misbehaving.`, { confirmLabel: 'Unban' }))) return;
+    if (!(await confirm(`Unban ${b.target}?`, `Removes the ban on ${where}. The banning engine can ban it again if it keeps misbehaving.`, { confirmLabel: 'Unban' }))) return;
     try {
       await api('/api/bans/unban', { method: 'POST', body: JSON.stringify({ target: b.target, hostIds: everywhere ? null : [b.hostId] }) });
       toast(`Unban for ${b.target} sent to ${where}.`);

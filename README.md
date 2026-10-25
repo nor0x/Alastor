@@ -2,14 +2,15 @@
 
 Free, self-hosted endpoint protection for Linux VPS fleets: one lightweight agent per server, one central
 server, one dashboard. SentinelVPS doesn't reinvent security engines. It **orchestrates** proven open-source
-tools (fail2ban, Trivy, Lynis, unattended-upgrades, …; CrowdSec and ClamAV next): it installs or adopts them, owns their
+tools (fail2ban, CrowdSec, Trivy, Lynis, ClamAV, unattended-upgrades, …): it installs or adopts them, owns their
 configuration declaratively, and turns their output into one normalized alert pipeline.
 
-**Status:** deliverables 1–9 of 10 are done. The server (REST API, SignalR, SQLite or PostgreSQL), the agent and the
+**Status:** all 10 deliverables are done. The server (REST API, SignalR, SQLite or PostgreSQL), the agent and the
 Svelte dashboard cover:
 
 - **Hosts:** overview and host detail with live metrics, a capability matrix, events, bans and commands.
-- **Banning:** fail2ban, managed from policy, with bans and allowlist in the dashboard.
+- **Banning:** fail2ban, or CrowdSec with its firewall bouncer (opt-in), managed from policy, with bans and allowlist
+  in the dashboard.
 - **Policy:** layered global → group → host, with form and YAML editors, live validation, schedule preview, version
   history and revert.
 - **Security baseline:** 21 checks per host with one-click, reversible fixes.
@@ -19,12 +20,12 @@ Svelte dashboard cover:
 - **CVE scans:** Trivy or Grype against a server-mirrored database, joined with CISA KEV.
 - **Lynis audits:** hardening index and a remediation checklist.
 - **SSH exposure:** warnings when SSH is reachable from the internet, and Tailscale detection.
+- **Malware scans:** ClamAV (opt-in) over web roots and upload directories, with signatures mirrored by the server.
 - **Threat feed:** NVD, CISA KEV and security news.
 - **Settings and About:** groups, enrollment tokens, API keys, audit log, and tool licenses.
-- **Installers:** one-line installers for the server and the agent.
+- **Installers:** one-line installers for the server and the agent, and a Docker image with compose for the server.
 
-Next (deliverable 10): CrowdSec and ClamAV as opt-in integrations, and a Docker image with compose. Live updates
-use SignalR, with polling when the hub is unreachable.
+Live updates use SignalR, with polling when the hub is unreachable.
 See [docs/architecture.md](docs/architecture.md) for the event model, integration interface and API surface.
 
 ## How it works
@@ -43,24 +44,26 @@ flowchart LR
     subgraph host["each VPS: sentinel-agent"]
         direction TB
         sup[Supervisor<br/>heartbeat → reconcile → commands]
-        sup --> f2b[fail2ban]
+        sup --> f2b[fail2ban or CrowdSec]
         sup --> nft[nftables / ipset]
         sup --> pkg[apt · dnf · apk<br/>unattended-upgrades]
         sup --> scan[Trivy / Grype]
         sup --> lynis[Lynis]
+        sup --> clam[ClamAV]
         sup --> net[SSH exposure<br/>Tailscale · ufw / nft]
         sup --> base[Baseline checks<br/>sshd · sysctl · ufw …]
     end
 
-    host -- "HTTPS pull: policy, blocklists,<br/>vuln DB · push: events, reports" --> server
+    host -- "HTTPS pull: policy, blocklists,<br/>vuln DB, ClamAV signatures ·<br/>push: events, reports" --> server
     server -. "SignalR wake-up" .-> host
-    workers -- fetch --> internet[(NVD · CISA KEV · RSS<br/>blocklists · trivy-db / grype-db)]
+    workers -- fetch --> internet[(NVD · CISA KEV · RSS<br/>blocklists · trivy-db / grype-db ·<br/>ClamAV via freshclam)]
     workers -- alerts --> channels([Email · Webhook · ntfy])
 ```
 
 Agents only ever talk to your server. Everything that comes from the internet (threat intel, IP blocklists,
-vulnerability databases) is fetched once by the server and handed to agents, so hosts need no outbound access
-beyond it, apart from their distribution's package mirrors for installs and updates.
+vulnerability databases, ClamAV signatures) is fetched once by the server and handed to agents, so hosts need no outbound access
+beyond it, apart from their distribution's package mirrors for installs and updates. CrowdSec's Central API (signal
+sharing and its community blocklist) stays off unless you set `banning.crowdsecCentralApi: true`.
 
 Every tool's output is normalized into one event stream that feeds the timeline, live dashboard and alerts:
 
@@ -110,10 +113,10 @@ you install them from their vendor's repository (Alpine's `trivy` package is the
 | [Lynis](https://cisofy.com/lynis/) | Hardening | scheduled audits; hardening index, warnings and suggestions as a checklist | GPL-3.0 | ✅ |
 | Security baseline (built in) | Hardening | 21 checks via `sshd -T`, `sysctl`, `ufw status`, `nft -j`, … with reversible one-click fixes | MIT | ✅ |
 | [Caddy](https://caddyserver.com/) | Server TLS | optional, set up by `install.sh --domain` for automatic HTTPS | Apache-2.0 | ✅ |
-| [CrowdSec](https://github.com/crowdsecurity/crowdsec) | Banning | collaborative behaviour-based banning, community blocklist, AppSec WAF | MIT | planned, opt-in |
+| [CrowdSec](https://github.com/crowdsecurity/crowdsec) + firewall bouncer | Banning | `banning.engine: crowdsec`: installs both from distro repos, owns a parser whitelist for the allowlist, bans and events via `cscli … -o json`; Central API off by default | MIT | ✅ opt-in |
 | [ufw](https://launchpad.net/ufw) | Firewall | managed firewall rules | GPL-3.0 | planned |
 | [Tailscale](https://tailscale.com/) | Network | detected, never installed: tailnet state, IPs, Tailscale SSH, key expiry; SSH exposure check suggests limiting SSH to the tailnet | BSD-3-Clause | ✅ opt-in |
-| [ClamAV](https://www.clamav.net/) | Malware | scans of web roots and upload directories | GPL-2.0 | planned, opt-in |
+| [ClamAV](https://www.clamav.net/) | Malware | `malware.scanSchedule`: niced `clamscan` of web roots and upload dirs, report only; signatures from the server's freshclam mirror (hosts never contact ClamAV's CDN) | GPL-2.0 | ✅ opt-in |
 
 **Data sources the server fetches** (all free, no account needed):
 
@@ -124,6 +127,7 @@ you install them from their vendor's repository (Alpine's `trivy` package is the
 | The Hacker News, BleepingComputer, Krebs on Security, SecurityWeek, Dark Reading (RSS) | security news in the threat feed |
 | [Spamhaus DROP](https://www.spamhaus.org/blocklists/do-not-route-or-peer/), [FireHOL level 1](https://iplists.firehol.org/?ipset=firehol_level1), [abuse.ch Feodo Tracker](https://feodotracker.abuse.ch/blocklist/), [Emerging Threats compromised](https://rules.emergingthreats.net/), [blocklist.de](https://www.blocklist.de/en/export.html), [CINS Army](https://cinsscore.com/#list) | IP blocklists, merged per host minus private ranges and your allowlist |
 | `ghcr.io/aquasecurity/trivy-db:2`, Grype DB v6 | vulnerability databases mirrored for agents |
+| ClamAV signatures (`database.clamav.net`, through `freshclam`) | malware scans; mirrored only once some host has a malware scan schedule |
 
 **Main libraries:** ASP.NET Core, EF Core (SQLite, [Npgsql](https://www.npgsql.org/)), SignalR,
 [Serilog](https://serilog.net/), [YamlDotNet](https://github.com/aaubry/YamlDotNet),
@@ -176,11 +180,29 @@ Agents need no token: they download the agent from your server. Binaries come fr
 (see [Build & test](#build--test)) and pass them in:
 `sudo bash install/install.sh --binary artifacts/server/sentinel-server --agent-dir <dir with sentinel-agent-linux-x64>`.
 
+### Docker
+
+The server also runs as a container. The image holds the dashboard, the agent binary it hands out to hosts (for the
+image's architecture) and `freshclam` for the ClamAV mirror. Agents still run on each VPS under systemd: install them
+with the command from **Settings → Enrollment**.
+
+```bash
+git clone https://github.com/nor0x/DefBox && cd DefBox
+SENTINEL_ADMINPASSWORD='a long passphrase' SENTINEL_PUBLICURL=https://sentinel.example.com docker compose up -d
+```
+
+Data lives in the `sentinel-data` volume (`/data`). Put a reverse proxy with TLS in front of port 8080; for a quick
+local try without TLS, also set `SENTINEL_SECURECOOKIES=false` and enroll agents with `--insecure`. For PostgreSQL:
+`docker compose --profile postgres up -d` with `SENTINEL_DATABASEPROVIDER=postgres` and
+`SENTINEL_CONNECTIONSTRING="Host=postgres;Database=sentinel;Username=sentinel;Password=…"`. `docker build
+--build-arg WITH_AGENT=false .` skips the Native AOT agent build (hosts then download the agent from GitHub releases).
+
 ## Repository layout
 
 ```
 src/Sentinel.Core     domain: SecurityEvent, policy model, IToolIntegration, the tool integrations
-                      (fail2ban, baseline, blocklists, updates, vulnerabilities, Lynis, network), platform seams
+                      (fail2ban, CrowdSec, baseline, blocklists, updates, vulnerabilities, Lynis, network, ClamAV),
+                      platform seams
 src/Sentinel.Server   ASP.NET Core minimal API + SignalR + EF Core; serves the embedded SPA; single-file publish
 src/Sentinel.Agent    supervisor daemon (Native AOT); enroll | run | status | uninstall
 src/sentinel-web      Svelte 5 + Vite dashboard; builds into Sentinel.Server/wwwroot
@@ -188,6 +210,7 @@ tests/Sentinel.Tests  xUnit: parsers on captured tool output (Fixtures/, each fo
                       reconciliation, policy, API end to end
 policy/default.yaml   global default policy (embedded into the server)
 install/              install.sh (server) and agent-install.sh, also served by the server at /install/{server,agent}.sh
+Dockerfile, compose.yaml   server image (dashboard + agent binary + freshclam)
 docs/                 architecture
 ```
 
@@ -233,6 +256,7 @@ and starts streaming ban events.
 | `SENTINEL_SECURECOOKIES` | `true` | set `false` only for plain-HTTP local dev |
 | `SENTINEL_BLOCKLISTSENABLED` / `SENTINEL_BLOCKLISTREFRESHINTERVAL` | `true` / `4h` | public IP blocklists the server pulls and merges per host (*Bans → Blocklists*) |
 | `SENTINEL_VULNDBENABLED` / `SENTINEL_VULNDBREFRESHINTERVAL` | `true` / `12h` | mirror the Trivy/Grype databases for agents' CVE scans; `false` for air-gapped servers (place the files in `data/vulndb/`) |
+| `SENTINEL_FRESHCLAMPATH` / `SENTINEL_CLAMAVMIRROR` | `freshclam` / `database.clamav.net` | ClamAV signature mirror for agents' malware scans (needs the `clamav-freshclam` package on the server; the Docker image has it). Also under `data/vulndb/clamav/` |
 | `SENTINEL_TRIVYDBREPOSITORY` / `SENTINEL_GRYPEDBURL` | `ghcr.io/aquasecurity/trivy-db:2` / `https://grype.anchore.io/databases` | where the mirror pulls from (an internal registry or mirror) |
 | `SENTINEL_ALERTDEDUPWINDOW` / `SENTINEL_ALERTBURST` | `1h` / `1` | alert dedup per host and event; channels (email, webhook, ntfy) are set up under *Settings → Notifications* |
 | `SENTINEL_THREATFEEDENABLED` | `true` | fetch NVD, CISA KEV and security news RSS; `false` for air-gapped servers |

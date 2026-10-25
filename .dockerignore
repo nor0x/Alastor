@@ -1,0 +1,10 @@
+**/bin/
+**/obj/
+**/node_modules/
+src/Sentinel.Server/wwwroot/assets/
+src/sentinel-web/dist/
+artifacts/
+data/
+.git/
+.github/
+**/*.user

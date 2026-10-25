@@ -892,6 +892,12 @@ namespace Sentinel.Server.Data.Migrations.Sqlite
                     b.Property<string>("MachineId")
                         .HasColumnType("TEXT");
 
+                    b.Property<int?>("MalwareFindings")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime?>("MalwareScannedAt")
+                        .HasColumnType("TEXT");
+
                     b.Property<long>("MemoryTotalBytes")
                         .HasColumnType("INTEGER");
 

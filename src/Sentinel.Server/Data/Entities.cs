@@ -132,6 +132,10 @@ public sealed class ManagedHost
     public string? TailscaleState { get; set; }
     public string? TailscaleIp { get; set; }
     public DateTime? NetworkCheckedAt { get; set; }
+
+    // Latest ClamAV scan.
+    public int? MalwareFindings { get; set; }
+    public DateTime? MalwareScannedAt { get; set; }
 }
 
 /// <summary>One Lynis warning or suggestion on one host, from the latest audit. Replaced as a set per audit.</summary>

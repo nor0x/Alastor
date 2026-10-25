@@ -21,15 +21,14 @@ public static class ToolCatalog
     [
         new(Fail2BanIntegration.Info, Implemented: true, OptIn: false),
         new(Baseline.BaselineIntegration.Info, Implemented: true, OptIn: false),
-        new(D("crowdsec", "CrowdSec Security Engine", Capability.Banning, "MIT", "https://github.com/crowdsecurity/crowdsec", "crowdsec",
-            "Collaborative behaviour-based banning with community blocklist and AppSec WAF.", alpinePkg: null), false, true),
+        new(CrowdSec.CrowdSecIntegration.Info, Implemented: true, OptIn: true),
         new(D("ufw", "ufw", Capability.Firewall, "GPL-3.0", "https://launchpad.net/ufw", "ufw", "Uncomplicated Firewall front-end."), false, false),
         new(Blocklists.BlocklistIntegration.Info, Implemented: true, OptIn: false),
         new(Updates.UpdatesIntegration.Info, Implemented: true, OptIn: false),
         new(Vulnerabilities.VulnerabilityIntegration.Info, Implemented: true, OptIn: false),
         new(Hardening.HardeningIntegration.Info, Implemented: true, OptIn: false),
         new(Network.NetworkIntegration.Info, Implemented: true, OptIn: true),
-        new(D("clamav", "ClamAV", Capability.Malware, "GPL-2.0", "https://www.clamav.net/", "clamav", "Antivirus scanning of web roots and upload dirs."), false, true),
+        new(Malware.ClamAvIntegration.Info, Implemented: true, OptIn: true),
     ];
 
     public static Entry? Find(string id) => All.FirstOrDefault(e => e.Descriptor.Id == id);

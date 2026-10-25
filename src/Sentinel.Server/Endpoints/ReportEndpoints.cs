@@ -76,9 +76,18 @@ public static class ReportEndpoints
 
     private static async Task<IResult> Receive(AgentReport report, ClaimsPrincipal user, SentinelDbContext db, PolicyService policies, DashboardNotifier notifier,
         Services.Vulnerabilities.VulnerabilityService vulnerabilities, Services.Hardening.HardeningService hardening,
-        Services.Network.NetworkService network, TimeProvider time, CancellationToken ct)
+        Services.Network.NetworkService network, Services.Malware.MalwareService malware, TimeProvider time, CancellationToken ct)
     {
         var hostId = user.HostId();
+        if (report.Malware is not null || report.JobId.StartsWith("malware.", StringComparison.Ordinal))
+        {
+            if (report.Malware is { } m && (m.Findings.Count > Sentinel.Core.Malware.ClamAvIntegration.MaxFindings || m.ErrorSamples.Count > 100 || m.Paths.Count > 200))
+                return Results.Problem("Report too large.", statusCode: 413);
+            await malware.ReceiveAsync(hostId, report, ct);
+            var eff = await policies.GetEffectiveAsync(hostId, ct);
+            await notifier.HostUpdatedAsync(await HostEndpoints.SummaryAsync(db, hostId, eff.Revision, ct), ct);
+            return Results.NoContent();
+        }
         if (report.Vulnerabilities is not null || report.JobId.StartsWith("vulnerabilities.", StringComparison.Ordinal))
         {
             if (report.Vulnerabilities?.Findings.Count > Sentinel.Core.Vulnerabilities.VulnerabilityIntegration.MaxFindings)

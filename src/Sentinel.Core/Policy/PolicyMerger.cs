@@ -26,6 +26,10 @@ public static class PolicyMerger
         Malware = baseDoc.Malware is null && overlay.Malware is null ? null : new MalwarePolicy
         {
             ScanSchedule = overlay.Malware?.ScanSchedule ?? baseDoc.Malware?.ScanSchedule,
+            Paths = (overlay.Malware?.Paths ?? baseDoc.Malware?.Paths)?.ToList(),
+            Exclude = baseDoc.Malware?.Exclude is null && overlay.Malware?.Exclude is null ? null
+                : (baseDoc.Malware?.Exclude ?? []).Concat(overlay.Malware?.Exclude ?? []).Distinct(StringComparer.Ordinal).ToList(),
+            MaxFileSize = overlay.Malware?.MaxFileSize ?? baseDoc.Malware?.MaxFileSize,
         },
         Baseline = Merge(baseDoc.Baseline, overlay.Baseline),
         Network = baseDoc.Network is null && overlay.Network is null ? null : new NetworkPolicy
@@ -113,6 +117,7 @@ public static class PolicyMerger
         {
             Enabled = o?.Enabled ?? b?.Enabled,
             Engine = o?.Engine ?? b?.Engine,
+            CrowdsecCentralApi = o?.CrowdsecCentralApi ?? b?.CrowdsecCentralApi,
             Allowlist = allow,
             Defaults = Merge(b?.Defaults, o?.Defaults),
             Jails = b?.Jails is null && o?.Jails is null ? null : jails,

@@ -127,6 +127,19 @@ public static partial class PolicyYaml
             if (bl.Enabled == true && (bl.Lists ?? []).Count == 0 && (bl.Extra ?? []).Count == 0)
                 Warn("blocklists", "Blocklists are enabled but no list and no extra entry is set, so nothing is blocked.");
         }
+        if (doc.Malware is { } mw)
+        {
+            foreach (var (path, i) in (mw.Paths ?? []).Select((p, i) => (p, i)))
+                if (!path.StartsWith('/') || path.Contains("..", StringComparison.Ordinal))
+                    Error($"malware.paths[{i}]", $"'{path}' must be an absolute path.");
+            foreach (var (path, i) in (mw.Exclude ?? []).Select((p, i) => (p, i)))
+                if (string.IsNullOrWhiteSpace(path) || path.Length > 500)
+                    Error($"malware.exclude[{i}]", "Entries must be a directory path or name.");
+            if (mw.MaxFileSize is { } size && !System.Text.RegularExpressions.Regex.IsMatch(size, @"^[1-9][0-9]{0,5}[KM]?$"))
+                Error("malware.maxFileSize", $"'{size}' isn't a size (examples: 25M, 500K).");
+            if (mw.ScanSchedule is not null && mw.ScanSchedule != "off" && mw.Paths is { Count: 0 })
+                Warn("malware.paths", "Malware scans are scheduled but no path is set, so nothing is scanned.");
+        }
         foreach (var (id, i) in (doc.Hardening?.Ignore ?? []).Select((id, i) => (id, i)))
             if (!System.Text.RegularExpressions.Regex.IsMatch(id, @"^[A-Z]{2,6}-[0-9A-Z]{3,6}$"))
                 Error($"hardening.ignore[{i}]", $"'{id}' isn't a Lynis test id (examples: SSH-7408, KRNL-6000).");
@@ -162,6 +175,9 @@ public static partial class PolicyYaml
 
         if (b.Engine is not null && !Engines.Contains(b.Engine))
             Error("banning.engine", $"Unknown engine '{b.Engine}'. Use one of: {string.Join(", ", Engines)}.");
+
+        if (b.CrowdsecCentralApi == true && b.Engine != "crowdsec")
+            Warn("banning.crowdsecCentralApi", "Only applies when banning.engine is crowdsec.");
 
         if (b.ManualBantime is not null) CheckDuration(issues, "banning.manualBantime", b.ManualBantime, allowPermanent: true);
 

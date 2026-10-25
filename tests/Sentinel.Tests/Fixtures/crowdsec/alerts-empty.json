@@ -1,0 +1,259 @@
+[
+ {
+  "capacity": 5,
+  "created_at": "2026-10-25T13:02:49Z",
+  "decisions": [
+   {
+    "duration": "4h2m9.806609923s",
+    "id": 3,
+    "origin": "crowdsec",
+    "scenario": "crowdsecurity/ssh-bf",
+    "scope": "Ip",
+    "simulated": false,
+    "type": "ban",
+    "value": "198.51.100.23"
+   }
+  ],
+  "events": [
+   {
+    "meta": [
+     {
+      "key": "datasource_path",
+      "value": "/var/log/auth.log"
+     },
+     {
+      "key": "datasource_type",
+      "value": "file"
+     },
+     {
+      "key": "log_type",
+      "value": "ssh_failed-auth"
+     },
+     {
+      "key": "machine",
+      "value": "vps1"
+     },
+     {
+      "key": "service",
+      "value": "ssh"
+     },
+     {
+      "key": "source_ip",
+      "value": "198.51.100.23"
+     },
+     {
+      "key": "target_user",
+      "value": "admin"
+     },
+     {
+      "key": "timestamp",
+      "value": "2026-10-25T13:05:01Z"
+     }
+    ],
+    "timestamp": "2026-10-25 13:05:01 +0000 UTC"
+   },
+   {
+    "meta": [
+     {
+      "key": "datasource_path",
+      "value": "/var/log/auth.log"
+     },
+     {
+      "key": "datasource_type",
+      "value": "file"
+     },
+     {
+      "key": "log_type",
+      "value": "ssh_failed-auth"
+     },
+     {
+      "key": "machine",
+      "value": "vps1"
+     },
+     {
+      "key": "service",
+      "value": "ssh"
+     },
+     {
+      "key": "source_ip",
+      "value": "198.51.100.23"
+     },
+     {
+      "key": "target_user",
+      "value": "admin"
+     },
+     {
+      "key": "timestamp",
+      "value": "2026-10-25T13:05:02Z"
+     }
+    ],
+    "timestamp": "2026-10-25 13:05:02 +0000 UTC"
+   },
+   {
+    "meta": [
+     {
+      "key": "datasource_path",
+      "value": "/var/log/auth.log"
+     },
+     {
+      "key": "datasource_type",
+      "value": "file"
+     },
+     {
+      "key": "log_type",
+      "value": "ssh_failed-auth"
+     },
+     {
+      "key": "machine",
+      "value": "vps1"
+     },
+     {
+      "key": "service",
+      "value": "ssh"
+     },
+     {
+      "key": "source_ip",
+      "value": "198.51.100.23"
+     },
+     {
+      "key": "target_user",
+      "value": "admin"
+     },
+     {
+      "key": "timestamp",
+      "value": "2026-10-25T13:05:03Z"
+     }
+    ],
+    "timestamp": "2026-10-25 13:05:03 +0000 UTC"
+   },
+   {
+    "meta": [
+     {
+      "key": "datasource_path",
+      "value": "/var/log/auth.log"
+     },
+     {
+      "key": "datasource_type",
+      "value": "file"
+     },
+     {
+      "key": "log_type",
+      "value": "ssh_failed-auth"
+     },
+     {
+      "key": "machine",
+      "value": "vps1"
+     },
+     {
+      "key": "service",
+      "value": "ssh"
+     },
+     {
+      "key": "source_ip",
+      "value": "198.51.100.23"
+     },
+     {
+      "key": "target_user",
+      "value": "admin"
+     },
+     {
+      "key": "timestamp",
+      "value": "2026-10-25T13:05:04Z"
+     }
+    ],
+    "timestamp": "2026-10-25 13:05:04 +0000 UTC"
+   },
+   {
+    "meta": [
+     {
+      "key": "datasource_path",
+      "value": "/var/log/auth.log"
+     },
+     {
+      "key": "datasource_type",
+      "value": "file"
+     },
+     {
+      "key": "log_type",
+      "value": "ssh_failed-auth"
+     },
+     {
+      "key": "machine",
+      "value": "vps1"
+     },
+     {
+      "key": "service",
+      "value": "ssh"
+     },
+     {
+      "key": "source_ip",
+      "value": "198.51.100.23"
+     },
+     {
+      "key": "target_user",
+      "value": "admin"
+     },
+     {
+      "key": "timestamp",
+      "value": "2026-10-25T13:05:05Z"
+     }
+    ],
+    "timestamp": "2026-10-25 13:05:05 +0000 UTC"
+   },
+   {
+    "meta": [
+     {
+      "key": "datasource_path",
+      "value": "/var/log/auth.log"
+     },
+     {
+      "key": "datasource_type",
+      "value": "file"
+     },
+     {
+      "key": "log_type",
+      "value": "ssh_failed-auth"
+     },
+     {
+      "key": "machine",
+      "value": "vps1"
+     },
+     {
+      "key": "service",
+      "value": "ssh"
+     },
+     {
+      "key": "source_ip",
+      "value": "198.51.100.23"
+     },
+     {
+      "key": "target_user",
+      "value": "admin"
+     },
+     {
+      "key": "timestamp",
+      "value": "2026-10-25T13:05:06Z"
+     }
+    ],
+    "timestamp": "2026-10-25 13:05:06 +0000 UTC"
+   }
+  ],
+  "events_count": 6,
+  "id": 3,
+  "labels": null,
+  "leakspeed": "10s",
+  "machine_id": "d1658291f5104cda87084a3adfd64885",
+  "message": "Ip 198.51.100.23 performed 'crowdsecurity/ssh-bf' (6 events over 5s) at 2026-10-25 13:05:06 +0000 UTC",
+  "scenario": "crowdsecurity/ssh-bf",
+  "scenario_hash": "4441dcff07020f6690d998b7101e642359ba405c2abb83565bbbdcee36de280f",
+  "scenario_version": "0.1",
+  "simulated": false,
+  "source": {
+   "ip": "198.51.100.23",
+   "scope": "Ip",
+   "value": "198.51.100.23"
+  },
+  "start_at": "2026-10-25 13:05:01 +0000 UTC",
+  "stop_at": "2026-10-25 13:05:06 +0000 UTC"
+ }
+]

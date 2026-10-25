@@ -142,7 +142,8 @@ public sealed class ServerApiTests : IClassFixture<ServerApiTests.Factory>
         Assert.Equal(40.0, host.GetProperty("summary").GetProperty("memoryPercent").GetDouble());
         var tools = host.GetProperty("tools").EnumerateArray().ToList();
         Assert.Contains(tools, t => t.GetProperty("toolId").GetString() == "fail2ban" && t.GetProperty("running").GetBoolean());
-        Assert.Contains(tools, t => t.GetProperty("toolId").GetString() == "clamav" && !t.GetProperty("implemented").GetBoolean());
+        Assert.Contains(tools, t => t.GetProperty("toolId").GetString() == "ufw" && !t.GetProperty("implemented").GetBoolean());
+        Assert.Contains(tools, t => t.GetProperty("toolId").GetString() == "clamav" && t.GetProperty("implemented").GetBoolean() && t.GetProperty("optIn").GetBoolean());
 
         var events = await admin.GetFromJsonAsync<JsonElement>($"/api/events?hostId={hostId}&ip=203.0.113.9");
         Assert.Single(events.GetProperty("items").EnumerateArray());

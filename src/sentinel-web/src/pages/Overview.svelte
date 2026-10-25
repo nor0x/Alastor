@@ -100,6 +100,13 @@
       <span class="big">{data.hostsWithPublicSsh ?? '—'}</span>
       <span class="foot muted">{data.hostsWithPublicSsh === null ? 'not checked yet' : `host${data.hostsWithPublicSsh === 1 ? '' : 's'} reachable from the internet`}</span>
     </a>
+    {#if data.hostsWithMalware !== null}
+      <a class="tile" href="/hosts">
+        <span class="label">Malware</span>
+        <span class="big" class:bad={data.hostsWithMalware > 0}>{data.hostsWithMalware}</span>
+        <span class="foot muted">host{data.hostsWithMalware === 1 ? '' : 's'} with infected files (ClamAV)</span>
+      </a>
+    {/if}
     <a class="tile" href="/baseline?view=lynis">
       <span class="label">Hardening index</span>
       <span class="big">{data.averageHardeningIndex?.toFixed(0) ?? '—'}</span>
@@ -196,6 +203,7 @@
   a.tile:hover { border-color: var(--border-strong); text-decoration: none; background: var(--surface-2); }
   .label { color: var(--muted); font-size: 12px; }
   .big { font-size: 28px; font-weight: 600; color: var(--text-strong); font-variant-numeric: tabular-nums; line-height: 1.2; }
+  .big.bad { color: var(--bad); }
   .of { font-size: 16px; color: var(--muted); font-weight: 400; margin-left: 4px; }
   .foot { font-size: 12px; display: inline-flex; align-items: center; gap: 6px; }
   .foot.bad { color: var(--bad); }
