@@ -104,6 +104,10 @@ public static class HostEndpoints
                 "run-audit" => (AgentCommandTypes.RunJob, Alastor.Core.Hardening.HardeningIntegration.AuditJob),
                 "check-network" => (AgentCommandTypes.RunJob, Alastor.Core.Network.NetworkIntegration.CheckJob),
                 "scan-malware" => (AgentCommandTypes.RunJob, Alastor.Core.Malware.ClamAvIntegration.ScanJob),
+                "check-integrity" => (AgentCommandTypes.RunJob, Alastor.Core.Integrity.AideIntegration.CheckJob),
+                "accept-integrity" => (AgentCommandTypes.RunJob, Alastor.Core.Integrity.AideIntegration.AcceptJob),
+                "scan-rootkits" => (AgentCommandTypes.RunJob, Alastor.Core.Malware.RkhunterIntegration.ScanJob),
+                "accept-rootkits" => (AgentCommandTypes.RunJob, Alastor.Core.Malware.RkhunterIntegration.AcceptJob),
                 _ => ((string?)null, (string?)null),
             };
             if (type is null) return Results.Problem($"Unknown action '{action}'.", statusCode: 400);
@@ -128,6 +132,10 @@ public static class HostEndpoints
             h.CpuPercent, Dto.Percent(h.MemoryUsedBytes, h.MemoryTotalBytes), Dto.Percent(h.DiskUsedBytes, h.DiskTotalBytes), h.Load1,
             h.GroupId, h.Group?.Name, h.Tags, bans, sync, h.Tools.Count(t => t.Running), problems,
             h.BaselineScore, baselineFailing, h.PendingUpdates, h.SecurityUpdates, h.RebootRequired, h.VulnCritical, h.VulnHigh, h.VulnTotal, h.VulnFixable,
-            h.HardeningIndex, h.HardeningWarnings, h.SshExposure, h.SshExposureAccepted, h.TailscaleState, h.MalwareFindings);
+            h.HardeningIndex, h.HardeningWarnings, h.SshExposure, h.SshExposureAccepted, h.TailscaleState, h.MalwareFindings)
+        {
+            IntegrityChanges = h.IntegrityChanges,
+            RootkitWarnings = h.RootkitWarnings,
+        };
     }
 }

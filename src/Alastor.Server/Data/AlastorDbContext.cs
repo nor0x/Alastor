@@ -69,6 +69,7 @@ public abstract class AlastorDbContext(DbContextOptions options) : DbContext(opt
             e.Property(h => h.ObservedAddress).HasMaxLength(64);
             e.Property(h => h.TailscaleState).HasMaxLength(32);
             e.Property(h => h.TailscaleIp).HasMaxLength(64);
+            e.Property(h => h.RootkitSeverity).HasConversion<int?>();
         });
 
         m.Entity<HostToolStatus>().HasKey(t => new { t.HostId, t.ToolId });

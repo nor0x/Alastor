@@ -135,7 +135,7 @@ Cookie-authenticated writes must also send `X-Alastor-Request: 1` (CSRF guard on
 | `GET /api/hosts/{id}/metrics?hours=` | R | downsampled CPU/mem/disk/load history |
 | `GET /api/hosts/{id}/effective-policy` · `/commands` | R | merged YAML and revision · command history |
 | `PATCH /api/hosts/{id}` · `DELETE /api/hosts/{id}` | A | rename, group, tags · remove (revokes the agent) |
-| `POST /api/hosts/{id}/actions/{reconcile\|reclaim\|refresh-bans\|recheck\|check-updates\|apply-updates\|scan-vulnerabilities\|run-audit\|check-network\|scan-malware}` | A | operator actions (`recheck` re-runs the security baseline; the update and scan actions queue a `run-job` command) |
+| `POST /api/hosts/{id}/actions/{reconcile\|reclaim\|refresh-bans\|recheck\|check-updates\|apply-updates\|scan-vulnerabilities\|run-audit\|check-network\|scan-malware\|check-integrity\|accept-integrity\|scan-rootkits\|accept-rootkits}` | A | operator actions (`recheck` re-runs the security baseline; the update and scan actions queue a `run-job` command) |
 | `GET /api/hosts/{id}/updates` | R | pending packages (security first), reboot flag, last install with its log tail, effective update schedules |
 | `GET /api/updates` · `POST /api/updates/apply` `{hostIds}` | R · A | per-host update counts across the fleet · "install now" on several hosts |
 | `GET /api/hosts/{id}/vulnerabilities` | R | every finding (package, installed → fixed, severity, CVSS, KEV flag, accepted), scanner and database info, ignored-package counts |
@@ -144,6 +144,7 @@ Cookie-authenticated writes must also send `X-Alastor-Request: 1` (CSRF guard on
 | `GET /api/hosts/{id}/hardening` | R | latest Lynis audit: hardening index, every warning and suggestion (category, details, solution, accepted), test ids resolved since the previous audit, Lynis status and schedule |
 | `GET /api/hosts/{id}/network` | R | latest network check: SSH ports, auth settings, listeners, addresses, firewall verdict, Tailscale state, and the exposure re-assessed with the address the server sees and `network.allowPublicSsh` |
 | `GET /api/network` | R | fleet view: per-host SSH exposure, password logins, firewall verdict, Tailscale state |
+| `GET /api/hosts/{id}/integrity` | R | latest AIDE run (mode, entries, each changed path with what changed and whether it's critical, watched paths) and rkhunter check (warnings with details, severity and whether `rootkitIgnore` matches), with schedules and tool state |
 | `GET /api/hosts/{id}/logins` | R | SSH login sources learned for the host (user, address, first/last seen, count, whether it alerted), the latest login events and the effective `logins` policy |
 | `GET /api/hosts/{id}/malware` | R | latest ClamAV scan: findings (path, signature), files scanned, unreadable paths, signature versions, scan settings, ClamAV status and the server mirror's state |
 | `GET /api/malware`, `GET /api/malware/db` | R | fleet view (scans on, findings per host) and the ClamAV signature mirror |
@@ -564,7 +565,38 @@ score, CVE counts, pending updates, SSH exposure, …). Two server-side views si
   again: opening and resolving are recorded as Info events (`issue.opened`, `issue.resolved`) on the timeline. Resolved
   issues are pruned with events.
 
-## 5j. SSH logins
+## 5j. File integrity and rootkits (AIDE, rkhunter; opt-in)
+
+Code: `src/Alastor.Core/Integrity/`, `src/Alastor.Core/Malware/RkhunterIntegration.cs`, `src/Alastor.Server/Services/Integrity/`,
+`src/Alastor.Server/Endpoints/IntegrityEndpoints.cs`.
+Policy: `integrity: {checkSchedule, paths, exclude}`, `malware: {rootkitSchedule, rootkitIgnore}`. Both schedules default to `off`.
+
+* **AIDE** (capability `Integrity`). The agent installs `aide` from the distribution (disabling Debian's
+  `dailyaidecheck.timer` when it did the install) and runs it with its own config and database under the agent's state
+  directory, so the distribution's aide.conf is never involved. The config watches `integrity.paths` (system binaries,
+  `/etc`, `/root/.ssh`, systemd units by default) for permissions, owner, group, size, mtime and SHA-256; inode and
+  ctime are left out because every package upgrade changes them. Volatile files (`/etc/mtab`, `/etc/resolv.conf`, …)
+  and every file the agent manages (`/etc/.*alastor`) are excluded. The first run records the baseline (`aide --init`);
+  later runs (`aide --check`, exit code 0-7 is a bit mask of differences) report each added, removed or changed path
+  with what changed, from the JSON report on AIDE 0.18+ (`report_format=json`, which must come before `report_url`) or
+  the plain report on older versions. Binaries, SSH, PAM, sudo and account files are *critical*. New differences raise
+  one `integrity.changed` event (High when any is critical), and the host has an `integrity.changed` issue until the
+  baseline is accepted. **Accept changes** (`integrity.accept`, an on-demand job with no schedule) runs `aide --update`
+  and swaps the database in.
+* **rkhunter** (capability `Malware`). Installed from the distribution (EPEL on the RHEL family). The first run records
+  file properties (`rkhunter --propupd`), then `rkhunter --check --sk --nocolors --rwo` (warnings only; exit 1 means
+  warnings) runs at the lowest CPU priority. It never runs `--update`, so hosts don't contact rkhunter's mirrors. Each
+  warning keeps its indented detail lines and gets a severity: rootkit or backdoor findings Critical, changed or
+  replaced binaries High, hidden or suspicious files Medium, configuration notes Low. Medium-and-up warnings not
+  matched by `malware.rootkitIgnore` (text fragments; evaluated on the server, so ignoring takes effect at once) raise
+  `malware.rootkit-warning` once each and keep a `rootkit.warning` issue open. **Accept file properties**
+  (`malware.rootkitsAccept`) re-runs `--propupd` after an update replaced binaries.
+* **Dashboard:** a host *Integrity* tab lists AIDE's changes (critical first) and rkhunter's warnings, with *Check now*
+  and the two accept actions; an overview tile and a matrix column cover the fleet.
+* **Why bundled:** both are the standard, packaged tools for the job; the agent adds the schedule, the baseline
+  handling and the report.
+
+## 5k. SSH logins
 
 Code: `src/Alastor.Core/Access/`, `src/Alastor.Server/Services/Access/LoginService.cs`, `src/Alastor.Server/Endpoints/AccessEndpoints.cs`.
 Policy: `logins: {monitor, alertOnNewSource, trustedSources}`.

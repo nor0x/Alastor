@@ -145,6 +145,16 @@ public sealed class ManagedHost
     // Latest ClamAV scan.
     public int? MalwareFindings { get; set; }
     public DateTime? MalwareScannedAt { get; set; }
+
+    // Latest AIDE check: files changed since the accepted baseline, and how many are binaries, SSH or account files.
+    public int? IntegrityChanges { get; set; }
+    public int? IntegrityCritical { get; set; }
+    public DateTime? IntegrityCheckedAt { get; set; }
+
+    // Latest rkhunter check: Medium-and-up warnings not in malware.rootkitIgnore, and the worst one's severity.
+    public int? RootkitWarnings { get; set; }
+    public Severity? RootkitSeverity { get; set; }
+    public DateTime? RootkitCheckedAt { get; set; }
 }
 
 /// <summary>One Lynis warning or suggestion on one host, from the latest audit. Replaced as a set per audit.</summary>
@@ -277,6 +287,12 @@ public sealed class HostPostureSnapshot
 
     /// <summary>Unexpected public services (see <see cref="ManagedHost.PublicServices"/>).</summary>
     public int? PublicServices { get; set; }
+
+    /// <summary>Files changed since the AIDE baseline; null until the host runs AIDE.</summary>
+    public int? IntegrityChanges { get; set; }
+
+    /// <summary>Open rkhunter warnings; null until the host runs rkhunter.</summary>
+    public int? RootkitWarnings { get; set; }
 
     public int? MalwareFindings { get; set; }
 }

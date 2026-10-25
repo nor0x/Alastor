@@ -84,6 +84,8 @@ public sealed record AgentReport(string JobId, DateTime StartedAtUtc, DateTime F
     public Alastor.Core.Hardening.HardeningReport? Hardening { get; init; }
     public Alastor.Core.Network.NetworkReport? Network { get; init; }
     public Alastor.Core.Malware.MalwareReport? Malware { get; init; }
+    public Alastor.Core.Integrity.IntegrityReport? Integrity { get; init; }
+    public Alastor.Core.Malware.RootkitReport? Rootkit { get; init; }
 }
 
 public static class AgentCommandTypes

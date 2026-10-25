@@ -17,6 +17,7 @@
   import HostNetwork from '../lib/HostNetwork.svelte';
   import HostMalware from '../lib/HostMalware.svelte';
   import HostLogins from '../lib/HostLogins.svelte';
+  import HostIntegrity from '../lib/HostIntegrity.svelte';
   import { exposureLook, isExposed } from '../lib/network';
   import { indexTone } from '../lib/hardening';
   import UpdatesBadge from '../lib/ui/UpdatesBadge.svelte';
@@ -33,8 +34,8 @@
 
   let { id }: { id: string } = $props();
 
-  type Tab = 'overview' | 'baseline' | 'hardening' | 'network' | 'updates' | 'vulnerabilities' | 'malware' | 'events' | 'bans' | 'policy' | 'commands';
-  const tabs: [Tab, string][] = [['overview', 'Overview'], ['baseline', 'Baseline'], ['hardening', 'Hardening'], ['network', 'Network'], ['updates', 'Updates'], ['vulnerabilities', 'CVEs'], ['malware', 'Malware'], ['events', 'Events'], ['bans', 'Bans'], ['policy', 'Policy'], ['commands', 'Commands']];
+  type Tab = 'overview' | 'baseline' | 'hardening' | 'network' | 'updates' | 'vulnerabilities' | 'malware' | 'integrity' | 'events' | 'bans' | 'policy' | 'commands';
+  const tabs: [Tab, string][] = [['overview', 'Overview'], ['baseline', 'Baseline'], ['hardening', 'Hardening'], ['network', 'Network'], ['updates', 'Updates'], ['vulnerabilities', 'CVEs'], ['malware', 'Malware'], ['integrity', 'Integrity'], ['events', 'Events'], ['bans', 'Bans'], ['policy', 'Policy'], ['commands', 'Commands']];
   const tab = $derived((new URLSearchParams(route.search).get('tab') as Tab) || 'overview');
 
   let host = $state<HostDetail | null>(null);
@@ -281,6 +282,7 @@
         {#if t === 'baseline' && s.baselineFailing}<span class="count">{s.baselineFailing}</span>{/if}
         {#if t === 'updates' && (s.securityUpdates ?? s.pendingUpdates)}<span class="count">{s.securityUpdates ?? s.pendingUpdates}</span>{/if}
         {#if t === 'network' && isExposed(s.sshExposure, s.sshExposureAccepted)}<span class="count" title="SSH reachable from the internet">!</span>{/if}
+        {#if t === 'integrity' && (s.integrityChanges || s.rootkitWarnings)}<span class="count" title="Files changed since the baseline, and open rkhunter warnings">{(s.integrityChanges ?? 0) + (s.rootkitWarnings ?? 0)}</span>{/if}
         {#if t === 'malware' && s.malwareFindings}<span class="count" title="Infected files found by ClamAV">{s.malwareFindings}</span>{/if}
         {#if t === 'hardening' && s.hardeningWarnings}<span class="count">{s.hardeningWarnings}</span>{/if}
         {#if t === 'vulnerabilities' && (s.vulnCritical ?? 0) + (s.vulnHigh ?? 0) > 0}<span class="count">{(s.vulnCritical ?? 0) + (s.vulnHigh ?? 0)}</span>{/if}
@@ -426,6 +428,8 @@
   {:else if tab === 'network'}
     <HostNetwork hostId={id} isOnline={s.isOnline} />
     <div class="logins"><HostLogins hostId={id} /></div>
+  {:else if tab === 'integrity'}
+    <HostIntegrity hostId={id} isOnline={s.isOnline} />
   {:else if tab === 'updates'}
     <HostUpdates hostId={id} isOnline={s.isOnline} />
   {:else if tab === 'vulnerabilities'}

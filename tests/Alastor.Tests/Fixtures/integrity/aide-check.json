@@ -1,0 +1,56 @@
+{
+  "start_time": "2026-10-25 20:36:01 +0000",
+  "aide_version": "0.18.6",
+  "outline": "AIDE found differences between database and filesystem!!",
+  "number_of_entries": {
+    "total": 7,
+    "added": 1,
+    "removed": 1,
+    "changed": 2
+  },
+  "added": {
+    "/bin/backdoor": "f+++++++++++++++++"
+  },
+  "removed": {
+    "/etc/passwd": "f-----------------"
+  },
+  "changed": {
+    "/bin/ls": "f > ... ....H     ",
+    "/bin/sudo": "f = p.. .....     "
+  },
+  "details": {
+    "/bin/ls": {
+      "size": {
+        "old": 2,
+        "new": 8
+      },
+      "sha256": {
+        "old": "h0KPxSKAPTEGXnvOPPA/5HUJZjHl4Hu9eg/eYMTPJcc=",
+        "new": "f4sd/EZrYknwbL5VyRdN8leOd1TaeT/e0kTvXLoqOPE="
+      }
+    },
+    "/bin/sudo": {
+      "perm": {
+        "old": "-rw-r--r--",
+        "new": "-rwsr-xr-x"
+      }
+    }
+  },
+  "databases": {
+    "/var/lib/alastor-agent/aide/aide.db": {
+      "md5": "94KBYTy7IAbIck+8yNM0yw==",
+      "sha1": "2fL72kmRyh4y1s5XMvYzQGcZo9Q=",
+      "sha256": "2kRnM5IOS+tLiT5oKz4BSngqyrU9VaUzVCQgf8S/3BA=",
+      "sha512": "axXDxiTUSf0AxBV7AmeTFxRniDoSndIJ4KyBJx/Fa/mWWuzxUJKfQfz8kP8asmhp5/gvSRX3iCLynvurqVsDOA==",
+      "rmd160": "kD+wsWsIFI0fkSjF+uQRH66cpkg=",
+      "tiger": "YP3+HWXVNCuLsXikx5m/pBYf+BSrD9P7",
+      "crc32": "KI0cZg==",
+      "crc32b": "VSdVSA==",
+      "haval": "98b9LZTMWB+68sj9oHnR1PzUGfyRxlefYzIS0p6YllE=",
+      "whirlpool": "ELBQeDjXLmeIWDpEAvGSb5Gl1AX/8xi+g2p6kfc+lj5zEcVHMk6uSdk1KJZBCdsH6C0y1Ibu8ax+eef6/JKDSQ==",
+      "gost": "ftLomOAA2XkBL3bphyB0h/P/B/Sy4t+PZma9/kNUkKI="
+    }
+  },
+  "end_time": "2026-10-25 20:36:01 +0000",
+  "run_time_seconds": 0
+}

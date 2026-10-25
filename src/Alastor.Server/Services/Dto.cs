@@ -41,7 +41,11 @@ public sealed record HostSummaryDto(
     Alastor.Core.Network.SshExposureLevel? SshExposure,
     bool SshExposureAccepted,
     string? TailscaleState,
-    int? MalwareFindings);
+    int? MalwareFindings)
+{
+    public int? IntegrityChanges { get; init; }
+    public int? RootkitWarnings { get; init; }
+}
 
 public sealed record ToolStatusDto(
     string ToolId,

@@ -157,6 +157,7 @@ builder.Services.AddScoped<VulnerabilityService>();
 builder.Services.AddScoped<Alastor.Server.Services.Hardening.HardeningService>();
 builder.Services.AddScoped<Alastor.Server.Services.Network.NetworkService>();
 builder.Services.AddScoped<Alastor.Server.Services.Malware.MalwareService>();
+builder.Services.AddScoped<Alastor.Server.Services.Integrity.IntegrityService>();
 builder.Services.AddHttpClient(VulnDbMirror.HttpClientName, c =>
 {
     c.Timeout = Timeout.InfiniteTimeSpan; // 100-200 MB archives; each request is bounded by the worker's token
@@ -217,6 +218,7 @@ app.MapMalwareEndpoints();
 app.MapStatsEndpoints();
 app.MapIssueEndpoints();
 app.MapAccessEndpoints();
+app.MapIntegrityEndpoints();
 app.MapHub<AgentHub>("/hubs/agent");
 app.MapHub<DashboardHub>("/hubs/dashboard");
 app.MapInstallScripts();

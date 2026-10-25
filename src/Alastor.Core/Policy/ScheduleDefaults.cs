@@ -14,6 +14,8 @@ public static class ScheduleDefaults
     public const string BaselineCheck = "every 1h";
     public const string BlocklistRefresh = "every 1h";
     public const string NetworkCheck = "every 1h";
+    public const string IntegrityCheck = "off";
+    public const string RootkitScan = "off";
 
     /// <summary>Every schedule key, with its effective value and whether that value came from the built-in default.</summary>
     public static IReadOnlyList<(string Path, string Value, bool IsDefault)> Resolve(PolicyDocument doc) =>
@@ -26,6 +28,8 @@ public static class ScheduleDefaults
         Pick("baseline.checkSchedule", doc.Baseline?.CheckSchedule, BaselineCheck),
         Pick("blocklists.refreshSchedule", doc.Blocklists?.RefreshSchedule, BlocklistRefresh),
         Pick("network.checkSchedule", doc.Network?.CheckSchedule, NetworkCheck),
+        Pick("integrity.checkSchedule", doc.Integrity?.CheckSchedule, IntegrityCheck),
+        Pick("malware.rootkitSchedule", doc.Malware?.RootkitSchedule, RootkitScan),
     ];
 
     public static Schedule For(PolicyDocument doc, string path) =>

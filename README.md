@@ -30,6 +30,8 @@ Svelte dashboard cover:
   systemd unit, `systemd-analyze security` score, firewall verdict) with alerts for public ports outside
   `network.allowPublicPorts`, and Tailscale detection.
 - **Malware scans:** ClamAV (opt-in) over web roots and upload directories, with signatures mirrored by the server.
+- **File integrity and rootkits:** AIDE (opt-in) compares binaries, `/etc` and SSH keys with an accepted baseline;
+  rkhunter (opt-in) checks for rootkits and changed binaries. Both report only, with accept actions in the dashboard.
 - **Threat feed:** NVD, CISA KEV and security news.
 - **Settings and About:** groups, enrollment tokens, API keys, audit log, and tool licenses.
 - **Installers:** one-line installers for the server and the agent, and a Docker image with compose for the server.
@@ -128,6 +130,8 @@ you install them from their vendor's repository (Alpine's `trivy` package is the
 | [CrowdSec](https://github.com/crowdsecurity/crowdsec) + firewall bouncer | Banning | `banning.engine: crowdsec`: installs both from distro repos, owns a parser whitelist for the allowlist, bans and events via `cscli … -o json`; Central API off by default | MIT | ✅ opt-in |
 | [ufw](https://launchpad.net/ufw) | Firewall | managed firewall rules | GPL-3.0 | planned |
 | [Tailscale](https://tailscale.com/) | Network | detected, never installed: tailnet state, IPs, Tailscale SSH, key expiry; SSH exposure check suggests limiting SSH to the tailnet | BSD-3-Clause | ✅ opt-in |
+| [AIDE](https://aide.github.io/) | Integrity | `integrity.checkSchedule`: runs with the agent's own config and database; reports added, removed and changed system files against an accepted baseline; "accept changes" re-records it | GPL-2.0-or-later | ✅ opt-in |
+| [rkhunter](https://rkhunter.sourceforge.net/) | Malware | `malware.rootkitSchedule`: `--check --rwo` after recording file properties; never updates from the internet; warnings ranked by severity, `rootkitIgnore` for known ones | GPL-2.0-or-later | ✅ opt-in |
 | [ClamAV](https://www.clamav.net/) | Malware | `malware.scanSchedule`: niced `clamscan` of web roots and upload dirs, report only; signatures from the server's freshclam mirror (hosts never contact ClamAV's CDN) | GPL-2.0 | ✅ opt-in |
 
 **Data sources the server fetches** (all free, no account needed):

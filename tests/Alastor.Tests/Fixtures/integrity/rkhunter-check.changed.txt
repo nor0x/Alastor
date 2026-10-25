@@ -1,0 +1,16 @@
+Warning: The file properties have changed:
+         File: /usr/bin/whoami
+         Current hash: 9c36a8be08439bba2b5324d75b3bfd522f79424558bf15eae1bd260a76532c15
+         Stored hash : 5b1df9f84f9037e9c7527c0ce2cf60dde102daeeca7264dcb570a3c037b11aec
+         Current size: 35337    Stored size: 35336
+         Current file modification time: 1792960733 (25-Oct-2026 20:38:53)
+         Stored file modification time : 1787670543 (25-Aug-2026 15:09:03)
+Warning: The modules file '/proc/modules' is missing.
+Warning: The kernel modules directory '/lib/modules' is missing or empty.
+Warning: The SSH configuration option 'PermitRootLogin' has not been set.
+         The default value may be 'yes', to allow root access.
+Warning: No running system logging daemon has been found.
+Warning: Suspicious file types found in /dev:
+         /dev/shm/lttng-ust-wait-8-0: data
+         /dev/shm/lttng-ust-wait-8: data
+Warning: Hidden directory found: /etc/.java

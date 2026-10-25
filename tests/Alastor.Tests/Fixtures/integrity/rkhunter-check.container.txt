@@ -1,0 +1,9 @@
+Warning: The modules file '/proc/modules' is missing.
+Warning: The kernel modules directory '/lib/modules' is missing or empty.
+Warning: The SSH configuration option 'PermitRootLogin' has not been set.
+         The default value may be 'yes', to allow root access.
+Warning: No running system logging daemon has been found.
+Warning: Suspicious file types found in /dev:
+         /dev/shm/lttng-ust-wait-8-0: data
+         /dev/shm/lttng-ust-wait-8: data
+Warning: Hidden directory found: /etc/.java

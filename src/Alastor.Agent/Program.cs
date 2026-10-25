@@ -80,6 +80,8 @@ builder.Services.AddSingleton<IToolIntegration>(sp => platform.CreateUpdates(sp.
 builder.Services.AddSingleton<IToolIntegration>(sp => platform.CreateHardening(sp.GetRequiredService<ILogger<HardeningIntegration>>()));
 builder.Services.AddSingleton<IToolIntegration>(sp => platform.CreateNetwork(sp.GetRequiredService<ILogger<NetworkIntegration>>()));
 builder.Services.AddSingleton<IToolIntegration>(sp => platform.CreateLogins(sp.GetRequiredService<ILogger<Alastor.Core.Access.LoginIntegration>>()));
+builder.Services.AddSingleton<IToolIntegration>(sp => platform.CreateAide(sp.GetRequiredService<ILogger<Alastor.Core.Integrity.AideIntegration>>()));
+builder.Services.AddSingleton<IToolIntegration>(sp => platform.CreateRkhunter(sp.GetRequiredService<ILogger<RkhunterIntegration>>()));
 builder.Services.AddSingleton<IToolIntegration>(sp => platform.CreateClamAv(sp.GetRequiredService<ServerClient>(), sp.GetRequiredService<ILogger<ClamAvIntegration>>()));
 builder.Services.AddSingleton<IToolIntegration>(sp => platform.CreateVulnerabilities(sp.GetRequiredService<ServerClient>(), sp.GetRequiredService<ILogger<VulnerabilityIntegration>>()));
 builder.Services.AddSingleton<Supervisor>();
@@ -159,6 +161,7 @@ async Task<int> UninstallAsync()
         platform.CreateVulnerabilities(null, NullLogger<VulnerabilityIntegration>.Instance),
         platform.CreateClamAv(null, NullLogger<ClamAvIntegration>.Instance),
         platform.CreateHardening(NullLogger<HardeningIntegration>.Instance),
+        platform.CreateAide(NullLogger<Alastor.Core.Integrity.AideIntegration>.Instance),
     ];
     foreach (var t in tools)
     {
@@ -187,6 +190,9 @@ internal sealed record PlatformServices(OsInfo Os, ICommandRunner Runner, IFileS
         new(Runner, Fs, PackageManagers.For(Os.Family, Runner), State, StateDir, logger, TimeProvider.System);
 
     public NetworkIntegration CreateNetwork(ILogger<NetworkIntegration> logger) => new(Runner, Fs, State, logger, TimeProvider.System);
+    public Alastor.Core.Integrity.AideIntegration CreateAide(ILogger<Alastor.Core.Integrity.AideIntegration> logger) =>
+        new(Runner, PackageManagers.For(Os.Family, Runner), ServiceManagers.For(Runner), State, StateDir, logger, TimeProvider.System);
+    public RkhunterIntegration CreateRkhunter(ILogger<RkhunterIntegration> logger) => new(Runner, PackageManagers.For(Os.Family, Runner), State, logger, TimeProvider.System);
     public Alastor.Core.Access.LoginIntegration CreateLogins(ILogger<Alastor.Core.Access.LoginIntegration> logger) => new(Runner, Fs, State, logger, TimeProvider.System);
 
     public VulnerabilityIntegration CreateVulnerabilities(IVulnDbSource? dbSource, ILogger<VulnerabilityIntegration> logger) =>

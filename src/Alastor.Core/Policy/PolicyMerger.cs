@@ -30,8 +30,18 @@ public static class PolicyMerger
             Exclude = baseDoc.Malware?.Exclude is null && overlay.Malware?.Exclude is null ? null
                 : (baseDoc.Malware?.Exclude ?? []).Concat(overlay.Malware?.Exclude ?? []).Distinct(StringComparer.Ordinal).ToList(),
             MaxFileSize = overlay.Malware?.MaxFileSize ?? baseDoc.Malware?.MaxFileSize,
+            RootkitSchedule = overlay.Malware?.RootkitSchedule ?? baseDoc.Malware?.RootkitSchedule,
+            RootkitIgnore = baseDoc.Malware?.RootkitIgnore is null && overlay.Malware?.RootkitIgnore is null ? null
+                : (baseDoc.Malware?.RootkitIgnore ?? []).Concat(overlay.Malware?.RootkitIgnore ?? []).Distinct(StringComparer.Ordinal).ToList(),
         },
         Baseline = Merge(baseDoc.Baseline, overlay.Baseline),
+        Integrity = baseDoc.Integrity is null && overlay.Integrity is null ? null : new IntegrityPolicy
+        {
+            CheckSchedule = overlay.Integrity?.CheckSchedule ?? baseDoc.Integrity?.CheckSchedule,
+            Paths = (overlay.Integrity?.Paths ?? baseDoc.Integrity?.Paths)?.ToList(),
+            Exclude = baseDoc.Integrity?.Exclude is null && overlay.Integrity?.Exclude is null ? null
+                : (baseDoc.Integrity?.Exclude ?? []).Concat(overlay.Integrity?.Exclude ?? []).Distinct(StringComparer.Ordinal).ToList(),
+        },
         Logins = baseDoc.Logins is null && overlay.Logins is null ? null : new LoginsPolicy
         {
             Monitor = overlay.Logins?.Monitor ?? baseDoc.Logins?.Monitor,

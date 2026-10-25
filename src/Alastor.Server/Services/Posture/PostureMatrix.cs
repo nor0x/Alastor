@@ -28,6 +28,7 @@ public static class PostureMatrix
         new("updates", "Updates", "updates"),
         new("vulnerabilities", "CVEs", "vulnerabilities"),
         new("malware", "Malware", "malware"),
+        new("integrity", "Integrity", "integrity"),
     ];
 
     public static Dictionary<string, Cell> Row(ManagedHost h, Extra x) => new()
@@ -46,10 +47,21 @@ public static class PostureMatrix
             : h.VulnCritical > 0 ? new(Bad, $"{h.VulnCritical} critical")
             : h.VulnHigh > 0 ? new(Warn, $"{h.VulnHigh} high")
             : new(Ok, "none high"),
+        ["integrity"] = Integrity(h),
         ["malware"] = h.MalwareScannedAt is null ? new(Off, "off")
             : h.MalwareFindings > 0 ? new(Bad, $"{h.MalwareFindings} found")
             : new(Ok, "clean"),
     };
+
+    private static Cell Integrity(ManagedHost h)
+    {
+        if (h.IntegrityCheckedAt is null && h.RootkitCheckedAt is null) return new(Off, "off");
+        if (h.RootkitWarnings > 0 && h.RootkitSeverity >= Core.Events.Severity.High) return new(Bad, $"{h.RootkitWarnings} rootkit warning{(h.RootkitWarnings == 1 ? "" : "s")}");
+        if (h.IntegrityCritical > 0) return new(Bad, $"{h.IntegrityCritical} critical file{(h.IntegrityCritical == 1 ? "" : "s")} changed");
+        if (h.IntegrityChanges > 0) return new(Warn, $"{h.IntegrityChanges} changed");
+        if (h.RootkitWarnings > 0) return new(Warn, $"{h.RootkitWarnings} rkhunter warning{(h.RootkitWarnings == 1 ? "" : "s")}");
+        return new(Ok, "unchanged");
+    }
 
     private static Cell Exposure(ManagedHost h)
     {

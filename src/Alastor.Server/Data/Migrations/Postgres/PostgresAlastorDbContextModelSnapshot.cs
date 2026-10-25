@@ -732,6 +732,9 @@ namespace Alastor.Server.Data.Migrations.Postgres
                     b.Property<int?>("HardeningIndex")
                         .HasColumnType("integer");
 
+                    b.Property<int?>("IntegrityChanges")
+                        .HasColumnType("integer");
+
                     b.Property<int?>("MalwareFindings")
                         .HasColumnType("integer");
 
@@ -746,6 +749,9 @@ namespace Alastor.Server.Data.Migrations.Postgres
 
                     b.Property<bool>("RebootRequired")
                         .HasColumnType("boolean");
+
+                    b.Property<int?>("RootkitWarnings")
+                        .HasColumnType("integer");
 
                     b.Property<int?>("SecurityUpdates")
                         .HasColumnType("integer");
@@ -1039,6 +1045,15 @@ namespace Alastor.Server.Data.Migrations.Postgres
                         .IsRequired()
                         .HasColumnType("text");
 
+                    b.Property<int?>("IntegrityChanges")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("IntegrityCheckedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("IntegrityCritical")
+                        .HasColumnType("integer");
+
                     b.Property<string>("IpAddresses")
                         .IsRequired()
                         .HasColumnType("text");
@@ -1117,6 +1132,16 @@ namespace Alastor.Server.Data.Migrations.Postgres
 
                     b.Property<bool>("RebootRequired")
                         .HasColumnType("boolean");
+
+                    b.Property<DateTime?>("RootkitCheckedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("RootkitSeverity")
+                        .HasMaxLength(32)
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("RootkitWarnings")
+                        .HasColumnType("integer");
 
                     b.Property<string>("SecretHash")
                         .IsRequired()
