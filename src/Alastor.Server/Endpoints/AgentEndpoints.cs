@@ -122,7 +122,7 @@ public static class AgentEndpoints
     }
 
     private static async Task<IResult> Heartbeat(HeartbeatRequest hb, ClaimsPrincipal user, AlastorDbContext db, PolicyService policies,
-        EventIngestService ingest, DashboardNotifier notifier, IOptions<AlastorOptions> opt, TimeProvider time, HttpContext http, CancellationToken ct)
+        EventIngestService ingest, DashboardNotifier notifier, Services.Posture.PostureService posture, IOptions<AlastorOptions> opt, TimeProvider time, HttpContext http, CancellationToken ct)
     {
         var hostId = user.HostId();
         var now = time.GetUtcNow().UtcDateTime;
@@ -201,6 +201,7 @@ public static class AgentEndpoints
                     Message = $"{host.Name} is back online", DedupKey = $"host.online:{hostId}",
                 },
             ], ct);
+            await posture.SnapshotAsync(hostId, ct);
         }
 
         var effective = await policies.GetEffectiveAsync(hostId, ct);

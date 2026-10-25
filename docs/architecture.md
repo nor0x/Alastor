@@ -125,6 +125,10 @@ Cookie-authenticated writes must also send `X-Alastor-Request: 1` (CSRF guard on
 | `POST /api/auth/login` · `POST /api/auth/logout` | – | JWT in httpOnly `alastor_session` cookie (rate-limited) |
 | `GET /api/auth/me` · `POST /api/auth/password` | R · A | |
 | `GET /api/overview` | R | fleet cards, recent alerts, top offenders |
+| `GET /api/stats/events?days&hostId&utcOffsetMinutes` | R | events per day by severity (every day, zeros included, in the browser's time zone), counts by capability, top kinds |
+| `GET /api/stats/bans?hours&hostId` | R | bans and auth-failure events per hour |
+| `GET /api/stats/posture?days&hostId` | R | fleet (or one host's) daily posture from the snapshots: average baseline score and hardening index, CVE and KEV totals, hosts needing updates, reboots, public SSH, malware findings; null where no host reported |
+| `GET /api/stats/matrix` | R | host × capability grid: `ok`/`warn`/`bad`/`unknown`/`off` with a short label per cell |
 | `GET /api/hosts` · `GET /api/hosts/{id}` | R | summaries · detail with capability matrix and policy report |
 | `GET /api/hosts/{id}/metrics?hours=` | R | downsampled CPU/mem/disk/load history |
 | `GET /api/hosts/{id}/effective-policy` · `/commands` | R | merged YAML and revision · command history |
@@ -239,6 +243,7 @@ times, so the editor can show `0 4 * * 1-5` as "Mon 04:00, Tue 04:00, …".
 | `ALASTOR_PRESENCECHECKINTERVAL` | `30s` | offline sweep |
 | `ALASTOR_RETENTIONRUNINTERVAL` | `1h` | pruning job |
 | `ALASTOR_METRICRETENTION` / `ALASTOR_EVENTRETENTION` | `7d` / `90d` | |
+| `ALASTOR_POSTURERETENTION` | `365d` | daily posture snapshots behind the trend charts (one row per host per day) |
 | `ALASTOR_ENROLLMENTTOKENTTL` | `24h` | default; overridable per token |
 | `ALASTOR_COMMANDREDELIVERAFTER` / `ALASTOR_COMMANDMAXATTEMPTS` | `5m` / `3` | unacknowledged agent commands |
 | `ALASTOR_PENDINGCOMMANDTTL` | `24h` | commands for hosts that stay offline |
