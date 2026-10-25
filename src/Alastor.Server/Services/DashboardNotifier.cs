@@ -27,6 +27,9 @@ public sealed class DashboardNotifier(IHubContext<DashboardHub> hub)
     public Task BaselineUpdatedAsync(Guid hostId, CancellationToken ct = default) =>
         hub.Clients.All.SendAsync("baselineUpdated", hostId, ct);
 
+    public Task IssuesChangedAsync(CancellationToken ct = default) =>
+        hub.Clients.All.SendAsync("issuesChanged", ct);
+
     public Task FeedUpdatedAsync(object summary, CancellationToken ct = default) =>
         hub.Clients.All.SendAsync("feedUpdated", summary, ct);
 }

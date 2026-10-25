@@ -131,6 +131,8 @@ builder.Services.AddSingleton<DashboardNotifier>();
 builder.Services.AddHostedService<PresenceWorker>();
 builder.Services.AddHostedService<RetentionWorker>();
 builder.Services.AddScoped<Alastor.Server.Services.Posture.PostureService>();
+builder.Services.AddScoped<Alastor.Server.Services.Issues.IssueService>();
+builder.Services.AddScoped<HostStateService>();
 builder.Services.AddHostedService<PostureWorker>();
 builder.Services.AddScoped<ThreatFeedService>();
 builder.Services.AddHttpClient(ThreatFeedService.HttpClientName, c =>
@@ -212,6 +214,7 @@ app.MapHardeningEndpoints();
 app.MapNetworkEndpoints();
 app.MapMalwareEndpoints();
 app.MapStatsEndpoints();
+app.MapIssueEndpoints();
 app.MapHub<AgentHub>("/hubs/agent");
 app.MapHub<DashboardHub>("/hubs/dashboard");
 app.MapInstallScripts();

@@ -121,13 +121,18 @@ public static class AgentEndpoints
         return Results.Ok(new EnrollResponse(host.Id, $"{host.Id}.{secret}", (int)opt.Value.HeartbeatIntervalValue.TotalSeconds));
     }
 
+    /// <summary>What a heartbeat can change about a host's issues: tool health and the last policy apply.</summary>
+    private static string HealthSignature(ManagedHost h) =>
+        $"{h.PolicyApplySuccess}|{string.Join(',', h.Tools.Where(Dto.HasProblem).Select(t => $"{t.ToolId}:{t.Availability}:{t.Running}:{t.ConfigState}").Order(StringComparer.Ordinal))}";
+
     private static async Task<IResult> Heartbeat(HeartbeatRequest hb, ClaimsPrincipal user, AlastorDbContext db, PolicyService policies,
-        EventIngestService ingest, DashboardNotifier notifier, Services.Posture.PostureService posture, IOptions<AlastorOptions> opt, TimeProvider time, HttpContext http, CancellationToken ct)
+        EventIngestService ingest, DashboardNotifier notifier, HostStateService hostState, IOptions<AlastorOptions> opt, TimeProvider time, HttpContext http, CancellationToken ct)
     {
         var hostId = user.HostId();
         var now = time.GetUtcNow().UtcDateTime;
         var host = await db.Hosts.Include(h => h.Tools).FirstAsync(h => h.Id == hostId, ct);
         var wasOffline = !host.IsOnline;
+        var healthBefore = HealthSignature(host);
 
         host.LastSeenAt = now;
         host.IsOnline = true;
@@ -201,8 +206,8 @@ public static class AgentEndpoints
                     Message = $"{host.Name} is back online", DedupKey = $"host.online:{hostId}",
                 },
             ], ct);
-            await posture.SnapshotAsync(hostId, ct);
         }
+        if (wasOffline || HealthSignature(host) != healthBefore) await hostState.ChangedAsync(hostId, ct);
 
         var effective = await policies.GetEffectiveAsync(hostId, ct);
         var heartbeat = (int)AgentTimings.From(effective.Document, opt.Value.HeartbeatIntervalValue).HeartbeatInterval.TotalSeconds;

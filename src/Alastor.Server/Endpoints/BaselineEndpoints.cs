@@ -68,7 +68,7 @@ public static class BaselineEndpoints
 
     /// <summary>Agent upload of one baseline run. Replaces the host's result set; the score is recomputed here, not trusted.</summary>
     private static async Task<IResult> Report(BaselineReport report, ClaimsPrincipal user, AlastorDbContext db, PolicyService policies,
-        DashboardNotifier notifier, Services.Posture.PostureService posture, TimeProvider time, CancellationToken ct)
+        DashboardNotifier notifier, HostStateService hostState, TimeProvider time, CancellationToken ct)
     {
         var hostId = user.HostId();
         var now = time.GetUtcNow().UtcDateTime;
@@ -99,7 +99,7 @@ public static class BaselineEndpoints
         var effective = await policies.GetEffectiveAsync(hostId, ct);
         await notifier.HostUpdatedAsync(await HostEndpoints.SummaryAsync(db, hostId, effective.Revision, ct), ct);
         await notifier.BaselineUpdatedAsync(hostId, ct);
-        await posture.SnapshotAsync(hostId, ct);
+        await hostState.ChangedAsync(hostId, ct);
         return Results.NoContent();
     }
 

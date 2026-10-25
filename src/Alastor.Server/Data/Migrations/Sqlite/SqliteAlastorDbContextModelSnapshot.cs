@@ -567,6 +567,76 @@ namespace Alastor.Server.Data.Migrations.Sqlite
                     b.ToTable("HardeningItems");
                 });
 
+            modelBuilder.Entity("Alastor.Server.Data.HostIssue", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("AckNote")
+                        .HasMaxLength(512)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("AcknowledgedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("AcknowledgedBy")
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Detail")
+                        .HasMaxLength(1024)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("FirstSeenAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("HostId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("LastSeenAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("Occurrences")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime?>("ResolvedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Rule")
+                        .IsRequired()
+                        .HasMaxLength(48)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("Severity")
+                        .HasMaxLength(32)
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Subject")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Tab")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ResolvedAt");
+
+                    b.HasIndex("HostId", "Rule", "Subject")
+                        .IsUnique();
+
+                    b.ToTable("Issues");
+                });
+
             modelBuilder.Entity("Alastor.Server.Data.HostMetricSample", b =>
                 {
                     b.Property<long>("Id")
@@ -1333,6 +1403,15 @@ namespace Alastor.Server.Data.Migrations.Sqlite
                 });
 
             modelBuilder.Entity("Alastor.Server.Data.HostHardeningItem", b =>
+                {
+                    b.HasOne("Alastor.Server.Data.ManagedHost", null)
+                        .WithMany()
+                        .HasForeignKey("HostId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Alastor.Server.Data.HostIssue", b =>
                 {
                     b.HasOne("Alastor.Server.Data.ManagedHost", null)
                         .WithMany()
