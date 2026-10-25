@@ -10,7 +10,7 @@
     <InvariantGlobalization>true</InvariantGlobalization>
     <Version>0.1.0</Version>
     <DebugType Condition="'$(Configuration)' == 'Release'">embedded</DebugType>
-    <Authors>SentinelVPS contributors</Authors>
+    <Authors>Alastor contributors</Authors>
     <Copyright>MIT</Copyright>
   </PropertyGroup>
 </Project>

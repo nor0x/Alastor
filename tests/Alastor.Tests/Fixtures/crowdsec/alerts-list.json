@@ -1,0 +1,327 @@
+[
+ {
+  "capacity": 5,
+  "created_at": "2026-10-25T13:02:49Z",
+  "decisions": [
+   {
+    "duration": "4h2m10.057106639s",
+    "id": 3,
+    "origin": "crowdsec",
+    "scenario": "crowdsecurity/ssh-bf",
+    "scope": "Ip",
+    "simulated": false,
+    "type": "ban",
+    "value": "198.51.100.23"
+   }
+  ],
+  "events": [
+   {
+    "meta": [
+     {
+      "key": "datasource_path",
+      "value": "/var/log/auth.log"
+     },
+     {
+      "key": "datasource_type",
+      "value": "file"
+     },
+     {
+      "key": "log_type",
+      "value": "ssh_failed-auth"
+     },
+     {
+      "key": "machine",
+      "value": "vps1"
+     },
+     {
+      "key": "service",
+      "value": "ssh"
+     },
+     {
+      "key": "source_ip",
+      "value": "198.51.100.23"
+     },
+     {
+      "key": "target_user",
+      "value": "admin"
+     },
+     {
+      "key": "timestamp",
+      "value": "2026-10-25T13:05:01Z"
+     }
+    ],
+    "timestamp": "2026-10-25 13:05:01 +0000 UTC"
+   },
+   {
+    "meta": [
+     {
+      "key": "datasource_path",
+      "value": "/var/log/auth.log"
+     },
+     {
+      "key": "datasource_type",
+      "value": "file"
+     },
+     {
+      "key": "log_type",
+      "value": "ssh_failed-auth"
+     },
+     {
+      "key": "machine",
+      "value": "vps1"
+     },
+     {
+      "key": "service",
+      "value": "ssh"
+     },
+     {
+      "key": "source_ip",
+      "value": "198.51.100.23"
+     },
+     {
+      "key": "target_user",
+      "value": "admin"
+     },
+     {
+      "key": "timestamp",
+      "value": "2026-10-25T13:05:02Z"
+     }
+    ],
+    "timestamp": "2026-10-25 13:05:02 +0000 UTC"
+   },
+   {
+    "meta": [
+     {
+      "key": "datasource_path",
+      "value": "/var/log/auth.log"
+     },
+     {
+      "key": "datasource_type",
+      "value": "file"
+     },
+     {
+      "key": "log_type",
+      "value": "ssh_failed-auth"
+     },
+     {
+      "key": "machine",
+      "value": "vps1"
+     },
+     {
+      "key": "service",
+      "value": "ssh"
+     },
+     {
+      "key": "source_ip",
+      "value": "198.51.100.23"
+     },
+     {
+      "key": "target_user",
+      "value": "admin"
+     },
+     {
+      "key": "timestamp",
+      "value": "2026-10-25T13:05:03Z"
+     }
+    ],
+    "timestamp": "2026-10-25 13:05:03 +0000 UTC"
+   },
+   {
+    "meta": [
+     {
+      "key": "datasource_path",
+      "value": "/var/log/auth.log"
+     },
+     {
+      "key": "datasource_type",
+      "value": "file"
+     },
+     {
+      "key": "log_type",
+      "value": "ssh_failed-auth"
+     },
+     {
+      "key": "machine",
+      "value": "vps1"
+     },
+     {
+      "key": "service",
+      "value": "ssh"
+     },
+     {
+      "key": "source_ip",
+      "value": "198.51.100.23"
+     },
+     {
+      "key": "target_user",
+      "value": "admin"
+     },
+     {
+      "key": "timestamp",
+      "value": "2026-10-25T13:05:04Z"
+     }
+    ],
+    "timestamp": "2026-10-25 13:05:04 +0000 UTC"
+   },
+   {
+    "meta": [
+     {
+      "key": "datasource_path",
+      "value": "/var/log/auth.log"
+     },
+     {
+      "key": "datasource_type",
+      "value": "file"
+     },
+     {
+      "key": "log_type",
+      "value": "ssh_failed-auth"
+     },
+     {
+      "key": "machine",
+      "value": "vps1"
+     },
+     {
+      "key": "service",
+      "value": "ssh"
+     },
+     {
+      "key": "source_ip",
+      "value": "198.51.100.23"
+     },
+     {
+      "key": "target_user",
+      "value": "admin"
+     },
+     {
+      "key": "timestamp",
+      "value": "2026-10-25T13:05:05Z"
+     }
+    ],
+    "timestamp": "2026-10-25 13:05:05 +0000 UTC"
+   },
+   {
+    "meta": [
+     {
+      "key": "datasource_path",
+      "value": "/var/log/auth.log"
+     },
+     {
+      "key": "datasource_type",
+      "value": "file"
+     },
+     {
+      "key": "log_type",
+      "value": "ssh_failed-auth"
+     },
+     {
+      "key": "machine",
+      "value": "vps1"
+     },
+     {
+      "key": "service",
+      "value": "ssh"
+     },
+     {
+      "key": "source_ip",
+      "value": "198.51.100.23"
+     },
+     {
+      "key": "target_user",
+      "value": "admin"
+     },
+     {
+      "key": "timestamp",
+      "value": "2026-10-25T13:05:06Z"
+     }
+    ],
+    "timestamp": "2026-10-25 13:05:06 +0000 UTC"
+   }
+  ],
+  "events_count": 6,
+  "id": 3,
+  "labels": null,
+  "leakspeed": "10s",
+  "machine_id": "d1658291f5104cda87084a3adfd64885",
+  "message": "Ip 198.51.100.23 performed 'crowdsecurity/ssh-bf' (6 events over 5s) at 2026-10-25 13:05:06 +0000 UTC",
+  "scenario": "crowdsecurity/ssh-bf",
+  "scenario_hash": "4441dcff07020f6690d998b7101e642359ba405c2abb83565bbbdcee36de280f",
+  "scenario_version": "0.1",
+  "simulated": false,
+  "source": {
+   "ip": "198.51.100.23",
+   "scope": "Ip",
+   "value": "198.51.100.23"
+  },
+  "start_at": "2026-10-25 13:05:01 +0000 UTC",
+  "stop_at": "2026-10-25 13:05:06 +0000 UTC"
+ },
+ {
+  "capacity": 0,
+  "created_at": "2026-10-25T13:02:32Z",
+  "decisions": [
+   {
+    "duration": "23h59m36.057100986s",
+    "id": 2,
+    "origin": "cscli",
+    "scenario": "test range",
+    "scope": "Range",
+    "simulated": false,
+    "type": "ban",
+    "value": "192.0.2.0/24"
+   }
+  ],
+  "events": null,
+  "events_count": 1,
+  "id": 2,
+  "labels": null,
+  "leakspeed": "0",
+  "machine_id": "d1658291f5104cda87084a3adfd64885",
+  "message": "test range",
+  "scenario": "test range",
+  "scenario_hash": "",
+  "scenario_version": "",
+  "simulated": false,
+  "source": {
+   "ip": "192.0.2.0/24",
+   "scope": "Range",
+   "value": "192.0.2.0/24"
+  },
+  "start_at": "2026-10-25 13:02:32 +0000 UTC",
+  "stop_at": "2026-10-25 13:02:32 +0000 UTC"
+ },
+ {
+  "capacity": 0,
+  "created_at": "2026-10-25T13:02:32Z",
+  "decisions": [
+   {
+    "duration": "3h59m36.057097069s",
+    "id": 1,
+    "origin": "cscli",
+    "scenario": "alastor: manual ban from dashboard",
+    "scope": "Ip",
+    "simulated": false,
+    "type": "ban",
+    "value": "203.0.113.77"
+   }
+  ],
+  "events": null,
+  "events_count": 1,
+  "id": 1,
+  "labels": null,
+  "leakspeed": "0",
+  "machine_id": "d1658291f5104cda87084a3adfd64885",
+  "message": "alastor: manual ban from dashboard",
+  "scenario": "alastor: manual ban from dashboard",
+  "scenario_hash": "",
+  "scenario_version": "",
+  "simulated": false,
+  "source": {
+   "ip": "203.0.113.77",
+   "scope": "Ip",
+   "value": "203.0.113.77"
+  },
+  "start_at": "2026-10-25 13:02:32 +0000 UTC",
+  "stop_at": "2026-10-25 13:02:32 +0000 UTC"
+ }
+]

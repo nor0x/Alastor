@@ -1,32 +1,32 @@
 #!/usr/bin/env bash
-# SentinelVPS agent installer. The dashboard shows the exact command for each new host
-# (Settings → Enrollment → New token), served by your own SentinelVPS server:
+# Alastor agent installer. The dashboard shows the exact command for each new host
+# (Settings → Enrollment → New token), served by your own Alastor server:
 #
-#   curl -fsSL https://sentinel.example.com/install/agent.sh | sudo bash -s -- --server https://sentinel.example.com --token sve_…
+#   curl -fsSL https://alastor.example.com/install/agent.sh | sudo bash -s -- --server https://alastor.example.com --token sve_…
 #
 # Run it again without --token to upgrade the agent in place; the enrollment is kept.
 #
 # Options:
-#   --server URL       your SentinelVPS server
+#   --server URL       your Alastor server
 #   --token TOKEN      single-use enrollment token (needed for the first install, or with --force)
 #   --insecure         allow a plain-HTTP server URL (trusted networks and local testing only)
 #   --pin SHA256       accept only this TLS certificate (hex SHA-256 of the DER certificate), e.g. for self-signed
 #   --force            enroll again as a new host even if this machine is already enrolled
 #   --version vX.Y.Z   agent release to download from GitHub when the server has no agent binaries (default: latest)
-#   --binary PATH      install this sentinel-agent binary instead of downloading one
+#   --binary PATH      install this alastor-agent binary instead of downloading one
 #   --uninstall        stop the agent, remove what it manages (its fail2ban jail file, applied fixes, config, state)
 #                      and the agent itself; tools it installed stay installed
 #
 # Environment:
-#   GITHUB_TOKEN, SENTINEL_REPO, SENTINEL_DOWNLOAD_BASE   as for install.sh (only used for the GitHub fallback)
+#   GITHUB_TOKEN, ALASTOR_REPO, ALASTOR_DOWNLOAD_BASE   as for install.sh (only used for the GitHub fallback)
 set -euo pipefail
 
 # Everything runs from main(), so a download cut off midway through `curl | bash` executes nothing.
 main() {
-  REPO="${SENTINEL_REPO:-nor0x/DefBox}"
-  BIN=/usr/local/bin/sentinel-agent
-  UNIT=/etc/systemd/system/sentinel-agent.service
-  CONFIG=/etc/sentinel-agent/agent.json
+  REPO="${ALASTOR_REPO:-nor0x/DefBox}"
+  BIN=/usr/local/bin/alastor-agent
+  UNIT=/etc/systemd/system/alastor-agent.service
+  CONFIG=/etc/alastor-agent/agent.json
 
   local server="" token="" pin="" version="latest" binary="" insecure=0 force=0 uninstall=0
   while [ $# -gt 0 ]; do
@@ -46,7 +46,7 @@ main() {
   done
   server="${server%/}"
 
-  [ "$(uname -s)" = Linux ] || die "The SentinelVPS agent runs on Linux."
+  [ "$(uname -s)" = Linux ] || die "The Alastor agent runs on Linux."
   [ "$(id -u)" -eq 0 ] || die "Run as root, e.g.: curl -fsSL … | sudo bash -s -- …"
   command -v systemctl >/dev/null && [ -d /run/systemd/system ] || die "systemd is required."
 
@@ -80,25 +80,25 @@ main() {
   local got=0
   if [ -n "$binary" ]; then
     [ -f "$binary" ] || die "--binary: $binary not found."
-    cp "$binary" "$TMP/sentinel-agent"; got=1
-  elif [ -n "$server" ] && "${CURL[@]}" -o "$TMP/sentinel-agent" "$server/install/agent/sentinel-agent-$rid" 2>/dev/null; then
-    verify "$TMP/sentinel-agent" "sentinel-agent-$rid" "$("${CURL[@]}" "$server/install/agent/SHA256SUMS" 2>/dev/null || true)"
+    cp "$binary" "$TMP/alastor-agent"; got=1
+  elif [ -n "$server" ] && "${CURL[@]}" -o "$TMP/alastor-agent" "$server/install/agent/alastor-agent-$rid" 2>/dev/null; then
+    verify "$TMP/alastor-agent" "alastor-agent-$rid" "$("${CURL[@]}" "$server/install/agent/SHA256SUMS" 2>/dev/null || true)"
     ok "from $server"; got=1
   fi
   if [ "$got" -eq 0 ]; then
-    download "sentinel-agent-$rid" "$TMP/sentinel-agent" "$version" || die "Could not download the agent for $rid."
-    verify "$TMP/sentinel-agent" "sentinel-agent-$rid" "$(download SHA256SUMS /dev/stdout "$version" 2>/dev/null || true)"
+    download "alastor-agent-$rid" "$TMP/alastor-agent" "$version" || die "Could not download the agent for $rid."
+    verify "$TMP/alastor-agent" "alastor-agent-$rid" "$(download SHA256SUMS /dev/stdout "$version" 2>/dev/null || true)"
     ok "from GitHub release $version"
   fi
-  chmod 755 "$TMP/sentinel-agent"
-  local ver; ver="$("$TMP/sentinel-agent" version 2>/dev/null)" || die "The downloaded agent does not run on this machine ($(uname -m), $(ldd --version 2>&1 | head -n1))."
+  chmod 755 "$TMP/alastor-agent"
+  local ver; ver="$("$TMP/alastor-agent" version 2>/dev/null)" || die "The downloaded agent does not run on this machine ($(uname -m), $(ldd --version 2>&1 | head -n1))."
 
-  step "Installing sentinel-agent $ver"
-  systemctl stop sentinel-agent 2>/dev/null || true
-  install -m 755 "$TMP/sentinel-agent" "$BIN"
+  step "Installing alastor-agent $ver"
+  systemctl stop alastor-agent 2>/dev/null || true
+  install -m 755 "$TMP/alastor-agent" "$BIN"
   cat > "$UNIT" <<EOF
 [Unit]
-Description=SentinelVPS agent
+Description=Alastor agent
 Documentation=https://github.com/$REPO
 After=network-online.target
 Wants=network-online.target
@@ -126,25 +126,25 @@ EOF
     "$BIN" "${args[@]}" || die "Enrollment failed. Tokens work once and expire; create a new one if needed."
   fi
 
-  systemctl enable sentinel-agent >/dev/null 2>&1
-  systemctl restart sentinel-agent
+  systemctl enable alastor-agent >/dev/null 2>&1
+  systemctl restart alastor-agent
   sleep 2
-  systemctl is-active --quiet sentinel-agent || die "The agent did not start. See: journalctl -u sentinel-agent -n 50"
+  systemctl is-active --quiet alastor-agent || die "The agent did not start. See: journalctl -u alastor-agent -n 50"
 
-  printf '\n\033[1;32m✔ SentinelVPS agent %s %s\033[0m\n\n' "$ver" "$([ "$enroll" -eq 1 ] && echo "installed and enrolled" || echo "upgraded")"
+  printf '\n\033[1;32m✔ Alastor agent %s %s\033[0m\n\n' "$ver" "$([ "$enroll" -eq 1 ] && echo "installed and enrolled" || echo "upgraded")"
   printf '  This host appears in the dashboard within a minute.\n'
-  printf '  Status      sentinel-agent status\n'
-  printf '  Logs        journalctl -u sentinel-agent -f\n'
+  printf '  Status      alastor-agent status\n'
+  printf '  Logs        journalctl -u alastor-agent -f\n'
   printf '  Remove      curl -fsSL %s/install/agent.sh | sudo bash -s -- --uninstall\n' "${server:-<server>}"
 }
 
 do_uninstall() {
-  step "Removing the SentinelVPS agent"
-  systemctl disable --now sentinel-agent 2>/dev/null || true
+  step "Removing the Alastor agent"
+  systemctl disable --now alastor-agent 2>/dev/null || true
   # Removes only what the agent manages; the tools themselves stay installed.
   [ -x "$BIN" ] && "$BIN" uninstall || true
   rm -f "$UNIT" "$BIN"
-  rm -rf /etc/sentinel-agent /var/lib/sentinel-agent
+  rm -rf /etc/alastor-agent /var/lib/alastor-agent
   systemctl daemon-reload
   ok "Removed. Delete the host in the dashboard to drop its history."
 }
@@ -171,8 +171,8 @@ verify() {
 
 download() {
   local name="$1" dest="$2" version="$3"
-  if [ -n "${SENTINEL_DOWNLOAD_BASE:-}" ]; then
-    curl -fsSL --retry 3 -o "$dest" "${SENTINEL_DOWNLOAD_BASE%/}/$version/$name"
+  if [ -n "${ALASTOR_DOWNLOAD_BASE:-}" ]; then
+    curl -fsSL --retry 3 -o "$dest" "${ALASTOR_DOWNLOAD_BASE%/}/$version/$name"
   elif [ -n "${GITHUB_TOKEN:-}" ]; then
     local api="https://api.github.com/repos/$REPO/releases" release asset
     if [ "$version" = latest ]; then release="$api/latest"; else release="$api/tags/$version"; fi

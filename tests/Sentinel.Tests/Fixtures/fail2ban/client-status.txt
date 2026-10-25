@@ -1,3 +1,0 @@
-Status
-|- Number of jail:	3
-`- Jail list:	sentinel-manual, sshd, sshd-file

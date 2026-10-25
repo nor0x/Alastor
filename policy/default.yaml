@@ -1,4 +1,4 @@
-# SentinelVPS global default policy.
+# Alastor global default policy.
 # Layers merge in order: global → group → host. A layer only needs the keys it changes.
 # Durations: 90s, 10m, 1h, 7d, 2w, or "permanent".
 # Schedules (every recurring job): "every 6h" (interval since last run), a 5-field cron like "0 3 * * *"
@@ -36,7 +36,7 @@ banning:
 
 # ---- Public IP blocklists ----
 # The server pulls the lists (agents never do), merges them, removes the allowlist and private/reserved ranges,
-# and each agent drops matching traffic in its own nftables table ("inet sentinel_vps"; ipset on iptables-only hosts).
+# and each agent drops matching traffic in its own nftables table ("inet alastor"; ipset on iptables-only hosts).
 
 blocklists:
   enabled: true

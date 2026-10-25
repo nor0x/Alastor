@@ -1,0 +1,202 @@
+2026-10-24 08:14:01,324 fail2ban.server         [1116]: INFO    --------------------------------------------------
+2026-10-24 08:14:01,325 fail2ban.server         [1116]: INFO    Starting Fail2ban v1.1.0
+2026-10-24 08:14:01,327 fail2ban.observer       [1116]: INFO    Observer start...
+2026-10-24 08:14:01,340 fail2ban.database       [1116]: INFO    Connected to fail2ban persistent database '/var/lib/fail2ban/fail2ban.sqlite3'
+2026-10-24 08:14:01,344 fail2ban.database       [1116]: WARNING New database created. Version '4'
+2026-10-24 08:14:01,345 fail2ban.jail           [1116]: INFO    Creating new jail 'sshd'
+2026-10-24 08:14:01,361 fail2ban.jail           [1116]: INFO    Jail 'sshd' uses systemd {}
+2026-10-24 08:14:01,362 fail2ban.jail           [1116]: INFO    Initiated 'systemd' backend
+2026-10-24 08:14:01,363 fail2ban.filter         [1116]: INFO      maxLines: 1
+2026-10-24 08:14:01,387 fail2ban.filtersystemd  [1116]: INFO    [sshd] Added journal match for: '_SYSTEMD_UNIT=ssh.service + _COMM=sshd'
+2026-10-24 08:14:01,387 fail2ban.filter         [1116]: INFO      maxRetry: 5
+2026-10-24 08:14:01,388 fail2ban.filter         [1116]: INFO      findtime: 600
+2026-10-24 08:14:01,388 fail2ban.actions        [1116]: INFO      banTime: 600
+2026-10-24 08:14:01,388 fail2ban.filter         [1116]: INFO      encoding: UTF-8
+2026-10-24 08:14:01,389 fail2ban.filtersystemd  [1116]: INFO    [sshd] Jail is in operation now (process new journal entries)
+2026-10-24 08:14:01,391 fail2ban.jail           [1116]: INFO    Jail 'sshd' started
+2026-10-24 08:15:31,640 fail2ban.actions        [1116]: NOTICE  [sshd] Ban 192.0.2.10
+2026-10-24 08:15:31,698 fail2ban.utils          [1116]: ERROR   7c52c9845480 -- exec: nft add table inet f2b-table
+nft -- add chain inet f2b-table f2b-chain \{ type filter hook input priority -1 \; \}
+nft add set inet f2b-table addr-set-sshd \{ type ipv4_addr\; \}
+for proto in $(echo 'tcp' | sed 's/,/ /g'); do
+nft add rule inet f2b-table f2b-chain $proto dport \{ $(echo 'ssh' | sed s/:/-/g) \} ip saddr @addr-set-sshd reject
+done
+2026-10-24 08:15:31,699 fail2ban.utils          [1116]: ERROR   7c52c9845480 -- stderr: 'Error: Could not process rule: Operation not permitted'
+2026-10-24 08:15:31,699 fail2ban.utils          [1116]: ERROR   7c52c9845480 -- stderr: 'add table inet f2b-table'
+2026-10-24 08:15:31,699 fail2ban.utils          [1116]: ERROR   7c52c9845480 -- stderr: '^^^^^^^^^^^^^^^^^^^^^^^^^'
+2026-10-24 08:15:31,700 fail2ban.utils          [1116]: ERROR   7c52c9845480 -- stderr: 'Operation not permitted (you must be root)'
+2026-10-24 08:15:31,700 fail2ban.utils          [1116]: ERROR   7c52c9845480 -- stderr: 'netlink: Error: cache initialization failed: Operation not permitted'
+2026-10-24 08:15:31,700 fail2ban.utils          [1116]: ERROR   7c52c9845480 -- stderr: 'Operation not permitted (you must be root)'
+2026-10-24 08:15:31,700 fail2ban.utils          [1116]: ERROR   7c52c9845480 -- stderr: 'netlink: Error: cache initialization failed: Operation not permitted'
+2026-10-24 08:15:31,700 fail2ban.utils          [1116]: ERROR   7c52c9845480 -- stderr: 'Operation not permitted (you must be root)'
+2026-10-24 08:15:31,700 fail2ban.utils          [1116]: ERROR   7c52c9845480 -- stderr: 'netlink: Error: cache initialization failed: Operation not permitted'
+2026-10-24 08:15:31,700 fail2ban.utils          [1116]: ERROR   7c52c9845480 -- returned 1
+2026-10-24 08:15:31,701 fail2ban.actions        [1116]: ERROR   Failed to execute ban jail 'sshd' action 'nftables' info 'ActionInfo({'ip': '192.0.2.10', 'family': 'inet4', 'fid': <function Actions.ActionInfo.<lambda> at 0x7c52c97e0720>, 'raw-ticket': <function Actions.ActionInfo.<lambda> at 0x7c52c97e0f60>})': Error starting action Jail('sshd')/nftables: 'Script error'
+2026-10-24 08:15:31,702 fail2ban.actions        [1116]: NOTICE  [sshd] Ban 198.51.100.7
+2026-10-24 08:15:31,748 fail2ban.utils          [1116]: ERROR   7c52c9845480 -- exec: nft add table inet f2b-table
+nft -- add chain inet f2b-table f2b-chain \{ type filter hook input priority -1 \; \}
+nft add set inet f2b-table addr-set-sshd \{ type ipv4_addr\; \}
+for proto in $(echo 'tcp' | sed 's/,/ /g'); do
+nft add rule inet f2b-table f2b-chain $proto dport \{ $(echo 'ssh' | sed s/:/-/g) \} ip saddr @addr-set-sshd reject
+done
+2026-10-24 08:15:31,749 fail2ban.utils          [1116]: ERROR   7c52c9845480 -- stderr: 'Error: Could not process rule: Operation not permitted'
+2026-10-24 08:15:31,749 fail2ban.utils          [1116]: ERROR   7c52c9845480 -- stderr: 'add table inet f2b-table'
+2026-10-24 08:15:31,749 fail2ban.utils          [1116]: ERROR   7c52c9845480 -- stderr: '^^^^^^^^^^^^^^^^^^^^^^^^^'
+2026-10-24 08:15:31,749 fail2ban.utils          [1116]: ERROR   7c52c9845480 -- stderr: 'Operation not permitted (you must be root)'
+2026-10-24 08:15:31,749 fail2ban.utils          [1116]: ERROR   7c52c9845480 -- stderr: 'netlink: Error: cache initialization failed: Operation not permitted'
+2026-10-24 08:15:31,749 fail2ban.utils          [1116]: ERROR   7c52c9845480 -- stderr: 'Operation not permitted (you must be root)'
+2026-10-24 08:15:31,749 fail2ban.utils          [1116]: ERROR   7c52c9845480 -- stderr: 'netlink: Error: cache initialization failed: Operation not permitted'
+2026-10-24 08:15:31,749 fail2ban.utils          [1116]: ERROR   7c52c9845480 -- stderr: 'Operation not permitted (you must be root)'
+2026-10-24 08:15:31,749 fail2ban.utils          [1116]: ERROR   7c52c9845480 -- stderr: 'netlink: Error: cache initialization failed: Operation not permitted'
+2026-10-24 08:15:31,749 fail2ban.utils          [1116]: ERROR   7c52c9845480 -- returned 1
+2026-10-24 08:15:31,749 fail2ban.actions        [1116]: ERROR   Failed to execute ban jail 'sshd' action 'nftables' info 'ActionInfo({'ip': '198.51.100.7', 'family': 'inet4', 'fid': <function Actions.ActionInfo.<lambda> at 0x7c52c97e0720>, 'raw-ticket': <function Actions.ActionInfo.<lambda> at 0x7c52c97e0f60>})': Error starting action Jail('sshd')/nftables: 'Script error'
+2026-10-24 08:15:31,976 fail2ban.actions        [1116]: NOTICE  [sshd] Ban 203.0.113.0/24
+2026-10-24 08:15:32,008 fail2ban.utils          [1116]: ERROR   7c52c9845480 -- exec: nft add table inet f2b-table
+nft -- add chain inet f2b-table f2b-chain \{ type filter hook input priority -1 \; \}
+nft add set inet f2b-table addr-set-sshd \{ type ipv4_addr\; \}
+for proto in $(echo 'tcp' | sed 's/,/ /g'); do
+nft add rule inet f2b-table f2b-chain $proto dport \{ $(echo 'ssh' | sed s/:/-/g) \} ip saddr @addr-set-sshd reject
+done
+2026-10-24 08:15:32,008 fail2ban.utils          [1116]: ERROR   7c52c9845480 -- stderr: 'Error: Could not process rule: Operation not permitted'
+2026-10-24 08:15:32,008 fail2ban.utils          [1116]: ERROR   7c52c9845480 -- stderr: 'add table inet f2b-table'
+2026-10-24 08:15:32,008 fail2ban.utils          [1116]: ERROR   7c52c9845480 -- stderr: '^^^^^^^^^^^^^^^^^^^^^^^^^'
+2026-10-24 08:15:32,008 fail2ban.utils          [1116]: ERROR   7c52c9845480 -- stderr: 'Operation not permitted (you must be root)'
+2026-10-24 08:15:32,008 fail2ban.utils          [1116]: ERROR   7c52c9845480 -- stderr: 'netlink: Error: cache initialization failed: Operation not permitted'
+2026-10-24 08:15:32,008 fail2ban.utils          [1116]: ERROR   7c52c9845480 -- stderr: 'Operation not permitted (you must be root)'
+2026-10-24 08:15:32,008 fail2ban.utils          [1116]: ERROR   7c52c9845480 -- stderr: 'netlink: Error: cache initialization failed: Operation not permitted'
+2026-10-24 08:15:32,008 fail2ban.utils          [1116]: ERROR   7c52c9845480 -- stderr: 'Operation not permitted (you must be root)'
+2026-10-24 08:15:32,008 fail2ban.utils          [1116]: ERROR   7c52c9845480 -- stderr: 'netlink: Error: cache initialization failed: Operation not permitted'
+2026-10-24 08:15:32,008 fail2ban.utils          [1116]: ERROR   7c52c9845480 -- returned 1
+2026-10-24 08:15:32,009 fail2ban.actions        [1116]: ERROR   Failed to execute ban jail 'sshd' action 'nftables' info 'ActionInfo({'ip': '203.0.113.0/24', 'family': 'inet4', 'fid': <function Actions.ActionInfo.<lambda> at 0x7c52c97e0720>, 'raw-ticket': <function Actions.ActionInfo.<lambda> at 0x7c52c97e0f60>})': Error starting action Jail('sshd')/nftables: 'Script error'
+2026-10-24 08:22:00,296 fail2ban.server         [1116]: INFO    Reload all jails
+2026-10-24 08:22:00,299 fail2ban.filtersystemd  [1116]: INFO    [sshd] Removed journal match for: '*'
+2026-10-24 08:22:00,299 fail2ban.server         [1116]: INFO    Reload jail 'sshd'
+2026-10-24 08:22:00,302 fail2ban.filter         [1116]: INFO      maxLines: 1
+2026-10-24 08:22:00,304 fail2ban.filtersystemd  [1116]: INFO    [sshd] Added journal match for: '_SYSTEMD_UNIT=ssh.service + _COMM=sshd'
+2026-10-24 08:22:00,304 fail2ban.filter         [1116]: INFO      maxRetry: 5
+2026-10-24 08:22:00,305 fail2ban.filter         [1116]: INFO      findtime: 600
+2026-10-24 08:22:00,305 fail2ban.actions        [1116]: INFO      banTime: 600
+2026-10-24 08:22:00,305 fail2ban.filter         [1116]: INFO      encoding: UTF-8
+2026-10-24 08:22:00,306 fail2ban.jail           [1116]: INFO    Creating new jail 'alastor-manual'
+2026-10-24 08:22:00,309 fail2ban.jail           [1116]: INFO    Jail 'alastor-manual' uses poller {}
+2026-10-24 08:22:00,310 fail2ban.jail           [1116]: INFO    Initiated 'polling' backend
+2026-10-24 08:22:00,310 fail2ban.filter         [1116]: INFO      maxRetry: 1
+2026-10-24 08:22:00,310 fail2ban.filter         [1116]: INFO      findtime: 600
+2026-10-24 08:22:00,311 fail2ban.actions        [1116]: INFO      banTime: -1
+2026-10-24 08:22:00,311 fail2ban.filter         [1116]: INFO      encoding: UTF-8
+2026-10-24 08:22:00,311 fail2ban.filter         [1116]: INFO    Added logfile: '/dev/null' (pos = 0, hash = )
+2026-10-24 08:22:00,312 fail2ban.server         [1116]: INFO    Jail 'sshd' reloaded
+2026-10-24 08:22:00,319 fail2ban.jail           [1116]: INFO    Jail 'alastor-manual' started
+2026-10-24 08:22:00,321 fail2ban.actions        [1116]: NOTICE  [sshd] Flush ticket(s) with nftables
+2026-10-24 08:22:00,321 fail2ban.actions        [1116]: NOTICE  [sshd] Flush ticket(s) with dummy
+2026-10-24 08:22:00,321 fail2ban.server         [1116]: INFO    Reload finished.
+2026-10-24 08:22:00,756 fail2ban.actions        [1116]: NOTICE  [alastor-manual] Ban 192.0.2.99
+2026-10-24 08:22:00,767 fail2ban.actions        [1116]: NOTICE  [alastor-manual] Ban 2001:db8::/48
+2026-10-24 08:22:01,139 fail2ban.actions        [1116]: NOTICE  [alastor-manual] Unban 192.0.2.99
+2026-10-24 08:22:10,299 fail2ban.server         [1116]: INFO    Reload all jails
+2026-10-24 08:22:10,302 fail2ban.filtersystemd  [1116]: INFO    [sshd] Removed journal match for: '*'
+2026-10-24 08:22:10,303 fail2ban.server         [1116]: INFO    Reload jail 'sshd'
+2026-10-24 08:22:10,305 fail2ban.filter         [1116]: INFO      maxLines: 1
+2026-10-24 08:22:10,307 fail2ban.filtersystemd  [1116]: INFO    [sshd] Added journal match for: '_SYSTEMD_UNIT=ssh.service + _COMM=sshd'
+2026-10-24 08:22:10,307 fail2ban.filter         [1116]: INFO      maxRetry: 5
+2026-10-24 08:22:10,308 fail2ban.filter         [1116]: INFO      findtime: 600
+2026-10-24 08:22:10,308 fail2ban.actions        [1116]: INFO      banTime: 600
+2026-10-24 08:22:10,308 fail2ban.filter         [1116]: INFO      encoding: UTF-8
+2026-10-24 08:22:10,309 fail2ban.server         [1116]: INFO    Reload jail 'alastor-manual'
+2026-10-24 08:22:10,309 fail2ban.filter         [1116]: INFO      maxRetry: 1
+2026-10-24 08:22:10,309 fail2ban.filter         [1116]: INFO      findtime: 600
+2026-10-24 08:22:10,310 fail2ban.actions        [1116]: INFO      banTime: -1
+2026-10-24 08:22:10,310 fail2ban.filter         [1116]: INFO      encoding: UTF-8
+2026-10-24 08:22:10,310 fail2ban.jail           [1116]: INFO    Creating new jail 'sshd-file'
+2026-10-24 08:22:10,311 fail2ban.jail           [1116]: INFO    Jail 'sshd-file' uses poller {}
+2026-10-24 08:22:10,311 fail2ban.jail           [1116]: INFO    Initiated 'polling' backend
+2026-10-24 08:22:10,315 fail2ban.filter         [1116]: INFO      maxLines: 1
+2026-10-24 08:22:10,316 fail2ban.filter         [1116]: INFO      maxRetry: 2
+2026-10-24 08:22:10,316 fail2ban.filter         [1116]: INFO      findtime: 600
+2026-10-24 08:22:10,316 fail2ban.actions        [1116]: INFO      banTime: 60
+2026-10-24 08:22:10,316 fail2ban.jail           [1116]: INFO    Set banTime.increment = True
+2026-10-24 08:22:10,317 fail2ban.filter         [1116]: INFO      encoding: UTF-8
+2026-10-24 08:22:10,317 fail2ban.filter         [1116]: INFO    Added logfile: '/var/log/testauth/auth.log' (pos = 0, hash = )
+2026-10-24 08:22:10,317 fail2ban.server         [1116]: INFO    Jail 'sshd' reloaded
+2026-10-24 08:22:10,317 fail2ban.server         [1116]: INFO    Jail 'alastor-manual' reloaded
+2026-10-24 08:22:10,324 fail2ban.jail           [1116]: INFO    Jail 'sshd-file' started
+2026-10-24 08:22:10,325 fail2ban.actions        [1116]: NOTICE  [sshd] Flush ticket(s) with dummy
+2026-10-24 08:22:10,326 fail2ban.server         [1116]: INFO    Reload finished.
+2026-10-24 08:22:12,599 fail2ban.filter         [1116]: INFO    [sshd-file] Found 203.0.113.45 - 2026-10-24 08:22:12
+2026-10-24 08:22:13,802 fail2ban.filter         [1116]: INFO    [sshd-file] Found 203.0.113.45 - 2026-10-24 08:22:13
+2026-10-24 08:22:14,340 fail2ban.actions        [1116]: NOTICE  [sshd-file] Ban 203.0.113.45
+2026-10-24 08:22:15,005 fail2ban.filter         [1116]: INFO    [sshd-file] Found 203.0.113.45 - 2026-10-24 08:22:14
+2026-10-24 08:22:15,007 fail2ban.observer       [1116]: INFO    [sshd-file] Found 203.0.113.45, bad - 2026-10-24 08:22:14, 1 # -> 2.0, Ban
+2026-10-24 08:22:18,297 fail2ban.actions        [1116]: NOTICE  [sshd-file] Unban 203.0.113.45
+2026-10-24 08:22:19,612 fail2ban.filter         [1116]: INFO    [sshd-file] Found 203.0.113.45 - 2026-10-24 08:22:19
+2026-10-24 08:22:20,831 fail2ban.filter         [1116]: INFO    [sshd-file] Found 203.0.113.45 - 2026-10-24 08:22:20
+2026-10-24 08:22:21,564 fail2ban.actions        [1116]: NOTICE  [sshd-file] Ban 203.0.113.45
+2026-10-24 08:22:22,036 fail2ban.filter         [1116]: INFO    [sshd-file] Found 203.0.113.45 - 2026-10-24 08:22:21
+2026-10-24 08:22:22,038 fail2ban.observer       [1116]: INFO    [sshd-file] Found 203.0.113.45, bad - 2026-10-24 08:22:21, 1 # -> 2.0, Ban
+2026-10-24 08:22:30,596 fail2ban.server         [1116]: INFO    Shutdown in progress...
+2026-10-24 08:22:30,596 fail2ban.observer       [1116]: INFO    Observer stop ... try to end queue 5 seconds
+2026-10-24 08:22:30,617 fail2ban.observer       [1116]: INFO    Observer stopped, 0 events remaining.
+2026-10-24 08:22:30,658 fail2ban.server         [1116]: INFO    Stopping all jails
+2026-10-24 08:22:30,659 fail2ban.filter         [1116]: INFO    Removed logfile: '/dev/null'
+2026-10-24 08:22:30,660 fail2ban.filter         [1116]: INFO    Removed logfile: '/var/log/testauth/auth.log'
+2026-10-24 08:22:30,781 fail2ban.actions        [1116]: NOTICE  [sshd-file] Flush ticket(s) with dummy
+2026-10-24 08:22:30,797 fail2ban.actions        [1116]: NOTICE  [sshd-file] Unban 203.0.113.45
+2026-10-24 08:22:30,910 fail2ban.actions        [1116]: NOTICE  [sshd] Unban 192.0.2.10
+2026-10-24 08:22:30,910 fail2ban.actions        [1116]: NOTICE  [sshd] Unban 198.51.100.7
+2026-10-24 08:22:30,911 fail2ban.actions        [1116]: NOTICE  [sshd] Unban 203.0.113.0/24
+2026-10-24 08:22:30,911 fail2ban.jail           [1116]: INFO    Jail 'sshd' stopped
+2026-10-24 08:22:30,944 fail2ban.actions        [1116]: NOTICE  [alastor-manual] Flush ticket(s) with dummy
+2026-10-24 08:22:30,955 fail2ban.actions        [1116]: NOTICE  [alastor-manual] Unban 2001:db8::/48
+2026-10-24 08:22:30,975 fail2ban.jail           [1116]: INFO    Jail 'alastor-manual' stopped
+2026-10-24 08:22:31,243 fail2ban.jail           [1116]: INFO    Jail 'sshd-file' stopped
+2026-10-24 08:22:31,245 fail2ban.database       [1116]: INFO    Connection to database closed.
+2026-10-24 08:22:31,245 fail2ban.server         [1116]: INFO    Exiting Fail2ban
+2026-10-24 08:22:31,547 fail2ban.server         [2196]: INFO    --------------------------------------------------
+2026-10-24 08:22:31,547 fail2ban.server         [2196]: INFO    Starting Fail2ban v1.1.0
+2026-10-24 08:22:31,548 fail2ban.observer       [2196]: INFO    Observer start...
+2026-10-24 08:22:31,555 fail2ban.database       [2196]: INFO    Connected to fail2ban persistent database '/var/lib/fail2ban/fail2ban.sqlite3'
+2026-10-24 08:22:31,558 fail2ban.jail           [2196]: INFO    Creating new jail 'sshd'
+2026-10-24 08:22:31,592 fail2ban.jail           [2196]: INFO    Jail 'sshd' uses systemd {}
+2026-10-24 08:22:31,596 fail2ban.jail           [2196]: INFO    Initiated 'systemd' backend
+2026-10-24 08:22:31,598 fail2ban.filter         [2196]: INFO      maxLines: 1
+2026-10-24 08:22:31,624 fail2ban.filtersystemd  [2196]: INFO    [sshd] Added journal match for: '_SYSTEMD_UNIT=ssh.service + _COMM=sshd'
+2026-10-24 08:22:31,624 fail2ban.filter         [2196]: INFO      maxRetry: 5
+2026-10-24 08:22:31,624 fail2ban.filter         [2196]: INFO      findtime: 600
+2026-10-24 08:22:31,624 fail2ban.actions        [2196]: INFO      banTime: 600
+2026-10-24 08:22:31,624 fail2ban.filter         [2196]: INFO      encoding: UTF-8
+2026-10-24 08:22:31,624 fail2ban.jail           [2196]: INFO    Creating new jail 'alastor-manual'
+2026-10-24 08:22:31,625 fail2ban.jail           [2196]: INFO    Jail 'alastor-manual' uses poller {}
+2026-10-24 08:22:31,625 fail2ban.jail           [2196]: INFO    Initiated 'polling' backend
+2026-10-24 08:22:31,625 fail2ban.filter         [2196]: INFO      maxRetry: 1
+2026-10-24 08:22:31,625 fail2ban.filter         [2196]: INFO      findtime: 600
+2026-10-24 08:22:31,625 fail2ban.actions        [2196]: INFO      banTime: -1
+2026-10-24 08:22:31,626 fail2ban.filter         [2196]: INFO      encoding: UTF-8
+2026-10-24 08:22:31,626 fail2ban.filter         [2196]: INFO    Added logfile: '/dev/null' (pos = 0, hash = )
+2026-10-24 08:22:31,626 fail2ban.jail           [2196]: INFO    Creating new jail 'sshd-file'
+2026-10-24 08:22:31,626 fail2ban.jail           [2196]: INFO    Jail 'sshd-file' uses poller {}
+2026-10-24 08:22:31,626 fail2ban.jail           [2196]: INFO    Initiated 'polling' backend
+2026-10-24 08:22:31,627 fail2ban.filter         [2196]: INFO      maxLines: 1
+2026-10-24 08:22:31,628 fail2ban.filter         [2196]: INFO      maxRetry: 2
+2026-10-24 08:22:31,628 fail2ban.filter         [2196]: INFO      findtime: 600
+2026-10-24 08:22:31,628 fail2ban.actions        [2196]: INFO      banTime: 60
+2026-10-24 08:22:31,628 fail2ban.jail           [2196]: INFO    Set banTime.increment = True
+2026-10-24 08:22:31,628 fail2ban.filter         [2196]: INFO      encoding: UTF-8
+2026-10-24 08:22:31,628 fail2ban.filter         [2196]: INFO    Added logfile: '/var/log/testauth/auth.log' (pos = 540, hash = 25218aa1807e52a3fa1c49c3e24ae80db773be72)
+2026-10-24 08:22:31,631 fail2ban.filtersystemd  [2196]: INFO    [sshd] Jail is in operation now (process new journal entries)
+2026-10-24 08:22:31,664 fail2ban.jail           [2196]: INFO    Jail 'sshd' started
+2026-10-24 08:22:31,674 fail2ban.jail           [2196]: INFO    Jail 'alastor-manual' started
+2026-10-24 08:22:31,680 fail2ban.jail           [2196]: INFO    Jail 'sshd-file' started
+2026-10-24 08:22:31,687 fail2ban.actions        [2196]: NOTICE  [alastor-manual] Restore Ban 2001:db8::/48
+2026-10-24 08:22:31,703 fail2ban.actions        [2196]: NOTICE  [sshd-file] Restore Ban 203.0.113.45
+2026-10-24 08:22:31,853 fail2ban.actions        [2196]: NOTICE  [sshd] Restore Ban 192.0.2.10
+2026-10-24 08:22:31,868 fail2ban.actions        [2196]: NOTICE  [sshd] Restore Ban 198.51.100.7
+2026-10-24 08:22:31,876 fail2ban.actions        [2196]: NOTICE  [sshd] Restore Ban 203.0.113.0/24
+2026-10-24 08:22:44,852 fail2ban.actions        [2196]: NOTICE  [sshd-file] Ban 198.51.100.200
+2026-10-24 08:22:45,692 fail2ban.filter         [2196]: INFO    [sshd-file] Found 198.51.100.200 - 2026-10-24 08:22:44
+2026-10-24 08:22:46,295 fail2ban.filter         [2196]: INFO    [sshd-file] Found 198.51.100.200 - 2026-10-24 08:22:46
+2026-10-24 08:22:46,296 fail2ban.observer       [2196]: INFO    [sshd-file] Found 198.51.100.200, bad - 2026-10-24 08:22:46, 1 # -> 2.0, Ban
+2026-10-24 08:22:47,498 fail2ban.filter         [2196]: INFO    [sshd-file] Found 198.51.100.200 - 2026-10-24 08:22:47
+2026-10-24 08:22:47,499 fail2ban.observer       [2196]: INFO    [sshd-file] Found 198.51.100.200, bad - 2026-10-24 08:22:47, 1 # -> 2.0, Ban
+2026-10-24 08:22:48,701 fail2ban.filter         [2196]: INFO    [sshd-file] Found 198.51.100.200 - 2026-10-24 08:22:48
+2026-10-24 08:22:48,702 fail2ban.observer       [2196]: INFO    [sshd-file] Found 198.51.100.200, bad - 2026-10-24 08:22:48, 1 # -> 2.0, Ban
+2026-10-24 08:22:48,733 fail2ban.actions        [2196]: NOTICE  [sshd-file] 198.51.100.200 already banned

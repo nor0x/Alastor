@@ -1,8 +1,8 @@
 **/bin/
 **/obj/
 **/node_modules/
-src/Sentinel.Server/wwwroot/assets/
-src/sentinel-web/dist/
+src/Alastor.Server/wwwroot/assets/
+src/alastor-web/dist/
 artifacts/
 data/
 .git/

@@ -4,8 +4,8 @@ obj/
 .vs/
 .idea/
 node_modules/
-src/sentinel-web/dist/
-src/Sentinel.Server/wwwroot/assets/
+src/alastor-web/dist/
+src/Alastor.Server/wwwroot/assets/
 /data/
 /artifacts/
 *.db
