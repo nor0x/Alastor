@@ -130,6 +130,8 @@ builder.Services.AddHttpClient(WebhookSender.HttpClientName, c =>
 builder.Services.AddSingleton<DashboardNotifier>();
 builder.Services.AddHostedService<PresenceWorker>();
 builder.Services.AddHostedService<RetentionWorker>();
+builder.Services.AddScoped<Alastor.Server.Services.Posture.PostureService>();
+builder.Services.AddHostedService<PostureWorker>();
 builder.Services.AddScoped<ThreatFeedService>();
 builder.Services.AddHttpClient(ThreatFeedService.HttpClientName, c =>
 {
@@ -209,6 +211,7 @@ app.MapVulnerabilityEndpoints();
 app.MapHardeningEndpoints();
 app.MapNetworkEndpoints();
 app.MapMalwareEndpoints();
+app.MapStatsEndpoints();
 app.MapHub<AgentHub>("/hubs/agent");
 app.MapHub<DashboardHub>("/hubs/dashboard");
 app.MapInstallScripts();

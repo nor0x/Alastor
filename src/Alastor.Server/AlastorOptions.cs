@@ -52,6 +52,9 @@ public sealed class AlastorOptions
     public string MetricRetention { get; set; } = "7d";
     public string EventRetention { get; set; } = "90d";
 
+    /// <summary>Daily posture snapshots (baseline score, CVE counts, …) behind the dashboard's trend charts.</summary>
+    public string PostureRetention { get; set; } = "365d";
+
     /// <summary>Default lifetime of a new enrollment token (the dashboard can choose a different one per token).</summary>
     public string EnrollmentTokenTtl { get; set; } = "24h";
 
@@ -125,6 +128,7 @@ public sealed class AlastorOptions
     public TimeSpan RetentionRunIntervalValue => Parse(RetentionRunInterval);
     public TimeSpan MetricRetentionValue => Parse(MetricRetention);
     public TimeSpan EventRetentionValue => Parse(EventRetention);
+    public TimeSpan PostureRetentionValue => Parse(PostureRetention);
     public TimeSpan EnrollmentTokenTtlValue => Parse(EnrollmentTokenTtl);
     public TimeSpan CommandRedeliverAfterValue => Parse(CommandRedeliverAfter);
     public TimeSpan PendingCommandTtlValue => Parse(PendingCommandTtl);
@@ -153,6 +157,7 @@ public sealed class AlastorOptions
         Check(nameof(RetentionRunInterval), RetentionRunInterval, TimeSpan.FromMinutes(1), TimeSpan.FromDays(1));
         Check(nameof(MetricRetention), MetricRetention, TimeSpan.FromHours(1), TimeSpan.FromDays(3650));
         Check(nameof(EventRetention), EventRetention, TimeSpan.FromHours(1), TimeSpan.FromDays(3650));
+        Check(nameof(PostureRetention), PostureRetention, TimeSpan.FromDays(7), TimeSpan.FromDays(3650));
         Check(nameof(EnrollmentTokenTtl), EnrollmentTokenTtl, TimeSpan.FromMinutes(5), TimeSpan.FromDays(30));
         Check(nameof(CommandRedeliverAfter), CommandRedeliverAfter, TimeSpan.FromSeconds(30), TimeSpan.FromDays(1));
         Check(nameof(PendingCommandTtl), PendingCommandTtl, TimeSpan.FromMinutes(5), TimeSpan.FromDays(30));

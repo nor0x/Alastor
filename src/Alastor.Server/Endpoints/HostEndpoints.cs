@@ -123,8 +123,7 @@ public static class HostEndpoints
             : h.PolicyApplySuccess == false ? "failed"
             : h.AppliedRevision == desiredRevision ? "in-sync"
             : "pending";
-        var problems = h.Tools.Count(t => t.Availability == Availability.Unavailable || (t.Installed && !t.Running) ||
-                                          t.ConfigState is ConfigState.Drifted or ConfigState.Conflict or ConfigState.Rejected);
+        var problems = h.Tools.Count(Dto.HasProblem);
         return new HostSummaryDto(h.Id, h.Name, h.Hostname, h.OsPrettyName, h.Architecture, h.AgentVersion, h.IsOnline, h.LastSeenAt,
             h.CpuPercent, Dto.Percent(h.MemoryUsedBytes, h.MemoryTotalBytes), Dto.Percent(h.DiskUsedBytes, h.DiskTotalBytes), h.Load1,
             h.GroupId, h.Group?.Name, h.Tags, bans, sync, h.Tools.Count(t => t.Running), problems,

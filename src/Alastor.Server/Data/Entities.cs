@@ -239,6 +239,36 @@ public sealed class HostMetricSample
     public double Load1 { get; set; }
 }
 
+/// <summary>
+/// One host's security posture on one UTC day: the latest values seen that day, copied from the host's denormalized
+/// columns. Written whenever a report or heartbeat changes them and carried forward daily, so trends survive the
+/// latest-only report tables. Feeds the dashboard's trend charts.
+/// </summary>
+public sealed class HostPostureSnapshot
+{
+    public Guid HostId { get; set; }
+    public DateOnly Day { get; set; }
+    public DateTime UpdatedAt { get; set; }
+    public bool Online { get; set; }
+    public int? BaselineScore { get; set; }
+    public int? HardeningIndex { get; set; }
+    public int? VulnCritical { get; set; }
+    public int? VulnHigh { get; set; }
+
+    /// <summary>Open findings that are in CISA's Known Exploited Vulnerabilities catalog.</summary>
+    public int? VulnKev { get; set; }
+
+    /// <summary>Pending security updates (all pending updates on distributions without a security flag).</summary>
+    public int? SecurityUpdates { get; set; }
+
+    public bool RebootRequired { get; set; }
+
+    /// <summary>SSH reachable from the internet and not accepted. Null until a network check ran.</summary>
+    public bool? PublicSsh { get; set; }
+
+    public int? MalwareFindings { get; set; }
+}
+
 /// <summary>A <see cref="SecurityEvent"/> as stored by the server. The id comes from the agent, so re-delivery is idempotent.</summary>
 public sealed class StoredEvent
 {

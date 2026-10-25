@@ -82,8 +82,7 @@ public static class EventEndpoints
                 await db.Events.CountAsync(e => e.OccurredAt >= since, ct),
                 await db.Bans.CountAsync(ct),
                 await db.Events.CountAsync(e => e.OccurredAt >= since && e.Kind == EventKinds.BanAdded, ct),
-                hosts.Count(h => h.Tools.Any(t => t.Availability == Availability.Unavailable || (t.Installed && !t.Running)
-                                                  || t.ConfigState == ConfigState.Drifted || t.ConfigState == ConfigState.Conflict || t.ConfigState == ConfigState.Rejected)),
+                hosts.Count(h => h.Tools.Any(Dto.HasProblem)),
                 hosts.Count(h => h.PolicyApplySuccess != true),
                 // Hosts that never reported updates don't count; Alpine reports no security flag, so any pending update counts.
                 hosts.Any(h => h.PendingUpdates is not null) ? hosts.Count(h => (h.SecurityUpdates ?? h.PendingUpdates ?? 0) > 0) : null,

@@ -76,9 +76,19 @@ public static class ReportEndpoints
 
     private static async Task<IResult> Receive(AgentReport report, ClaimsPrincipal user, AlastorDbContext db, PolicyService policies, DashboardNotifier notifier,
         Services.Vulnerabilities.VulnerabilityService vulnerabilities, Services.Hardening.HardeningService hardening,
-        Services.Network.NetworkService network, Services.Malware.MalwareService malware, TimeProvider time, CancellationToken ct)
+        Services.Network.NetworkService network, Services.Malware.MalwareService malware, Services.Posture.PostureService posture,
+        TimeProvider time, CancellationToken ct)
     {
         var hostId = user.HostId();
+        var result = await ReceiveCoreAsync(hostId, report, db, policies, notifier, vulnerabilities, hardening, network, malware, time, ct);
+        if (result is IStatusCodeHttpResult { StatusCode: 204 }) await posture.SnapshotAsync(hostId, ct);
+        return result;
+    }
+
+    private static async Task<IResult> ReceiveCoreAsync(Guid hostId, AgentReport report, AlastorDbContext db, PolicyService policies, DashboardNotifier notifier,
+        Services.Vulnerabilities.VulnerabilityService vulnerabilities, Services.Hardening.HardeningService hardening,
+        Services.Network.NetworkService network, Services.Malware.MalwareService malware, TimeProvider time, CancellationToken ct)
+    {
         if (report.Malware is not null || report.JobId.StartsWith("malware.", StringComparison.Ordinal))
         {
             if (report.Malware is { } m && (m.Findings.Count > Alastor.Core.Malware.ClamAvIntegration.MaxFindings || m.ErrorSamples.Count > 100 || m.Paths.Count > 200))

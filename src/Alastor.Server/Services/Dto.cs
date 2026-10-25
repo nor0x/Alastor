@@ -215,6 +215,11 @@ public static class Dto
 {
     public static double Percent(long used, long total) => total <= 0 ? 0 : Math.Round(used * 100.0 / total, 1);
 
+    /// <summary>A tool the host should run that is unavailable, stopped, or whose config was refused or hand-edited.</summary>
+    public static bool HasProblem(HostToolStatus t) =>
+        t.Availability == Availability.Unavailable || (t.Installed && !t.Running) ||
+        t.ConfigState is ConfigState.Drifted or ConfigState.Conflict or ConfigState.Rejected;
+
     public static EventDto Event(StoredEvent e) =>
         new(e.Id, e.HostId, e.OccurredAt, e.Capability, e.Severity, e.SourceTool, e.Kind, e.Subject, e.Message, e.Raw, e.Metadata, e.Alert);
 
