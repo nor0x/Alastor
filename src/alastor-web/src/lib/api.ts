@@ -809,3 +809,39 @@ export interface IssueList {
   items: Issue[];
   summary: IssueSummary;
 }
+
+export interface EventStats {
+  days: { day: string; critical: number; high: number; medium: number; low: number; info: number }[];
+  byCapability: { key: string; count: number }[];
+  topKinds: { key: string; count: number }[];
+}
+
+export interface BanHour {
+  at: string;
+  bans: number;
+  authFailures: number;
+}
+
+export interface PosturePoint {
+  day: string;
+  hosts: number;
+  online: number;
+  baselineScore: number | null;
+  hardeningIndex: number | null;
+  vulnCritical: number | null;
+  vulnHigh: number | null;
+  vulnKev: number | null;
+  hostsWithHighCves: number | null;
+  securityUpdates: number | null;
+  hostsNeedingUpdates: number | null;
+  rebootRequired: number;
+  publicSsh: number | null;
+  malwareFindings: number | null;
+}
+
+export type MatrixStatus = 'ok' | 'warn' | 'bad' | 'unknown' | 'off';
+
+export interface PostureMatrix {
+  columns: { key: string; label: string; tab: string }[];
+  rows: { hostId: string; name: string; online: boolean; cells: Record<string, { status: MatrixStatus; label: string }> }[];
+}

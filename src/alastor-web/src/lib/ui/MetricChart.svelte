@@ -1,26 +1,32 @@
 <script lang="ts">
   import { shortTime, fullDate } from '../format';
+  import { niceMax } from './chart';
 
   // One series per chart (small multiples): CPU, memory, disk and load each get their own y-scale,
   // so there is never a second axis. A single series needs no legend; the title names it.
-  let { title, points, unit = '%', max }: {
+  let { title, points, unit = '%', max, daily = false, format, height = 120 }: {
     title: string;
     points: { at: string; value: number }[];
     unit?: string;
     /** Fixed y maximum (100 for percentages); otherwise derived from the data. */
     max?: number;
+    /** One point per day (posture trends): date labels instead of times of day. */
+    daily?: boolean;
+    /** Value formatter for the headline, ticks and tooltip; overrides `unit`. */
+    format?: (v: number) => string;
+    height?: number;
   } = $props();
 
-  const H = 120;
+  const H = $derived(height);
   const PAD = { top: 8, right: 8, bottom: 20, left: 34 };
   let width = $state(320);
   let hover = $state<number | null>(null);
 
   const t0 = $derived(points.length ? new Date(points[0].at).getTime() : 0);
   const t1 = $derived(points.length ? new Date(points[points.length - 1].at).getTime() : 1);
-  const yMax = $derived(max ?? niceMax(Math.max(0.1, ...points.map((p) => p.value))));
+  const yMax = $derived(max ?? niceMax(Math.max(format ? 1 : 0.1, ...points.map((p) => p.value))));
   const plotW = $derived(Math.max(10, width - PAD.left - PAD.right));
-  const plotH = H - PAD.top - PAD.bottom;
+  const plotH = $derived(H - PAD.top - PAD.bottom);
 
   const x = (t: number) => PAD.left + (t1 === t0 ? plotW : ((t - t0) / (t1 - t0)) * plotW);
   const y = (v: number) => PAD.top + plotH - (Math.min(v, yMax) / yMax) * plotH;
@@ -31,7 +37,7 @@
   const gapMs = $derived.by(() => {
     const deltas = points.slice(1).map((p, i) => new Date(p.at).getTime() - new Date(points[i].at).getTime()).sort((a, b) => a - b);
     const median = deltas.length ? deltas[Math.floor(deltas.length / 2)] : 60_000;
-    return Math.max(5 * 60_000, median * 5);
+    return Math.max(daily ? 3 * 86_400_000 : 5 * 60_000, median * 5);
   });
   const segments = $derived.by(() => {
     const out: (readonly [number, number])[][] = [];
@@ -47,7 +53,8 @@
   const area = $derived(
     segments.filter((seg) => seg.length > 1).map((seg) => `${path(seg)}L${seg[seg.length - 1][0].toFixed(1)},${PAD.top + plotH}L${seg[0][0].toFixed(1)},${PAD.top + plotH}Z`).join(''),
   );
-  const ticks = $derived([0, yMax / 2, yMax]);
+  // Counts (a formatter is set) never get a fractional middle tick.
+  const ticks = $derived(format && !Number.isInteger(yMax / 2) ? [0, yMax] : [0, yMax / 2, yMax]);
   // Time ticks at the start, middle and end of the range (by time, not by sample), dropping the middle one when it would collide.
   const xTicks = $derived.by(() => {
     if (points.length < 2) return [];
@@ -56,15 +63,13 @@
   });
   const latest = $derived(points.length ? points[points.length - 1].value : null);
 
-  function niceMax(v: number) {
-    const mag = 10 ** Math.floor(Math.log10(v));
-    for (const m of [1, 2, 2.5, 5, 10]) if (v <= m * mag) return m * mag;
-    return 10 * mag;
-  }
-
   function fmt(v: number) {
+    if (format) return format(v);
     return unit === '%' ? `${v.toFixed(v < 10 ? 1 : 0)}%` : v.toFixed(2);
   }
+
+  const xLabel = (iso: string) => (daily ? new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) : shortTime(iso));
+  const tickLabel = (t: number) => (format ? format(t) : unit === '%' ? `${t}` : t.toFixed(t < 1 ? 2 : 1));
 
   function onMove(e: PointerEvent) {
     const rect = (e.currentTarget as SVGElement).getBoundingClientRect();
@@ -88,10 +93,10 @@
         onpointermove={onMove} onpointerleave={() => (hover = null)}>
         {#each ticks as t (t)}
           <line class="grid" x1={PAD.left} x2={PAD.left + plotW} y1={y(t)} y2={y(t)} />
-          <text class="axis" x={PAD.left - 6} y={y(t)} dy="0.32em" text-anchor="end">{unit === '%' ? `${t}` : t.toFixed(t < 1 ? 2 : 1)}</text>
+          <text class="axis" x={PAD.left - 6} y={y(t)} dy="0.32em" text-anchor="end">{tickLabel(t)}</text>
         {/each}
         {#each xTicks as t, i (t)}
-          <text class="axis" x={x(t)} y={H - 4} text-anchor={i === 0 ? 'start' : i === xTicks.length - 1 ? 'end' : 'middle'}>{shortTime(new Date(t).toISOString())}</text>
+          <text class="axis" x={x(t)} y={H - 4} text-anchor={i === 0 ? 'start' : i === xTicks.length - 1 ? 'end' : 'middle'}>{xLabel(new Date(t).toISOString())}</text>
         {/each}
         <path class="area" d={area} />
         <path class="line" d={line} />
@@ -103,7 +108,7 @@
       {#if hover !== null}
         <div class="tip" style:left="{Math.min(Math.max(coords[hover][0], 60), width - 60)}px">
           <strong>{fmt(points[hover].value)}</strong>
-          <span>{fullDate(points[hover].at)}</span>
+          <span>{daily ? xLabel(points[hover].at) : fullDate(points[hover].at)}</span>
         </div>
       {/if}
     {/if}

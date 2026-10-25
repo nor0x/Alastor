@@ -1,5 +1,7 @@
 <script lang="ts">
-  import { api, errorText, type AllowlistEntry, type Ban } from '../lib/api';
+  import { api, errorText, type AllowlistEntry, type Ban, type BanHour } from '../lib/api';
+  import { banBuckets, banSeries } from '../lib/stats';
+  import StackedBars from '../lib/ui/StackedBars.svelte';
   import { fleet } from '../lib/fleet.svelte';
   import { refreshOn } from '../lib/live.svelte';
   import { route } from '../lib/router.svelte';
@@ -20,6 +22,17 @@
   let loading = $state(true);
   let error = $state('');
   let banOpen = $state(false);
+  let hours = $state(24);
+  let activity = $state<BanHour[] | null>(null);
+
+  const loadActivity = async () =>
+    (activity = await api<BanHour[]>(`/api/stats/bans?hours=${hours}${hostId ? `&hostId=${hostId}` : ''}`).catch(() => activity));
+  $effect(() => {
+    void hours;
+    void hostId;
+    loadActivity();
+  });
+  $effect(() => refreshOn(['eventsCreated'], loadActivity, 60_000));
 
   async function load() {
     const params = new URLSearchParams();
@@ -111,6 +124,21 @@
 
     {#if error}<div class="banner bad" role="alert"><p>{error}</p></div>{/if}
 
+    <section class="card activity">
+      <header>
+        <h2>Ban activity</h2>
+        <div class="seg" role="group" aria-label="Range">
+          {#each [[24, '24h'], [168, '7d']] as [h, label] (h)}
+            <button class:on={hours === h} aria-pressed={hours === h} onclick={() => (hours = h as number)}>{label}</button>
+          {/each}
+        </div>
+      </header>
+      <div class="card-body">
+        {#if activity}<StackedBars title="Per hour{hostId ? ` on ${fleet.hosts.find((h) => h.id === hostId)?.name ?? 'this host'}` : ', all hosts'}" series={banSeries} buckets={banBuckets(activity)} height={130} empty="No bans or auth failures in this period." />
+        {:else}<div class="skeleton-block" style="height:130px"></div>{/if}
+      </div>
+    </section>
+
     <div class="card table-wrap">
       <header>
         <h2>{number.format(bans.length)} active ban{bans.length === 1 ? '' : 's'}</h2>
@@ -161,6 +189,7 @@
 <BanDialog bind:open={banOpen} hostIds={hostId ? [hostId] : []} />
 
 <style>
+  .activity { margin-bottom: 12px; }
   .layout { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 16px; align-items: start; }
   .intro { margin: 0 0 12px; }
   .allow { list-style: none; margin: 0 0 12px; padding: 0; }

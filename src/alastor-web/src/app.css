@@ -79,6 +79,14 @@ button, input, select { font: inherit; color: inherit; }
   --warn-bg: rgba(210, 153, 34, 0.14);
   --bad-bg: rgba(248, 81, 73, 0.14);
   --info-bg: rgba(56, 139, 253, 0.12);
+
+  /* Chart fills for severity. Stepped apart in lightness so adjacent stacked segments stay distinct under
+     colour-vision deficiency (badges keep --sev-*, which always carry a text label). */
+  --chart-sev-critical: #cf3b3b;
+  --chart-sev-high: #ee8a3c;
+  --chart-sev-medium: #f9e07c;
+  --chart-sev-low: #3fb950;
+  --chart-sev-info: #768390;
 }
 
 textarea { font: inherit; color: inherit; }
