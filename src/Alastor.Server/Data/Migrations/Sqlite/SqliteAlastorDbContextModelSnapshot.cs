@@ -717,6 +717,9 @@ namespace Alastor.Server.Data.Migrations.Sqlite
                     b.Property<int?>("HardeningIndex")
                         .HasColumnType("INTEGER");
 
+                    b.Property<int?>("IntegrityChanges")
+                        .HasColumnType("INTEGER");
+
                     b.Property<int?>("MalwareFindings")
                         .HasColumnType("INTEGER");
 
@@ -730,6 +733,9 @@ namespace Alastor.Server.Data.Migrations.Sqlite
                         .HasColumnType("INTEGER");
 
                     b.Property<bool>("RebootRequired")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("RootkitWarnings")
                         .HasColumnType("INTEGER");
 
                     b.Property<int?>("SecurityUpdates")
@@ -1022,6 +1028,15 @@ namespace Alastor.Server.Data.Migrations.Sqlite
                         .IsRequired()
                         .HasColumnType("TEXT");
 
+                    b.Property<int?>("IntegrityChanges")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime?>("IntegrityCheckedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int?>("IntegrityCritical")
+                        .HasColumnType("INTEGER");
+
                     b.Property<string>("IpAddresses")
                         .IsRequired()
                         .HasColumnType("TEXT");
@@ -1099,6 +1114,16 @@ namespace Alastor.Server.Data.Migrations.Sqlite
                         .HasColumnType("TEXT");
 
                     b.Property<bool>("RebootRequired")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime?>("RootkitCheckedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int?>("RootkitSeverity")
+                        .HasMaxLength(32)
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("RootkitWarnings")
                         .HasColumnType("INTEGER");
 
                     b.Property<string>("SecretHash")

@@ -68,6 +68,13 @@ malware:
   paths: [/var/www, /srv, /home, /tmp, /var/tmp, /dev/shm]  # scanned recursively; missing ones are skipped
   exclude: []                # directories to skip, e.g. [/srv/backups, node_modules]; merged across layers
   maxFileSize: 25M           # larger files are skipped
+  rootkitSchedule: "off"     # rkhunter is opt-in, e.g. "0 4 * * 0"; reads only, never updates from the internet
+  rootkitIgnore: []          # rkhunter warnings accepted as known (text fragments); merged across layers
+
+integrity:
+  checkSchedule: "off"       # AIDE is opt-in, e.g. "0 4 * * *"; the first run records the baseline
+  paths: [/bin, /sbin, /usr/bin, /usr/sbin, /usr/local/bin, /usr/local/sbin, /etc, /root/.ssh, /usr/lib/systemd/system]
+  exclude: []                # path prefixes to skip, e.g. [/etc/letsencrypt]; merged across layers
 
 network:
   checkSchedule: every 1h    # is SSH reachable from the internet? is Tailscale up? (reads sockets, addresses, firewall)

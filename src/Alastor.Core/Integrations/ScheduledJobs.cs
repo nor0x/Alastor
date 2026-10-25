@@ -14,7 +14,7 @@ public interface IScheduledJobProvider
 }
 
 /// <param name="Id">Stable id, also the payload of the run-job command: <c>updates.check</c>, <c>updates.apply</c>, …</param>
-/// <param name="ScheduleKey">The policy schedule path, e.g. <c>updates.checkSchedule</c> (see <see cref="ScheduleDefaults"/>).</param>
+/// <param name="ScheduleKey">The policy schedule path, e.g. <c>updates.checkSchedule</c> (see <see cref="ScheduleDefaults"/>). Empty for jobs that only run on demand (accepting a baseline).</param>
 /// <param name="RunOnFirstStart">Run once as soon as the agent starts if it has never run, instead of waiting for the schedule.</param>
 /// <param name="RunAsync">Does the work. <c>forced</c> is true for "now" requests from the dashboard. Never throws for expected failures: they go in the report.</param>
 public sealed record ScheduledJob(

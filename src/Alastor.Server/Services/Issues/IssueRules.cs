@@ -32,6 +32,8 @@ public static class IssueRules
         ["cve.exploited"] = "Known-exploited CVE",
         ["cve.critical"] = "Critical CVEs",
         ["malware.found"] = "Malware found",
+        ["integrity.changed"] = "Files changed since the baseline",
+        ["rootkit.warning"] = "Rootkit check warnings",
         ["baseline.failed"] = "Baseline check failing",
         ["updates.security"] = "Security updates pending",
         ["updates.reboot"] = "Reboot required",
@@ -77,6 +79,16 @@ public static class IssueRules
         if (h.MalwareScannedAt is not null && h.MalwareFindings > 0)
             open.Add(new("malware.found", "", Severity.Critical, h.MalwareFindings == 1 ? "1 infected file" : $"{h.MalwareFindings} infected files",
                 "ClamAV matched a signature. Check the files before deleting anything.", "malware"));
+
+        if (h.IntegrityCheckedAt is not null && h.IntegrityChanges > 0)
+            open.Add(new("integrity.changed", "", h.IntegrityCritical > 0 ? Severity.High : Severity.Medium,
+                h.IntegrityChanges == 1 ? "1 file changed since the integrity baseline" : $"{h.IntegrityChanges} files changed since the integrity baseline",
+                h.IntegrityCritical > 0 ? $"{h.IntegrityCritical} of them are binaries, SSH or account files. Review them; accept the baseline once they're explained (an update, an admin's edit)."
+                    : "Review them; accept the baseline once they're explained.", "integrity"));
+        if (h.RootkitCheckedAt is not null && h.RootkitWarnings > 0)
+            open.Add(new("rootkit.warning", "", h.RootkitSeverity ?? Severity.Medium,
+                h.RootkitWarnings == 1 ? "1 rkhunter warning" : $"{h.RootkitWarnings} rkhunter warnings",
+                "Review them; ignore known ones with malware.rootkitIgnore, or accept file properties after an update.", "integrity"));
 
         // Only high and critical checks become issues; the rest stay on the baseline score.
         foreach (var id in facts.FailingChecks.Order(StringComparer.Ordinal))

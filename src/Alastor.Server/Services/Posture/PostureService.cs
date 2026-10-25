@@ -67,6 +67,8 @@ public sealed class PostureService(AlastorDbContext db, TimeProvider time, ILogg
         RebootRequired = h.RebootRequired,
         PublicSsh = h.NetworkCheckedAt is null ? null : IsPublicSsh(h),
         PublicServices = h.PublicServices?.Count,
+        IntegrityChanges = h.IntegrityChanges,
+        RootkitWarnings = h.RootkitWarnings,
         MalwareFindings = h.MalwareScannedAt is null ? null : h.MalwareFindings ?? 0,
     };
 
@@ -77,6 +79,6 @@ public sealed class PostureService(AlastorDbContext db, TimeProvider time, ILogg
         a.Online == b.Online && a.BaselineScore == b.BaselineScore && a.HardeningIndex == b.HardeningIndex
         && a.VulnCritical == b.VulnCritical && a.VulnHigh == b.VulnHigh && a.VulnKev == b.VulnKev
         && a.SecurityUpdates == b.SecurityUpdates && a.RebootRequired == b.RebootRequired && a.PublicSsh == b.PublicSsh
-        && a.PublicServices == b.PublicServices
+        && a.PublicServices == b.PublicServices && a.IntegrityChanges == b.IntegrityChanges && a.RootkitWarnings == b.RootkitWarnings
         && a.MalwareFindings == b.MalwareFindings;
 }

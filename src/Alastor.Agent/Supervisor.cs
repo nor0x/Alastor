@@ -404,7 +404,7 @@ public sealed class Supervisor(
                     foreach (var job in AllJobs())
                     {
                         var lastRun = DateTime.TryParse(state.Get($"job.{job.Id}.lastRunUtc"), System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.RoundtripKind, out var l) ? l : (DateTime?)null;
-                        var schedule = ScheduleDefaults.For(policy, job.ScheduleKey);
+                        var schedule = job.ScheduleKey.Length == 0 ? Schedule.Parse("off") : ScheduleDefaults.For(policy, job.ScheduleKey);
                         var due = forced == job.Id
                                   || (lastRun is null && job.RunOnFirstStart && !schedule.IsDisabled)
                                   || schedule.IsDue(lastRun, lastRun ?? started, now, TimeZoneInfo.Local, spread);

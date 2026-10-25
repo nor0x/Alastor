@@ -76,11 +76,23 @@ public static class ReportEndpoints
 
     private static async Task<IResult> Receive(AgentReport report, ClaimsPrincipal user, AlastorDbContext db, PolicyService policies, DashboardNotifier notifier,
         Services.Vulnerabilities.VulnerabilityService vulnerabilities, Services.Hardening.HardeningService hardening,
-        Services.Network.NetworkService network, Services.Malware.MalwareService malware, HostStateService hostState,
-        TimeProvider time, CancellationToken ct)
+        Services.Network.NetworkService network, Services.Malware.MalwareService malware, Services.Integrity.IntegrityService integrity,
+        HostStateService hostState, TimeProvider time, CancellationToken ct)
     {
         var hostId = user.HostId();
-        var result = await ReceiveCoreAsync(hostId, report, db, policies, notifier, vulnerabilities, hardening, network, malware, time, ct);
+        IResult result;
+        // Before the ClamAV branch, which takes every other malware.* job.
+        if (report.Integrity is not null || report.Rootkit is not null || report.JobId.StartsWith("integrity.", StringComparison.Ordinal)
+            || report.JobId.StartsWith("malware.rootkits", StringComparison.Ordinal))
+        {
+            if (report.Integrity?.Changes.Count > Alastor.Core.Integrity.AideIntegration.MaxChanges || report.Rootkit?.Warnings.Count > 500)
+                return Results.Problem("Report too large.", statusCode: 413);
+            await integrity.ReceiveAsync(hostId, report, ct);
+            var eff = await policies.GetEffectiveAsync(hostId, ct);
+            await notifier.HostUpdatedAsync(await HostEndpoints.SummaryAsync(db, hostId, eff.Revision, ct), ct);
+            result = Results.NoContent();
+        }
+        else result = await ReceiveCoreAsync(hostId, report, db, policies, notifier, vulnerabilities, hardening, network, malware, time, ct);
         if (result is IStatusCodeHttpResult { StatusCode: 204 }) await hostState.ChangedAsync(hostId, ct);
         return result;
     }

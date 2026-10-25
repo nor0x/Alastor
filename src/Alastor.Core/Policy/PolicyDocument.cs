@@ -16,6 +16,7 @@ public sealed class PolicyDocument
     public HardeningPolicy? Hardening { get; set; }
     public MalwarePolicy? Malware { get; set; }
     public LoginsPolicy? Logins { get; set; }
+    public IntegrityPolicy? Integrity { get; set; }
     public NetworkPolicy? Network { get; set; }
     public BaselinePolicy? Baseline { get; set; }
 
@@ -130,6 +131,18 @@ public sealed class NetworkPolicy
     public List<string>? AllowPublicPorts { get; set; }
 }
 
+public sealed class IntegrityPolicy
+{
+    /// <summary>AIDE file-integrity check (opt-in, so off by default). The first run records the baseline.</summary>
+    public string? CheckSchedule { get; set; }
+
+    /// <summary>Directories AIDE watches. Replaces (doesn't merge with) a lower layer's list.</summary>
+    public List<string>? Paths { get; set; }
+
+    /// <summary>Paths left out (prefixes, e.g. /etc/letsencrypt). Merged as a union across layers.</summary>
+    public List<string>? Exclude { get; set; }
+}
+
 public sealed class LoginsPolicy
 {
     /// <summary>Report successful SSH logins (from journald, or auth.log/secure). On by default; it only reads.</summary>
@@ -155,6 +168,12 @@ public sealed class MalwarePolicy
 
     /// <summary>Files larger than this are skipped (clamscan <c>--max-filesize</c>), e.g. <c>25M</c>.</summary>
     public string? MaxFileSize { get; set; }
+
+    /// <summary>rkhunter rootkit check (opt-in, so off by default).</summary>
+    public string? RootkitSchedule { get; set; }
+
+    /// <summary>rkhunter warnings accepted as known (text fragments matched against the warning). Merged as a union across layers.</summary>
+    public List<string>? RootkitIgnore { get; set; }
 }
 
 public sealed class BaselinePolicy

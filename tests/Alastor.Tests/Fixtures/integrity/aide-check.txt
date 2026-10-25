@@ -1,0 +1,67 @@
+Start timestamp: 2026-10-25 20:35:55 +0000 (AIDE 0.18.6)
+AIDE found differences between database and filesystem!!
+
+Summary:
+  Total number of entries:	7
+  Added entries:		1
+  Removed entries:		1
+  Changed entries:		2
+
+---------------------------------------------------
+Added entries:
+---------------------------------------------------
+
+f+++++++++++++++++: /bin/backdoor
+
+---------------------------------------------------
+Removed entries:
+---------------------------------------------------
+
+f-----------------: /etc/passwd
+
+---------------------------------------------------
+Changed entries:
+---------------------------------------------------
+
+f > ... ....H     : /bin/ls
+f = p.. .....     : /bin/sudo
+
+---------------------------------------------------
+Detailed information about changes:
+---------------------------------------------------
+
+File: /bin/ls
+ Size      : 2                                | 8
+ SHA256    : h0KPxSKAPTEGXnvOPPA/5HUJZjHl4Hu9 | f4sd/EZrYknwbL5VyRdN8leOd1TaeT/e
+             eg/eYMTPJcc=                     | 0kTvXLoqOPE=
+
+File: /bin/sudo
+ Perm      : -rw-r--r--                       | -rwsr-xr-x
+
+
+---------------------------------------------------
+The attributes of the (uncompressed) database(s):
+---------------------------------------------------
+
+/var/lib/alastor-agent/aide/aide.db
+ MD5       : 94KBYTy7IAbIck+8yNM0yw==
+ SHA1      : 2fL72kmRyh4y1s5XMvYzQGcZo9Q=
+ SHA256    : 2kRnM5IOS+tLiT5oKz4BSngqyrU9VaUz
+             VCQgf8S/3BA=
+ SHA512    : axXDxiTUSf0AxBV7AmeTFxRniDoSndIJ
+             4KyBJx/Fa/mWWuzxUJKfQfz8kP8asmhp
+             5/gvSRX3iCLynvurqVsDOA==
+ RMD160    : kD+wsWsIFI0fkSjF+uQRH66cpkg=
+ TIGER     : YP3+HWXVNCuLsXikx5m/pBYf+BSrD9P7
+ CRC32     : KI0cZg==
+ CRC32B    : VSdVSA==
+ HAVAL     : 98b9LZTMWB+68sj9oHnR1PzUGfyRxlef
+             YzIS0p6YllE=
+ WHIRLPOOL : ELBQeDjXLmeIWDpEAvGSb5Gl1AX/8xi+
+             g2p6kfc+lj5zEcVHMk6uSdk1KJZBCdsH
+             6C0y1Ibu8ax+eef6/JKDSQ==
+ GOST      : ftLomOAA2XkBL3bphyB0h/P/B/Sy4t+P
+             Zma9/kNUkKI=
+
+
+End timestamp: 2026-10-25 20:35:55 +0000 (run time: 0m 0s)

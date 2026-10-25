@@ -71,6 +71,8 @@ public static partial class PolicyYaml
         if (canonical.Vulnerabilities?.Ignore is { } vi) canonical.Vulnerabilities.Ignore = vi.Order(StringComparer.OrdinalIgnoreCase).ToList();
         if (canonical.Blocklists?.Extra is { } extra) canonical.Blocklists.Extra = extra.Order(StringComparer.Ordinal).ToList();
         if (canonical.Network?.AllowPublicPorts is { } ports) canonical.Network.AllowPublicPorts = ports.Order(StringComparer.OrdinalIgnoreCase).ToList();
+        if (canonical.Integrity?.Exclude is { } ie) canonical.Integrity.Exclude = ie.Order(StringComparer.Ordinal).ToList();
+        if (canonical.Malware?.RootkitIgnore is { } ri) canonical.Malware.RootkitIgnore = ri.Order(StringComparer.Ordinal).ToList();
         if (canonical.Logins?.TrustedSources is { } trusted) canonical.Logins.TrustedSources = trusted.Order(StringComparer.Ordinal).ToList();
         if (canonical.Baseline?.Mitigations is { } m)
             canonical.Baseline.Mitigations = m.OrderBy(kv => kv.Key, StringComparer.Ordinal).ToDictionary(StringComparer.Ordinal);
@@ -113,6 +115,12 @@ public static partial class PolicyYaml
         CheckSchedule("baseline.checkSchedule", doc.Baseline?.CheckSchedule);
         CheckSchedule("blocklists.refreshSchedule", doc.Blocklists?.RefreshSchedule);
         CheckSchedule("network.checkSchedule", doc.Network?.CheckSchedule);
+        CheckSchedule("integrity.checkSchedule", doc.Integrity?.CheckSchedule);
+        CheckSchedule("malware.rootkitSchedule", doc.Malware?.RootkitSchedule);
+        foreach (var (list, key) in new[] { (doc.Integrity?.Paths, "paths"), (doc.Integrity?.Exclude, "exclude") })
+            foreach (var (path, i) in (list ?? []).Select((p, i) => (p, i)))
+                if (!path.StartsWith('/') || path.Contains("..", StringComparison.Ordinal) || path.Any(char.IsWhiteSpace))
+                    Error($"integrity.{key}[{i}]", $"'{path}' must be an absolute path without spaces.");
         foreach (var (entry, i) in (doc.Logins?.TrustedSources ?? []).Select((e, i) => (e, i)))
             if (!IpTarget.TryParse(entry, out _)) Error($"logins.trustedSources[{i}]", $"'{entry}' is not an IP address or CIDR.");
         foreach (var (spec, i) in (doc.Network?.AllowPublicPorts ?? []).Select((p, i) => (p, i)))

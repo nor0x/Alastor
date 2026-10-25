@@ -142,6 +142,13 @@
         <Sparkline values={spark((p) => p.hostsWithPublicServices)} label="Hosts with unexpected public services, last 14 days" />
       </a>
     {/if}
+    {#if data.hostsWithIntegrityChanges !== null || data.hostsWithRootkitWarnings !== null}
+      <a class="tile" href="/issues?rule=integrity.changed">
+        <span class="label">File integrity</span>
+        <span class="big" class:bad={(data.hostsWithIntegrityChanges ?? 0) + (data.hostsWithRootkitWarnings ?? 0) > 0}>{(data.hostsWithIntegrityChanges ?? 0) + (data.hostsWithRootkitWarnings ?? 0)}</span>
+        <span class="foot muted">{data.hostsWithIntegrityChanges ?? 0} with changed files (AIDE) · {data.hostsWithRootkitWarnings ?? 0} with rkhunter warnings</span>
+      </a>
+    {/if}
     {#if data.hostsWithMalware !== null}
       <a class="tile" href="/hosts">
         <span class="label">Malware</span>

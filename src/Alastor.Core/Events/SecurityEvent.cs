@@ -28,6 +28,9 @@ public enum Capability
 
     /// <summary>Who logs in: successful SSH logins and first-seen sources.</summary>
     Access,
+
+    /// <summary>File integrity: system binaries and configuration compared with a baseline (AIDE).</summary>
+    Integrity,
 }
 
 /// <summary>
@@ -143,6 +146,12 @@ public static class EventKinds
     public const string TailscaleKeyExpiring = "tailscale.key-expiring";
     /// <summary>A service other than SSH became reachable from the internet and isn't in <c>network.allowPublicPorts</c>.</summary>
     public const string ServiceExposed = "exposure.service";
+
+    // File integrity and rootkits
+    /// <summary>AIDE found files added, removed or changed since the accepted baseline.</summary>
+    public const string IntegrityChanged = "integrity.changed";
+    /// <summary>rkhunter reported a warning it hadn't reported before.</summary>
+    public const string RootkitWarning = "malware.rootkit-warning";
 
     // Reserved for later deliverables.
     public const string VulnerabilityFound = "vuln.found";

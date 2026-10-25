@@ -133,6 +133,8 @@ export interface HostSummary {
   sshExposureAccepted: boolean;
   tailscaleState: string | null;
   malwareFindings: number | null;
+  integrityChanges?: number | null;
+  rootkitWarnings?: number | null;
 }
 
 export interface ToolStatus {
@@ -234,6 +236,8 @@ export interface Overview {
   hostsWithPublicSsh: number | null;
   hostsWithPublicServices: number | null;
   hostsWithMalware: number | null;
+  hostsWithIntegrityChanges: number | null;
+  hostsWithRootkitWarnings: number | null;
   averageBaselineScore: number | null;
   hostsFailingBaselineHigh: number;
   recentAlerts: SecurityEvent[];
@@ -894,4 +898,39 @@ export type MatrixStatus = 'ok' | 'warn' | 'bad' | 'unknown' | 'off';
 export interface PostureMatrix {
   columns: { key: string; label: string; tab: string }[];
   rows: { hostId: string; name: string; online: boolean; cells: Record<string, { status: MatrixStatus; label: string }> }[];
+}
+
+export interface IntegrityChange {
+  path: string;
+  change: 'added' | 'removed' | 'changed';
+  flags: string;
+  attributes: string[];
+  critical: boolean;
+}
+
+export interface IntegrityRun {
+  checkedAt: string | null;
+  lastSucceeded: boolean | null;
+  lastError: string | null;
+  lastAttemptAt: string | null;
+  schedule: { key: string; value: string; isDefault: boolean };
+  tool: { installed: boolean; version: string | null; availability: string | null; unavailableReason: string | null };
+}
+
+export interface HostIntegrity {
+  hostId: string;
+  hostName: string;
+  aide: {
+    report: { aideVersion: string | null; mode: 'init' | 'check' | 'accept'; entries: number; changes: IntegrityChange[]; paths: string[]; truncated: boolean } | null;
+    paths: string[];
+    exclude: string[];
+    run: IntegrityRun;
+  };
+  rootkit: {
+    version: string | null;
+    mode: 'check' | 'accept' | null;
+    warnings: { title: string; details: string[]; severity: Severity; ignored: boolean }[];
+    ignore: string[];
+    run: IntegrityRun;
+  };
 }
