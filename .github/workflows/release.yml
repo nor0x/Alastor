@@ -1,6 +1,6 @@
 # Push a tag like v0.2.0 to build the server and agent for x64 and arm64 and publish a GitHub release.
 # install/install.sh and install/agent-install.sh download these assets by name:
-#   sentinel-server-linux-{x64,arm64}  sentinel-agent-linux-{x64,arm64}  SHA256SUMS  install.sh  agent-install.sh
+#   alastor-server-linux-{x64,arm64}  alastor-agent-linux-{x64,arm64}  SHA256SUMS  install.sh  agent-install.sh
 name: Release
 
 on:
@@ -29,7 +29,7 @@ jobs:
         with:
           node-version: 22
           cache: npm
-          cache-dependency-path: src/sentinel-web/package-lock.json
+          cache-dependency-path: src/alastor-web/package-lock.json
       - name: Native AOT toolchain
         run: sudo apt-get update -q && sudo apt-get install -y -q clang zlib1g-dev
       - name: Test
@@ -38,12 +38,12 @@ jobs:
       - name: Publish
         run: |
           version="${GITHUB_REF_NAME#v}"
-          dotnet publish src/Sentinel.Server -c Release -r ${{ matrix.rid }} -p:Version="$version" -o out/server
-          dotnet publish src/Sentinel.Agent -c Release -r ${{ matrix.rid }} -p:Version="$version" -o out/agent
+          dotnet publish src/Alastor.Server -c Release -r ${{ matrix.rid }} -p:Version="$version" -o out/server
+          dotnet publish src/Alastor.Agent -c Release -r ${{ matrix.rid }} -p:Version="$version" -o out/agent
           mkdir dist
-          cp out/server/sentinel-server dist/sentinel-server-${{ matrix.rid }}
-          cp out/agent/sentinel-agent dist/sentinel-agent-${{ matrix.rid }}
-          ./dist/sentinel-agent-${{ matrix.rid }} version
+          cp out/server/alastor-server dist/alastor-server-${{ matrix.rid }}
+          cp out/agent/alastor-agent dist/alastor-agent-${{ matrix.rid }}
+          ./dist/alastor-agent-${{ matrix.rid }} version
       - uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.rid }}
@@ -64,5 +64,5 @@ jobs:
         run: |
           cp install/install.sh install/agent-install.sh dist/
           chmod 755 dist/*
-          (cd dist && sha256sum sentinel-* > SHA256SUMS)
-          gh release create "$GITHUB_REF_NAME" dist/* --title "SentinelVPS $GITHUB_REF_NAME" --generate-notes
+          (cd dist && sha256sum alastor-* > SHA256SUMS)
+          gh release create "$GITHUB_REF_NAME" dist/* --title "Alastor $GITHUB_REF_NAME" --generate-notes

@@ -1,0 +1,10 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Alastor.Agent/Alastor.Agent.csproj" />
+    <Project Path="src/Alastor.Core/Alastor.Core.csproj" />
+    <Project Path="src/Alastor.Server/Alastor.Server.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Alastor.Tests/Alastor.Tests.csproj" />
+  </Folder>
+</Solution>

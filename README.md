@@ -1,7 +1,7 @@
-# SentinelVPS
+# Alastor
 
 Free, self-hosted endpoint protection for Linux VPS fleets: one lightweight agent per server, one central
-server, one dashboard. SentinelVPS doesn't reinvent security engines. It **orchestrates** proven open-source
+server, one dashboard. Alastor doesn't reinvent security engines. It **orchestrates** proven open-source
 tools (fail2ban, CrowdSec, Trivy, Lynis, ClamAV, unattended-upgrades, …): it installs or adopts them, owns their
 configuration declaratively, and turns their output into one normalized alert pipeline.
 
@@ -34,14 +34,14 @@ See [docs/architecture.md](docs/architecture.md) for the event model, integratio
 flowchart LR
     browser([Browser]) -- "REST /api · SignalR" --> server
 
-    subgraph server["sentinel-server (one binary)"]
+    subgraph server["alastor-server (one binary)"]
         direction TB
         spa[Svelte dashboard] --- api[REST API + SignalR hubs]
         api --- db[(SQLite / PostgreSQL)]
         api --- workers[Workers: presence, retention,<br/>threat feed, blocklists,<br/>vuln DB mirror, alerts]
     end
 
-    subgraph host["each VPS: sentinel-agent"]
+    subgraph host["each VPS: alastor-agent"]
         direction TB
         sup[Supervisor<br/>heartbeat → reconcile → commands]
         sup --> f2b[fail2ban or CrowdSec]
@@ -100,14 +100,14 @@ sequenceDiagram
 
 ## Included tools
 
-SentinelVPS installs these from your distribution's repositories (or adopts an existing install) and never
+Alastor installs these from your distribution's repositories (or adopts an existing install) and never
 vendors binaries. Trivy, Grype and Tailscale aren't packaged by most distributions, so the agent adopts them when
 you install them from their vendor's repository (Alpine's `trivy` package is the exception it installs itself). `GET /api/about` and the dashboard's About page list the same set with licenses.
 
-| Tool | Capability | What SentinelVPS does with it | License | Status |
+| Tool | Capability | What Alastor does with it | License | Status |
 |---|---|---|---|---|
-| [fail2ban](https://github.com/fail2ban/fail2ban) | Banning | writes `jail.d/sentinel-vps.local` from policy, validates, reloads, streams bans/unbans | GPL-2.0-or-later | ✅ |
-| [nftables](https://netfilter.org/projects/nftables/) / ipset | Blocklists | loads merged public blocklists into its own `inet sentinel_vps` table (ipset + iptables fallback) | GPL-2.0 | ✅ |
+| [fail2ban](https://github.com/fail2ban/fail2ban) | Banning | writes `jail.d/alastor.local` from policy, validates, reloads, streams bans/unbans | GPL-2.0-or-later | ✅ |
+| [nftables](https://netfilter.org/projects/nftables/) / ipset | Blocklists | loads merged public blocklists into its own `inet alastor` table (ipset + iptables fallback) | GPL-2.0 | ✅ |
 | [unattended-upgrades](https://wiki.debian.org/UnattendedUpgrades), dnf, apk | Updates | counts pending security updates, installs them on schedule or on demand, flags required reboots | GPL-2.0 | ✅ |
 | [Trivy](https://github.com/aquasecurity/trivy) or [Grype](https://github.com/anchore/grype) | Vulnerabilities | offline CVE scans of OS and language packages against a server-mirrored database | Apache-2.0 | ✅ |
 | [Lynis](https://cisofy.com/lynis/) | Hardening | scheduled audits; hardening index, warnings and suggestions as a checklist | GPL-3.0 | ✅ |
@@ -122,7 +122,7 @@ you install them from their vendor's repository (Alpine's `trivy` package is the
 
 | Source | Used for |
 |---|---|
-| [NVD](https://nvd.nist.gov/) CVE API 2.0 | threat feed (optional `SENTINEL_NVDAPIKEY` raises the rate limit) |
+| [NVD](https://nvd.nist.gov/) CVE API 2.0 | threat feed (optional `ALASTOR_NVDAPIKEY` raises the rate limit) |
 | [CISA KEV](https://www.cisa.gov/known-exploited-vulnerabilities-catalog) | threat feed; flags host CVEs that are actively exploited |
 | The Hacker News, BleepingComputer, Krebs on Security, SecurityWeek, Dark Reading (RSS) | security news in the threat feed |
 | [Spamhaus DROP](https://www.spamhaus.org/blocklists/do-not-route-or-peer/), [FireHOL level 1](https://iplists.firehol.org/?ipset=firehol_level1), [abuse.ch Feodo Tracker](https://feodotracker.abuse.ch/blocklist/), [Emerging Threats compromised](https://rules.emergingthreats.net/), [blocklist.de](https://www.blocklist.de/en/export.html), [CINS Army](https://cinsscore.com/#list) | IP blocklists, merged per host minus private ranges and your allowlist |
@@ -140,18 +140,18 @@ One command on the machine that runs the dashboard (a VPS, or any Linux box at h
 
 ```bash
 # VPS with a domain pointing at it: HTTPS through Caddy, and protect this server too
-curl -fsSL https://raw.githubusercontent.com/nor0x/DefBox/main/install/install.sh | sudo bash -s -- --domain sentinel.example.com --with-agent
+curl -fsSL https://raw.githubusercontent.com/nor0x/DefBox/main/install/install.sh | sudo bash -s -- --domain alastor.example.com --with-agent
 
 # local machine or LAN, plain HTTP on :8080
 curl -fsSL https://raw.githubusercontent.com/nor0x/DefBox/main/install/install.sh | sudo bash
 ```
 
 It prints the dashboard URL and a generated admin password. To add a server, open **Settings → Enrollment → New
-token** in the dashboard and run the command it shows on that server. That command comes from your own SentinelVPS
+token** in the dashboard and run the command it shows on that server. That command comes from your own Alastor
 server, which also hands out the agent binary:
 
 ```bash
-curl -fsSL https://sentinel.example.com/install/agent.sh | sudo bash -s -- --server https://sentinel.example.com --token sve_…
+curl -fsSL https://alastor.example.com/install/agent.sh | sudo bash -s -- --server https://alastor.example.com --token sve_…
 ```
 
 Run either script again to upgrade; settings, data and enrollment are kept. `--uninstall` removes the server or agent
@@ -160,10 +160,10 @@ systemd and glibc (Debian, Ubuntu, RHEL/Alma/Rocky, Fedora).
 
 | Path | |
 |---|---|
-| `/opt/sentinel-vps/` | server binary, plus `agent/` with the agent binaries it serves |
-| `/etc/sentinel-vps/server.env` | server settings (env vars below); `systemctl restart sentinel-server` after editing |
-| `/var/lib/sentinel-vps/` | database and keys |
-| `/usr/local/bin/sentinel-agent`, `/etc/sentinel-agent/agent.json` | agent binary and enrollment |
+| `/opt/alastor/` | server binary, plus `agent/` with the agent binaries it serves |
+| `/etc/alastor/server.env` | server settings (env vars below); `systemctl restart alastor-server` after editing |
+| `/var/lib/alastor/` | database and keys |
+| `/usr/local/bin/alastor-agent`, `/etc/alastor-agent/agent.json` | agent binary and enrollment |
 
 **While the repository is private,** the script and the release binaries need a GitHub token with read access
 (`gh auth token` prints yours):
@@ -175,10 +175,10 @@ curl -fsSL -H "Authorization: Bearer $GITHUB_TOKEN" https://raw.githubuserconten
 ```
 
 Agents need no token: they download the agent from your server. Binaries come from GitHub releases, built by
-`.github/workflows/release.yml` when a `v*` tag is pushed. `SENTINEL_DOWNLOAD_BASE=https://…` makes both scripts download
+`.github/workflows/release.yml` when a `v*` tag is pushed. `ALASTOR_DOWNLOAD_BASE=https://…` makes both scripts download
 `<base>/<version>/<asset>` instead, for a mirror or a future website. Without a release, build the binaries yourself
 (see [Build & test](#build--test)) and pass them in:
-`sudo bash install/install.sh --binary artifacts/server/sentinel-server --agent-dir <dir with sentinel-agent-linux-x64>`.
+`sudo bash install/install.sh --binary artifacts/server/alastor-server --agent-dir <dir with alastor-agent-linux-x64>`.
 
 ### Docker
 
@@ -188,25 +188,25 @@ with the command from **Settings → Enrollment**.
 
 ```bash
 git clone https://github.com/nor0x/DefBox && cd DefBox
-SENTINEL_ADMINPASSWORD='a long passphrase' SENTINEL_PUBLICURL=https://sentinel.example.com docker compose up -d
+ALASTOR_ADMINPASSWORD='a long passphrase' ALASTOR_PUBLICURL=https://alastor.example.com docker compose up -d
 ```
 
-Data lives in the `sentinel-data` volume (`/data`). Put a reverse proxy with TLS in front of port 8080; for a quick
-local try without TLS, also set `SENTINEL_SECURECOOKIES=false` and enroll agents with `--insecure`. For PostgreSQL:
-`docker compose --profile postgres up -d` with `SENTINEL_DATABASEPROVIDER=postgres` and
-`SENTINEL_CONNECTIONSTRING="Host=postgres;Database=sentinel;Username=sentinel;Password=…"`. `docker build
+Data lives in the `alastor-data` volume (`/data`). Put a reverse proxy with TLS in front of port 8080; for a quick
+local try without TLS, also set `ALASTOR_SECURECOOKIES=false` and enroll agents with `--insecure`. For PostgreSQL:
+`docker compose --profile postgres up -d` with `ALASTOR_DATABASEPROVIDER=postgres` and
+`ALASTOR_CONNECTIONSTRING="Host=postgres;Database=alastor;Username=alastor;Password=…"`. `docker build
 --build-arg WITH_AGENT=false .` skips the Native AOT agent build (hosts then download the agent from GitHub releases).
 
 ## Repository layout
 
 ```
-src/Sentinel.Core     domain: SecurityEvent, policy model, IToolIntegration, the tool integrations
+src/Alastor.Core     domain: SecurityEvent, policy model, IToolIntegration, the tool integrations
                       (fail2ban, CrowdSec, baseline, blocklists, updates, vulnerabilities, Lynis, network, ClamAV),
                       platform seams
-src/Sentinel.Server   ASP.NET Core minimal API + SignalR + EF Core; serves the embedded SPA; single-file publish
-src/Sentinel.Agent    supervisor daemon (Native AOT); enroll | run | status | uninstall
-src/sentinel-web      Svelte 5 + Vite dashboard; builds into Sentinel.Server/wwwroot
-tests/Sentinel.Tests  xUnit: parsers on captured tool output (Fixtures/, each folder documents its source),
+src/Alastor.Server   ASP.NET Core minimal API + SignalR + EF Core; serves the embedded SPA; single-file publish
+src/Alastor.Agent    supervisor daemon (Native AOT); enroll | run | status | uninstall
+src/alastor-web      Svelte 5 + Vite dashboard; builds into Alastor.Server/wwwroot
+tests/Alastor.Tests  xUnit: parsers on captured tool output (Fixtures/, each folder documents its source),
                       reconciliation, policy, API end to end
 policy/default.yaml   global default policy (embedded into the server)
 install/              install.sh (server) and agent-install.sh, also served by the server at /install/{server,agent}.sh
@@ -220,60 +220,60 @@ Requirements: .NET 10 SDK. For a real agent: a Linux box with systemd and root.
 
 ```bash
 # server on :8080, data in ./data (SQLite, WAL)
-SENTINEL_DATADIR=./data SENTINEL_ADMINPASSWORD='change-me-please' SENTINEL_SECURECOOKIES=false \
-  dotnet run --project src/Sentinel.Server
+ALASTOR_DATADIR=./data ALASTOR_ADMINPASSWORD='change-me-please' ALASTOR_SECURECOOKIES=false \
+  dotnet run --project src/Alastor.Server
 
 # log in, create a single-use enrollment token
 curl -c cj -X POST localhost:8080/api/auth/login -H 'content-type: application/json' \
   -d '{"username":"admin","password":"change-me-please"}'
 curl -b cj -X POST localhost:8080/api/enrollment-tokens -H 'content-type: application/json' \
-  -H 'X-Sentinel-Request: 1' -d '{"note":"my vps"}'
+  -H 'X-Alastor-Request: 1' -d '{"note":"my vps"}'
 
 # on the target host (root): enroll, then run
-sudo ./sentinel-agent enroll --server http://SERVER:8080 --token sve_... --insecure   # https:// in production
-sudo ./sentinel-agent run
+sudo ./alastor-agent enroll --server http://SERVER:8080 --token sve_... --insecure   # https:// in production
+sudo ./alastor-agent run
 ```
 
-Dashboard development: with the server running on :8080, `cd src/sentinel-web && npm install && npm run dev`
+Dashboard development: with the server running on :8080, `cd src/alastor-web && npm install && npm run dev`
 serves the SPA with hot reload on :5173 and proxies `/api` and `/hubs` to the server. `npm run build` writes the
-production bundle into `src/Sentinel.Server/wwwroot` (Release builds of the server run it automatically).
+production bundle into `src/Alastor.Server/wwwroot` (Release builds of the server run it automatically).
 
 The agent adopts an existing fail2ban, or installs it from the distro repos, writes
-`/etc/fail2ban/jail.d/sentinel-vps.local` from the policy, validates it with `fail2ban-client -t`, reloads,
+`/etc/fail2ban/jail.d/alastor.local` from the policy, validates it with `fail2ban-client -t`, reloads,
 and starts streaming ban events.
 
 ## Configuration (server)
 
 | Env var | Default | |
 |---|---|---|
-| `SENTINEL_DATADIR` | `./data` next to the binary | SQLite DB, JWT key, data-protection keys |
-| `SENTINEL_ADMINUSER` / `SENTINEL_ADMINPASSWORD` | `admin` / generated (printed once) | first-run admin |
-| `SENTINEL_DATABASEPROVIDER` | `sqlite` | or `postgres` with `SENTINEL_CONNECTIONSTRING` |
-| `SENTINEL_PUBLICURL` | request host | used in generated install commands |
-| `SENTINEL_AGENTDOWNLOADDIR` | `./agent` next to the binary | agent binaries served at `/install/agent/` to hosts being installed |
-| `SENTINEL_HEARTBEATINTERVAL` | `60s` | default heartbeat; per-host override via `agent.heartbeatInterval` |
-| `SENTINEL_RETENTIONRUNINTERVAL`, `…METRICRETENTION`, `…EVENTRETENTION`, … | `1h`, `7d`, `90d` | all server timings: see [docs/architecture.md](docs/architecture.md#timings-and-schedules) |
-| `SENTINEL_SECURECOOKIES` | `true` | set `false` only for plain-HTTP local dev |
-| `SENTINEL_BLOCKLISTSENABLED` / `SENTINEL_BLOCKLISTREFRESHINTERVAL` | `true` / `4h` | public IP blocklists the server pulls and merges per host (*Bans → Blocklists*) |
-| `SENTINEL_VULNDBENABLED` / `SENTINEL_VULNDBREFRESHINTERVAL` | `true` / `12h` | mirror the Trivy/Grype databases for agents' CVE scans; `false` for air-gapped servers (place the files in `data/vulndb/`) |
-| `SENTINEL_FRESHCLAMPATH` / `SENTINEL_CLAMAVMIRROR` | `freshclam` / `database.clamav.net` | ClamAV signature mirror for agents' malware scans (needs the `clamav-freshclam` package on the server; the Docker image has it). Also under `data/vulndb/clamav/` |
-| `SENTINEL_TRIVYDBREPOSITORY` / `SENTINEL_GRYPEDBURL` | `ghcr.io/aquasecurity/trivy-db:2` / `https://grype.anchore.io/databases` | where the mirror pulls from (an internal registry or mirror) |
-| `SENTINEL_ALERTDEDUPWINDOW` / `SENTINEL_ALERTBURST` | `1h` / `1` | alert dedup per host and event; channels (email, webhook, ntfy) are set up under *Settings → Notifications* |
-| `SENTINEL_THREATFEEDENABLED` | `true` | fetch NVD, CISA KEV and security news RSS; `false` for air-gapped servers |
-| `SENTINEL_THREATFEEDINTERVAL` / `SENTINEL_THREATFEEDRETENTION` | `20m` / `30d` | |
-| `SENTINEL_NVDAPIKEY` | – | optional, free; raises NVD's rate limit tenfold |
+| `ALASTOR_DATADIR` | `./data` next to the binary | SQLite DB, JWT key, data-protection keys |
+| `ALASTOR_ADMINUSER` / `ALASTOR_ADMINPASSWORD` | `admin` / generated (printed once) | first-run admin |
+| `ALASTOR_DATABASEPROVIDER` | `sqlite` | or `postgres` with `ALASTOR_CONNECTIONSTRING` |
+| `ALASTOR_PUBLICURL` | request host | used in generated install commands |
+| `ALASTOR_AGENTDOWNLOADDIR` | `./agent` next to the binary | agent binaries served at `/install/agent/` to hosts being installed |
+| `ALASTOR_HEARTBEATINTERVAL` | `60s` | default heartbeat; per-host override via `agent.heartbeatInterval` |
+| `ALASTOR_RETENTIONRUNINTERVAL`, `…METRICRETENTION`, `…EVENTRETENTION`, … | `1h`, `7d`, `90d` | all server timings: see [docs/architecture.md](docs/architecture.md#timings-and-schedules) |
+| `ALASTOR_SECURECOOKIES` | `true` | set `false` only for plain-HTTP local dev |
+| `ALASTOR_BLOCKLISTSENABLED` / `ALASTOR_BLOCKLISTREFRESHINTERVAL` | `true` / `4h` | public IP blocklists the server pulls and merges per host (*Bans → Blocklists*) |
+| `ALASTOR_VULNDBENABLED` / `ALASTOR_VULNDBREFRESHINTERVAL` | `true` / `12h` | mirror the Trivy/Grype databases for agents' CVE scans; `false` for air-gapped servers (place the files in `data/vulndb/`) |
+| `ALASTOR_FRESHCLAMPATH` / `ALASTOR_CLAMAVMIRROR` | `freshclam` / `database.clamav.net` | ClamAV signature mirror for agents' malware scans (needs the `clamav-freshclam` package on the server; the Docker image has it). Also under `data/vulndb/clamav/` |
+| `ALASTOR_TRIVYDBREPOSITORY` / `ALASTOR_GRYPEDBURL` | `ghcr.io/aquasecurity/trivy-db:2` / `https://grype.anchore.io/databases` | where the mirror pulls from (an internal registry or mirror) |
+| `ALASTOR_ALERTDEDUPWINDOW` / `ALASTOR_ALERTBURST` | `1h` / `1` | alert dedup per host and event; channels (email, webhook, ntfy) are set up under *Settings → Notifications* |
+| `ALASTOR_THREATFEEDENABLED` | `true` | fetch NVD, CISA KEV and security news RSS; `false` for air-gapped servers |
+| `ALASTOR_THREATFEEDINTERVAL` / `ALASTOR_THREATFEEDRETENTION` | `20m` / `30d` | |
+| `ALASTOR_NVDAPIKEY` | – | optional, free; raises NVD's rate limit tenfold |
 | `ASPNETCORE_URLS` | `http://0.0.0.0:8080` | put Caddy/nginx with TLS in front |
 
 ## Build & test
 
 ```bash
 dotnet test
-dotnet publish src/Sentinel.Server -c Release -r linux-x64 -o artifacts/server   # one file, SPA embedded
-dotnet publish src/Sentinel.Agent  -c Release -r linux-x64 -o artifacts/agent    # Native AOT (needs clang, zlib1g-dev)
-dotnet publish src/Sentinel.Agent  -c Release -r linux-x64 -p:AgentAot=false -o artifacts/agent-jit
+dotnet publish src/Alastor.Server -c Release -r linux-x64 -o artifacts/server   # one file, SPA embedded
+dotnet publish src/Alastor.Agent  -c Release -r linux-x64 -o artifacts/agent    # Native AOT (needs clang, zlib1g-dev)
+dotnet publish src/Alastor.Agent  -c Release -r linux-x64 -p:AgentAot=false -o artifacts/agent-jit
 ```
 
 ## License
 
-MIT for SentinelVPS's own code. Bundled tools are installed from your distribution and keep their own
+MIT for Alastor's own code. Bundled tools are installed from your distribution and keep their own
 licenses; `GET /api/about` lists them.

@@ -1,22 +1,22 @@
-# SentinelVPS architecture
+# Alastor architecture
 
-SentinelVPS is an orchestrator and control plane, not a security engine. Each capability is provided by an
-established open-source tool (fail2ban, CrowdSec, Trivy, Lynis, …). SentinelVPS installs or adopts the
+Alastor is an orchestrator and control plane, not a security engine. Each capability is provided by an
+established open-source tool (fail2ban, CrowdSec, Trivy, Lynis, …). Alastor installs or adopts the
 tool, owns a clearly marked slice of its configuration, reads the tool's own structured output, and
 normalizes everything into one event model, one policy model and one dashboard.
 
 ```
-          ┌──────────────── sentinel-server (one binary) ───────────────────────┐
+          ┌──────────────── alastor-server (one binary) ───────────────────────┐
 browser ──┤ Svelte SPA (embedded) · REST /api · SignalR /hubs/dashboard          │
           │ EF Core → SQLite (WAL) | PostgreSQL · workers (presence, retention,  │
           │ threat feed ← NVD, CISA KEV, security news RSS; blocklists; Trivy/   │
           │ Grype database mirror)                                               │
           └──────────▲───────────────────────────────▲──────────────────────────┘
                      │ HTTPS REST (pull)             │ SignalR /hubs/agent ("wake" only)
-          ┌──────────┴───────────── sentinel-agent (per host) ───────────────────┐
+          ┌──────────┴───────────── alastor-agent (per host) ───────────────────┐
           │ Supervisor: heartbeat → reconcile → commands      EventPump (5 s)     │
           │      │ IToolIntegration                                                │
-          │      ├── Fail2BanIntegration ── fail2ban-client, jail.d/sentinel-vps.local, fail2ban.log
+          │      ├── Fail2BanIntegration ── fail2ban-client, jail.d/alastor.local, fail2ban.log
           │      ├── BaselineIntegration, BlocklistIntegration (nft / ipset)
           │      ├── UpdatesIntegration ── apt-get -s / dnf / apk, unattended-upgrade
           │      ├── VulnerabilityIntegration ── trivy rootfs | grype dir:/ (offline, server db)
@@ -28,7 +28,7 @@ browser ──┤ Svelte SPA (embedded) · REST /api · SignalR /hubs/dashboard 
 
 ## 1. The normalized Event model
 
-`src/Sentinel.Core/Events/SecurityEvent.cs`. Every tool's output becomes this shape **on the agent**, so the
+`src/Alastor.Core/Events/SecurityEvent.cs`. Every tool's output becomes this shape **on the agent**, so the
 server's pipeline, storage and UI contain no tool-specific code.
 
 ```csharp
@@ -38,7 +38,7 @@ public sealed record SecurityEvent
     DateTime   OccurredAt  // UTC, the tool's timestamp (not read time)
     Capability Capability  // Agent | Banning | Blocklist | Firewall | Updates | Vulnerabilities | Hardening | Network | Malware
     Severity   Severity    // Info < Low < Medium < High < Critical (stored as int so >= filters work)
-    string     SourceTool  // "fail2ban", "trivy", "sentinel-agent", "sentinel-server"
+    string     SourceTool  // "fail2ban", "trivy", "alastor-agent", "alastor-server"
     string     Kind        // dotted, tool-independent: ban.added, auth.failures, tool.error, config.drift, vuln.found …
     string?    Subject     // primary entity: IP/CIDR, CVE id, package, check id
     string     Message     // one human-readable line
@@ -55,7 +55,7 @@ so one agent cannot forge events for another host.
 
 | fail2ban output | Kind | Severity | Notes |
 |---|---|---|---|
-| `NOTICE [jail] Ban ip` | `ban.added` | Low (Info for `sentinel-manual`) | `metadata.manual` |
+| `NOTICE [jail] Ban ip` | `ban.added` | Low (Info for `alastor-manual`) | `metadata.manual` |
 | `NOTICE [jail] Increase Ban ip (…)` | `ban.increased` | Medium | repeat offender |
 | `NOTICE [jail] Restore Ban ip` | `ban.restored` | Info | after fail2ban restart |
 | `NOTICE [jail] Unban ip` | `ban.removed` | Info | |
@@ -66,7 +66,7 @@ so one agent cannot forge events for another host.
 
 ## 2. The integration interface
 
-`src/Sentinel.Core/Integrations/IToolIntegration.cs`. The supervisor only ever talks to tools through it.
+`src/Alastor.Core/Integrations/IToolIntegration.cs`. The supervisor only ever talks to tools through it.
 
 ```csharp
 public interface IToolIntegration
@@ -94,13 +94,13 @@ Rules every implementation follows:
 * **Structured output first.** fail2ban uses `fail2ban-client status`, `get <jail> banip --with-time`,
   `get logtarget`, `-t`, `ping`, `--version`. The log file (whose path comes from `get logtarget`) is read only
   for real-time ban/failure events, which the client cannot stream. That is fail2ban's documented log format.
-* **Ownership.** Files we write carry a header with `sentinel-revision` and a `sentinel-sha256` of the body
+* **Ownership.** Files we write carry a header with `alastor-revision` and a `alastor-sha256` of the body
   (`ManagedFile`). A hand edit makes the file *Drifted*: it is reported and **not** overwritten until the
   operator clicks *Reclaim*. A file at our path without the marker is *Foreign* and is never touched. A jail the
   admin defines in `jail.local` / `jail.d/*.local` is skipped and reported as a *Conflict*, unless the policy
   sets `takeover: true`.
 * **All-or-nothing apply.** Back up, write atomically (temp file + rename), run `fail2ban-client -t`, reload,
-  then verify the `sentinel-manual` jail is up. Any failure restores the backups and reloads.
+  then verify the `alastor-manual` jail is up. Any failure restores the backups and reloads.
 * **Never fail silently.** Missing tool, missing package (for example EPEL needed on RHEL), unsupported distro: all
   become `Availability.Unavailable` with a human-readable reason, shown in the capability matrix.
 * **Side effects behind seams.** `ICommandRunner`, `IFileSystem`, `IPackageManager` (apt/dnf/apk),
@@ -110,19 +110,19 @@ What the fail2ban integration owns:
 
 | Artifact | Purpose |
 |---|---|
-| `/etc/fail2ban/jail.d/sentinel-vps.local` | Only the jails the policy names, plus `[sentinel-manual]`. Never a `[DEFAULT]` section. |
-| `/etc/fail2ban/filter.d/sentinel-manual.conf` | Empty filter: the manual jail only holds dashboard bans. |
-| `[sentinel-manual]` jail | `logpath=/dev/null`, `bantime` = `banning.manualBantime` (default permanent); bans persist in fail2ban's own DB. |
+| `/etc/fail2ban/jail.d/alastor.local` | Only the jails the policy names, plus `[alastor-manual]`. Never a `[DEFAULT]` section. |
+| `/etc/fail2ban/filter.d/alastor-manual.conf` | Empty filter: the manual jail only holds dashboard bans. |
+| `[alastor-manual]` jail | `logpath=/dev/null`, `bantime` = `banning.manualBantime` (default permanent); bans persist in fail2ban's own DB. |
 
 ## 3. API surface
 
 Live OpenAPI document: `GET /openapi/v1.json`. Auth columns: **R** = signed-in user *or* read-only API key
 (`X-Api-Key`); **A** = signed-in admin only; **Ag** = agent credential; **–** = anonymous.
-Cookie-authenticated writes must also send `X-Sentinel-Request: 1` (CSRF guard on top of `SameSite=Strict`).
+Cookie-authenticated writes must also send `X-Alastor-Request: 1` (CSRF guard on top of `SameSite=Strict`).
 
 | Method & path | Auth | Purpose |
 |---|---|---|
-| `POST /api/auth/login` · `POST /api/auth/logout` | – | JWT in httpOnly `sentinel_session` cookie (rate-limited) |
+| `POST /api/auth/login` · `POST /api/auth/logout` | – | JWT in httpOnly `alastor_session` cookie (rate-limited) |
 | `GET /api/auth/me` · `POST /api/auth/password` | R · A | |
 | `GET /api/overview` | R | fleet cards, recent alerts, top offenders |
 | `GET /api/hosts` · `GET /api/hosts/{id}` | R | summaries · detail with capability matrix and policy report |
@@ -162,7 +162,7 @@ Cookie-authenticated writes must also send `X-Sentinel-Request: 1` (CSRF guard o
 | `GET /api/blocklists` · `GET /api/blocklists/lookup?ip=` | R | list health and usage, per-host enforcement (backend, entries, dropped packets) · which lists contain an address |
 | `POST /api/blocklists/{id}/refresh` | A | fetch one list now |
 | `GET /api/audit` | A | audit log |
-| `GET /api/about` · `GET /healthz` · `GET /install/{agent.sh,server.sh}` · `GET /install/agent/{sentinel-agent-linux-x64,…-arm64,SHA256SUMS}` | – | licenses · liveness · installers · agent binaries |
+| `GET /api/about` · `GET /healthz` · `GET /install/{agent.sh,server.sh}` · `GET /install/agent/{alastor-agent-linux-x64,…-arm64,SHA256SUMS}` | – | licenses · liveness · installers · agent binaries |
 | `POST /api/agent/enroll` | – (token) | consume single-use token → `{agentId, agentSecret}` |
 | `POST /api/agent/heartbeat` | Ag | metrics + tool statuses + last apply report → `{desiredRevision, pendingCommands}` |
 | `GET /api/agent/desired-state` | Ag | effective policy + revision |
@@ -205,7 +205,7 @@ There are two places for timings:
   versioned, and overridable per group or host like any other policy key.
 * **Per server (env vars):** server-internal housekeeping.
 
-Recurring jobs use one shared type, `Schedule` (`src/Sentinel.Core/Policy/Schedule.cs`). Features never parse
+Recurring jobs use one shared type, `Schedule` (`src/Alastor.Core/Policy/Schedule.cs`). Features never parse
 times themselves. A schedule is `every 6h` (interval since the last run), a 5-field cron such as `0 3 * * *`
 (evaluated in the **host's local time zone**, DST-safe), or `off`. A missed cron run (host down at 03:00)
 catches up once when the agent comes back. Each host gets a stable offset in `[0, agent.scheduleSpread)`, so a
@@ -234,26 +234,26 @@ times, so the editor can show `0 4 * * 1-5` as "Mon 04:00, Tue 04:00, …".
 
 | Server env var | Default | |
 |---|---|---|
-| `SENTINEL_HEARTBEATINTERVAL` | `60s` | fallback when no policy sets `agent.heartbeatInterval` |
-| `SENTINEL_OFFLINEAFTERMISSEDHEARTBEATS` | `3` | |
-| `SENTINEL_PRESENCECHECKINTERVAL` | `30s` | offline sweep |
-| `SENTINEL_RETENTIONRUNINTERVAL` | `1h` | pruning job |
-| `SENTINEL_METRICRETENTION` / `SENTINEL_EVENTRETENTION` | `7d` / `90d` | |
-| `SENTINEL_ENROLLMENTTOKENTTL` | `24h` | default; overridable per token |
-| `SENTINEL_COMMANDREDELIVERAFTER` / `SENTINEL_COMMANDMAXATTEMPTS` | `5m` / `3` | unacknowledged agent commands |
-| `SENTINEL_PENDINGCOMMANDTTL` | `24h` | commands for hosts that stay offline |
-| `SENTINEL_SESSIONLIFETIME` | `12h` | dashboard login |
-| `SENTINEL_AUTHRATELIMITPERMINUTE` | `10` | login/enroll attempts per IP |
-| `SENTINEL_BLOCKLISTSENABLED` | `true` | download public blocklists; `false` for air-gapped servers (own entries still work) |
-| `SENTINEL_BLOCKLISTREFRESHINTERVAL` | `4h` | per-list refetch while some policy uses it (1h–7d); failures back off from 5 min |
-| `SENTINEL_VULNDBENABLED` | `true` | mirror the Trivy/Grype databases agents ask for; `false` for air-gapped servers (place the files by hand, §5d) |
-| `SENTINEL_VULNDBREFRESHINTERVAL` | `12h` | how often a database in use is checked for a newer build (1h–7d); failures back off from 5 min |
-| `SENTINEL_TRIVYDBREPOSITORY` / `SENTINEL_GRYPEDBURL` | `ghcr.io/aquasecurity/trivy-db:2` / `https://grype.anchore.io/databases` | upstream sources (e.g. `mirror.gcr.io/aquasec/trivy-db:2`, or your own mirror) |
-| `SENTINEL_ALERTDEDUPWINDOW` / `SENTINEL_ALERTBURST` | `1h` / `1` | alert dedup: per host and dedup key, `burst` notifications per window (§5a) |
-| `SENTINEL_THREATFEEDENABLED` | `true` | fetch NVD, CISA KEV and news RSS (§5) |
-| `SENTINEL_THREATFEEDINTERVAL` | `20m` | per-source refetch after a success (5m–1d) |
-| `SENTINEL_THREATFEEDRETENTION` | `30d` | feed items older than this are pruned and not fetched |
-| `SENTINEL_NVDAPIKEY` | – | optional; raises NVD's rate limit from 5 to 50 requests / 30 s |
+| `ALASTOR_HEARTBEATINTERVAL` | `60s` | fallback when no policy sets `agent.heartbeatInterval` |
+| `ALASTOR_OFFLINEAFTERMISSEDHEARTBEATS` | `3` | |
+| `ALASTOR_PRESENCECHECKINTERVAL` | `30s` | offline sweep |
+| `ALASTOR_RETENTIONRUNINTERVAL` | `1h` | pruning job |
+| `ALASTOR_METRICRETENTION` / `ALASTOR_EVENTRETENTION` | `7d` / `90d` | |
+| `ALASTOR_ENROLLMENTTOKENTTL` | `24h` | default; overridable per token |
+| `ALASTOR_COMMANDREDELIVERAFTER` / `ALASTOR_COMMANDMAXATTEMPTS` | `5m` / `3` | unacknowledged agent commands |
+| `ALASTOR_PENDINGCOMMANDTTL` | `24h` | commands for hosts that stay offline |
+| `ALASTOR_SESSIONLIFETIME` | `12h` | dashboard login |
+| `ALASTOR_AUTHRATELIMITPERMINUTE` | `10` | login/enroll attempts per IP |
+| `ALASTOR_BLOCKLISTSENABLED` | `true` | download public blocklists; `false` for air-gapped servers (own entries still work) |
+| `ALASTOR_BLOCKLISTREFRESHINTERVAL` | `4h` | per-list refetch while some policy uses it (1h–7d); failures back off from 5 min |
+| `ALASTOR_VULNDBENABLED` | `true` | mirror the Trivy/Grype databases agents ask for; `false` for air-gapped servers (place the files by hand, §5d) |
+| `ALASTOR_VULNDBREFRESHINTERVAL` | `12h` | how often a database in use is checked for a newer build (1h–7d); failures back off from 5 min |
+| `ALASTOR_TRIVYDBREPOSITORY` / `ALASTOR_GRYPEDBURL` | `ghcr.io/aquasecurity/trivy-db:2` / `https://grype.anchore.io/databases` | upstream sources (e.g. `mirror.gcr.io/aquasec/trivy-db:2`, or your own mirror) |
+| `ALASTOR_ALERTDEDUPWINDOW` / `ALASTOR_ALERTBURST` | `1h` / `1` | alert dedup: per host and dedup key, `burst` notifications per window (§5a) |
+| `ALASTOR_THREATFEEDENABLED` | `true` | fetch NVD, CISA KEV and news RSS (§5) |
+| `ALASTOR_THREATFEEDINTERVAL` | `20m` | per-source refetch after a success (5m–1d) |
+| `ALASTOR_THREATFEEDRETENTION` | `30d` | feed items older than this are pruned and not fetched |
+| `ALASTOR_NVDAPIKEY` | – | optional; raises NVD's rate limit from 5 to 50 requests / 30 s |
 
 All values are validated: an invalid policy is rejected with the key's path, and invalid server config stops
 startup with a message naming the variable. Deliberately **not** knobs: retry backoffs, tool command timeouts
@@ -262,7 +262,7 @@ and internal caches. These are failure handling, not scheduled actions.
 ## 5. Threat feed
 
 The server, not the agents, aggregates public threat intelligence into one timeline (`/api/feed`, the dashboard's
-*Threat feed* page). Code: `src/Sentinel.Server/Services/ThreatFeed/`, driven by `ThreatFeedWorker`.
+*Threat feed* page). Code: `src/Alastor.Server/Services/ThreatFeed/`, driven by `ThreatFeedWorker`.
 
 | Source | Kind | Notes |
 |---|---|---|
@@ -290,7 +290,7 @@ SignalR hint when new items arrive.
 
 ## 5a. Alert pipeline
 
-Code: `src/Sentinel.Server/Services/Alerts/`. Every event the server stores (from agents or its own presence
+Code: `src/Alastor.Server/Services/Alerts/`. Every event the server stores (from agents or its own presence
 checks) goes through `AlertPipeline` right after the insert:
 
 1. **Threshold.** Events below the lowest `minSeverity` of any enabled channel are never considered.
@@ -309,7 +309,7 @@ checks) goes through `AlertPipeline` right after the insert:
 | Channel | Transport | Notes |
 |---|---|---|
 | Email | SMTP via MailKit (MIT): STARTTLS, implicit TLS or plain | High and Critical are sent with `Priority: urgent` |
-| Webhook | `POST` JSON | formats: `json` (stable SentinelVPS payload: `source, kind, title, text, severity, link, events[]`), `slack` (Slack and Mattermost), `discord`. With a secret: `X-Sentinel-Signature: sha256=<hex HMAC-SHA256 of the body>` |
+| Webhook | `POST` JSON | formats: `json` (stable Alastor payload: `source, kind, title, text, severity, link, events[]`), `slack` (Slack and Mattermost), `discord`. With a secret: `X-Alastor-Signature: sha256=<hex HMAC-SHA256 of the body>` |
 | ntfy | ntfy's JSON publish API on ntfy.sh or a self-hosted server | severity → ntfy priority (Critical 5 … Info 1), optional access token, click opens the host |
 
 Channel configs are encrypted with ASP.NET Data Protection (keys in the data dir) and only decrypted in memory
@@ -317,8 +317,8 @@ to send. The API never returns the SMTP password, webhook secret or ntfy token; 
 
 ## 5b. Blocklists
 
-Code: `src/Sentinel.Core/Blocklists/` (catalog, parser, agent enforcement), `src/Sentinel.Core/Net/IpRangeSet.cs`
-(range math), `src/Sentinel.Server/Services/Blocklists/`. Policy: `blocklists: {enabled, lists, extra, refreshSchedule}`;
+Code: `src/Alastor.Core/Blocklists/` (catalog, parser, agent enforcement), `src/Alastor.Core/Net/IpRangeSet.cs`
+(range math), `src/Alastor.Server/Services/Blocklists/`. Policy: `blocklists: {enabled, lists, extra, refreshSchedule}`;
 `lists` replaces across layers (a host can pick its own), `extra` is a union.
 
 1. **The server pulls** only lists some policy layer uses: Spamhaus DROP (its JSON feed), FireHOL level 1, abuse.ch Feodo,
@@ -330,18 +330,18 @@ Code: `src/Sentinel.Core/Blocklists/` (catalog, parser, agent enforcement), `src
    and the allowlist (server-wide plus `banning.allowlist`), and emits the minimal CIDR list. The result is cached by
    content and addressed by an ETag.
 3. **The agent** fetches it on `blocklists.refreshSchedule` and after policy changes, and owns exactly one kernel
-   object: nftables table `inet sentinel_vps` (interval sets `blocklist4/6`, a `prerouting` chain at priority -300, so
+   object: nftables table `inet alastor` (interval sets `blocklist4/6`, a `prerouting` chain at priority -300, so
    packets are dropped before conntrack for the host and for containers alike, with counters for the dashboard), or on
-   hosts without `nft`, ipsets `sentinel-vps4/6` filled off to the side and swapped in, matched from a `SENTINEL-VPS`
+   hosts without `nft`, ipsets `alastor4/6` filled off to the side and swapped in, matched from a `ALASTOR`
    chain in iptables' raw table. The server's own addresses are always accepted first. Updates are one `nft -f`
    transaction after `nft -c` validates it, so a failure leaves the previous set loading. The table is removed when
-   blocklists are turned off, on `sentinel-agent uninstall`, and after `agent.offlineGracePeriod` without server
+   blocklists are turned off, on `alastor-agent uninstall`, and after `agent.offlineGracePeriod` without server
    contact (restored on reconnect). Containers and LXC/OpenVZ plans usually refuse firewall changes; the agent reports
    that once as `config.rejected` with an explanation, and the dashboard shows the host as *refused*.
 
 ## 5c. Security updates
 
-Code: `src/Sentinel.Core/Updates/`, `src/Sentinel.Core/Integrations/ScheduledJobs.cs`, `src/Sentinel.Server/Endpoints/ReportEndpoints.cs`.
+Code: `src/Alastor.Core/Updates/`, `src/Alastor.Core/Integrations/ScheduledJobs.cs`, `src/Alastor.Server/Endpoints/ReportEndpoints.cs`.
 
 Updates are the first user of the agent's **scheduled-job** framework, which CVE scans, Lynis audits and ClamAV
 reuse: an integration exposes `ScheduledJob`s, each tied to a policy schedule key. The supervisor runs a job when it
@@ -365,7 +365,7 @@ server is unreachable. The server stores the latest report per host and kind, pl
 
 ## 5d. Vulnerability scans (Trivy / Grype)
 
-Code: `src/Sentinel.Core/Vulnerabilities/`, `src/Sentinel.Server/Services/Vulnerabilities/`, `src/Sentinel.Server/Endpoints/VulnerabilityEndpoints.cs`.
+Code: `src/Alastor.Core/Vulnerabilities/`, `src/Alastor.Server/Services/Vulnerabilities/`, `src/Alastor.Server/Endpoints/VulnerabilityEndpoints.cs`.
 Policy: `vulnerabilities: {scanSchedule, scanner, languagePackages, ignorePackages, ignore, alertSeverity}`.
 
 * **Scanners are adopted, not bundled.** Neither Trivy nor Grype is in the Debian, Ubuntu or RHEL repositories, and the
@@ -379,7 +379,7 @@ Policy: `vulnerabilities: {scanSchedule, scanner, languagePackages, ignorePackag
   `{url}/v6/latest.json` (~190 MB `.tar.zst`). Each download is verified against the upstream sha256, which then serves
   as the ETag, so the nightly agent check is usually a 304. The agent waits (up to 20 min, honoring `Retry-After`) for
   the first mirror instead of failing. Databases nobody asked for in 7 days stop being refreshed. With
-  `SENTINEL_VULNDBENABLED=false`, an admin places `data/vulndb/trivy/db.tar.gz` or `data/vulndb/grype/db.tar.zst` by
+  `ALASTOR_VULNDBENABLED=false`, an admin places `data/vulndb/trivy/db.tar.gz` or `data/vulndb/grype/db.tar.zst` by
   hand; the server hashes it and serves it.
 * **Scanning** runs offline at low CPU priority: `trivy rootfs --skip-db-update --offline-scan --scanners vuln
   --list-all-pkgs=false --format json /` against the documented air-gapped layout (`{state}/vulndb/trivy/db/trivy.db`),
@@ -403,13 +403,13 @@ Policy: `vulnerabilities: {scanSchedule, scanner, languagePackages, ignorePackag
 
 ## 5e. Hardening audits (Lynis)
 
-Code: `src/Sentinel.Core/Hardening/`, `src/Sentinel.Server/Services/Hardening/`, `src/Sentinel.Server/Endpoints/HardeningEndpoints.cs`.
+Code: `src/Alastor.Core/Hardening/`, `src/Alastor.Server/Services/Hardening/`, `src/Alastor.Server/Endpoints/HardeningEndpoints.cs`.
 Policy: `hardening: {auditSchedule, ignore}`.
 
 * **Installed from distro repos.** Lynis is packaged by Debian, Ubuntu, Alpine and EPEL, so the agent installs it like
   fail2ban when `agent.autoInstall` allows (at most one attempt a day; the error mentions EPEL on the RHEL family), and
   adopts an existing install otherwise. `hardening.auditSchedule: off` stops both installing and auditing.
-* **Audit:** `nice -n 15 lynis audit system --cronjob --quiet --no-colors --profile {state}/lynis/sentinel-vps.prf
+* **Audit:** `nice -n 15 lynis audit system --cronjob --quiet --no-colors --profile {state}/lynis/alastor.prf
   --report-file {state}/lynis/report.dat --log-file {state}/lynis/lynis.log`. The profile only sets
   `skip-upgrade-test=yes`: Lynis's upgrade check is a DNS query to cisofy.com, and agents talk only to their server.
   Lynis merges it over its own `default.prf`, so an admin's `/etc/lynis/custom.prf` still applies. A full audit takes
@@ -427,14 +427,14 @@ Policy: `hardening: {auditSchedule, ignore}`.
 * **Alerts (agent):** `hardening.warning` (Medium) when a warning appears that the previous audit didn't have, and
   `hardening.regressed` (Medium) when the index drops by 5 or more points between audits.
 * **Dashboard:** each host's *Hardening* tab shows the index, warnings first, and a checklist grouped by Lynis category,
-  with each test id linked to its CISOfy control page. Where a finding overlaps with something SentinelVPS already does
+  with each test id linked to its CISOfy control page. Where a finding overlaps with something Alastor already does
   (SSH and kernel settings and automatic updates are baseline fixes; pending updates and vulnerable packages have
   their own tabs; DEB-0880's `jail.local` advice doesn't apply to the jail.d drop-in), the row says so and links
   there. The Baseline page's *Lynis audit* view ranks findings across the fleet.
 
 ## 5f. SSH exposure and Tailscale
 
-Code: `src/Sentinel.Core/Network/`, `src/Sentinel.Server/Services/Network/`, `src/Sentinel.Server/Endpoints/NetworkEndpoints.cs`.
+Code: `src/Alastor.Core/Network/`, `src/Alastor.Server/Services/Network/`, `src/Alastor.Server/Endpoints/NetworkEndpoints.cs`.
 Policy: `network: {checkSchedule, allowPublicSsh}`.
 
 * **Tailscale is detected, never installed.** It isn't in most distributions' repositories, and joining a tailnet
@@ -466,7 +466,7 @@ Policy: `network: {checkSchedule, allowPublicSsh}`.
 
 ## 5g. CrowdSec (opt-in banning engine)
 
-Code: `src/Sentinel.Core/Integrations/CrowdSec/`. Policy: `banning: {engine: crowdsec, crowdsecCentralApi, allowlist, manualBantime}`.
+Code: `src/Alastor.Core/Integrations/CrowdSec/`. Policy: `banning: {engine: crowdsec, crowdsecCentralApi, allowlist, manualBantime}`.
 
 * **Engine switch.** `banning.engine` picks exactly one engine per host: fail2ban (default) or CrowdSec. Both implement
   `IBanProvider`, so manual bans, unbans, the Bans page and ban snapshots work the same; the supervisor routes commands
@@ -477,10 +477,10 @@ Code: `src/Sentinel.Core/Integrations/CrowdSec/`. Policy: `banning: {engine: cro
 * **No third-party traffic by default.** CrowdSec's Central API shares attack signals with crowdsec.net and pulls its
   community blocklist. It stays off unless `banning.crowdsecCentralApi: true`: before installing, the agent writes
   `online_api_credentials.yaml` itself (the Debian package skips registration when that file has content), and an
-  owned systemd drop-in (`crowdsec.service.d/sentinel-vps.conf`) starts the daemon with `-no-capi`. Turning it on
+  owned systemd drop-in (`crowdsec.service.d/alastor.conf`) starts the daemon with `-no-capi`. Turning it on
   removes both and runs `cscli capi register`. The drop-in survives an engine switch, so data sharing never starts
   as a side effect. The hub is the package's offline copy; the agent never runs `cscli hub update`.
-* **Owned config.** One parser whitelist, `parsers/s02-enrich/sentinel-vps-allowlist.yaml`, from `banning.allowlist`
+* **Owned config.** One parser whitelist, `parsers/s02-enrich/alastor-allowlist.yaml`, from `banning.allowlist`
   (IPs and CIDRs; CrowdSec drops events from them before any scenario runs). Every change is validated with
   `crowdsec -t` and rolled back if rejected; allowlist changes reload, drop-in changes restart. Hand edits are drift,
   like every managed file. fail2ban's jail settings don't apply: CrowdSec's scenarios and its profile (4 h bans by
@@ -489,11 +489,11 @@ Code: `src/Sentinel.Core/Integrations/CrowdSec/`. Policy: `banning: {engine: cro
   manual or not), and `cscli alerts list -o json`, polled every 30 s, for new alerts (`ban.added` per alert; alerts
   without a decision, such as simulation mode, as `auth.failures`). The last alert id is kept so a restart doesn't
   replay a day of alerts; community-blocklist pulls are skipped. Manual bans are `cscli decisions add` with
-  `banning.manualBantime` (CrowdSec has no permanent decisions, so "permanent" is ten years) and a `sentinel-vps:` reason.
+  `banning.manualBantime` (CrowdSec has no permanent decisions, so "permanent" is ten years) and a `alastor:` reason.
 
 ## 5h. Malware scans (ClamAV, opt-in)
 
-Code: `src/Sentinel.Core/Malware/`, `src/Sentinel.Server/Services/Malware/`, `src/Sentinel.Server/Endpoints/MalwareEndpoints.cs`,
+Code: `src/Alastor.Core/Malware/`, `src/Alastor.Server/Services/Malware/`, `src/Alastor.Server/Endpoints/MalwareEndpoints.cs`,
 the ClamAV part of `VulnDbMirror`. Policy: `malware: {scanSchedule, paths, exclude, maxFileSize}`.
 
 * **Opt-in by schedule.** `malware.scanSchedule` is `off` by default; any schedule makes the agent install `clamav`
@@ -505,7 +505,7 @@ the ClamAV part of `VulnDbMirror`. Policy: `malware: {scanSchedule, paths, exclu
   file's signature. Agents fetch `clamav-main`, `clamav-daily` and `clamav-bytecode` through the same conditional,
   authenticated endpoint as the CVE databases (`/api/agent/vulndb/{name}`, ETag = sha256), only when a scan runs, and
   check the `ClamAV-VDB:` header before swapping a file in. The mirror runs only for databases some agent asked for in
-  the last 7 days, on `SENTINEL_VULNDBREFRESHINTERVAL`.
+  the last 7 days, on `ALASTOR_VULNDBREFRESHINTERVAL`.
 * **Scan.** `nice -n 19 clamscan --database=<state>/clamav -r --infected --stdout --max-filesize=…`
   over the configured paths that exist (missing ones are listed, not errors), with `--exclude-dir` regexes built from
   `malware.exclude`. clamscan has no machine-readable output, so the agent reads its documented text format:
@@ -525,7 +525,7 @@ the ClamAV part of `VulnDbMirror`. Policy: `malware: {scanSchedule, paths, exclu
 | Enrollment tokens (`sve_…`, 256-bit) | SHA-256; consumed by an atomic conditional `UPDATE` (single use), 24 h TTL |
 | Agent credentials (`{hostId}.sva_…`) | SHA-256; constant-time compare; deleting a host revokes it |
 | API keys (`svk_…`) | SHA-256; reader role only. Writes return 403 |
-| JWT signing key | `data/jwt.key` (0600) or `SENTINEL_JWTKEY` |
+| JWT signing key | `data/jwt.key` (0600) or `ALASTOR_JWTKEY` |
 | Notification channel credentials | Data Protection (AES-256-CBC + HMAC), keys in `data/keys`; write-only over the API |
 
 Agents refuse plain HTTP unless enrolled with `--insecure`, and support certificate pinning (`--pin <sha256>`)
@@ -536,9 +536,9 @@ allowlist, and the operator's own address.
 
 | | Size | Idle memory |
 |---|---|---|
-| `sentinel-agent` (Native AOT, default) | 11 MB | ~37 MB RSS, ~16 MB private |
-| `sentinel-agent` (`-p:AgentAot=false`, trimmed single-file JIT) | 20 MB | ~54 MB RSS, ~29 MB private |
-| `sentinel-server` (single file, SPA embedded) | 56 MB | – |
+| `alastor-agent` (Native AOT, default) | 11 MB | ~37 MB RSS, ~16 MB private |
+| `alastor-agent` (`-p:AgentAot=false`, trimmed single-file JIT) | 20 MB | ~54 MB RSS, ~29 MB private |
+| `alastor-server` (single file, SPA embedded) | 56 MB | – |
 | fail2ban 1.1.0 itself | – | ~18 MB |
 
 ## 8. Why some pieces are built rather than bundled
@@ -572,9 +572,9 @@ allowlist, and the operator's own address.
   `ufw status`, `nft -j list ruleset`, `iptables -S`, `apt-config dump`, `timedatectl show`, `passwd -S -a`,
   `getent`). Fixes are policy (`baseline.mitigations.<check>: apply | ignore | report`, merged key by key, so a
   host can opt out of a global `apply` with `report`). The agent applies them as two managed drop-ins:
-  `/etc/ssh/sshd_config.d/01-sentinel-vps.conf` (sorts before cloud-init's `50-…`, because sshd keeps the *first*
+  `/etc/ssh/sshd_config.d/01-alastor.conf` (sorts before cloud-init's `50-…`, because sshd keeps the *first*
   value; checked with `sshd -t` before sshd reloads, rolled back on failure; only keywords this sshd prints in
-  `sshd -T` are written) and `/etc/sysctl.d/99-zz-sentinel-vps.conf` (sorts last; values it replaced are recorded
+  `sshd -T` are written) and `/etc/sysctl.d/99-zz-alastor.conf` (sorts last; values it replaced are recorded
   and restored when a fix is removed). `sysctl -p` exits 0 even when `/proc/sys` is read-only (containers,
   LXC/OpenVZ VPS), so the agent reads the values back and reports what the kernel refused. Lockout guards:
   passwords are only turned off when an admin account (root, sudo, wheel, admin) has an authorized key, and root
