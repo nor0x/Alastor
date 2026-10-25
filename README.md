@@ -38,6 +38,7 @@ flowchart LR
         sup --> pkg[apt · dnf · apk<br/>unattended-upgrades]
         sup --> scan[Trivy / Grype]
         sup --> lynis[Lynis]
+        sup --> net[SSH exposure<br/>Tailscale · ufw / nft]
         sup --> base[Baseline checks<br/>sshd · sysctl · ufw …]
     end
 
@@ -100,7 +101,7 @@ vendors binaries. `GET /api/about` and the dashboard's About page list the same 
 | [Caddy](https://caddyserver.com/) | Server TLS | optional, set up by `install.sh --domain` for automatic HTTPS | Apache-2.0 | ✅ |
 | [CrowdSec](https://github.com/crowdsecurity/crowdsec) | Banning | collaborative behaviour-based banning, community blocklist, AppSec WAF | MIT | planned, opt-in |
 | [ufw](https://launchpad.net/ufw) | Firewall | managed firewall rules | GPL-3.0 | planned |
-| [Tailscale](https://tailscale.com/) | Network | WireGuard-based private networking | BSD-3-Clause | planned, opt-in |
+| [Tailscale](https://tailscale.com/) | Network | detected, never installed: tailnet state, IPs, Tailscale SSH, key expiry; SSH exposure check suggests limiting SSH to the tailnet | BSD-3-Clause | ✅ opt-in |
 | [ClamAV](https://www.clamav.net/) | Malware | scans of web roots and upload directories | GPL-2.0 | planned, opt-in |
 
 **Data sources the server fetches** (all free, no account needed):
