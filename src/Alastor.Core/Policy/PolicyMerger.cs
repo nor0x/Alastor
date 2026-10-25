@@ -36,6 +36,8 @@ public static class PolicyMerger
         {
             CheckSchedule = overlay.Network?.CheckSchedule ?? baseDoc.Network?.CheckSchedule,
             AllowPublicSsh = overlay.Network?.AllowPublicSsh ?? baseDoc.Network?.AllowPublicSsh,
+            AllowPublicPorts = baseDoc.Network?.AllowPublicPorts is null && overlay.Network?.AllowPublicPorts is null ? null
+                : (baseDoc.Network?.AllowPublicPorts ?? []).Concat(overlay.Network?.AllowPublicPorts ?? []).Distinct(StringComparer.OrdinalIgnoreCase).ToList(),
         },
     };
 

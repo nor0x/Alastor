@@ -1,0 +1,4 @@
+12:pids:/system.slice/redis-server.service
+11:memory:/system.slice/redis-server.service
+1:name=systemd:/system.slice/redis-server.service
+0::/system.slice/redis-server.service

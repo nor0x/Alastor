@@ -111,7 +111,7 @@
     <button class:on={view === 'checks'} aria-pressed={view === 'checks'} onclick={() => (view = 'checks')}>By check</button>
     <button class:on={view === 'hosts'} aria-pressed={view === 'hosts'} onclick={() => (view = 'hosts')}>By host</button>
     <button class:on={view === 'lynis'} aria-pressed={view === 'lynis'} onclick={() => (view = 'lynis')}>Lynis audit</button>
-    <button class:on={view === 'exposure'} aria-pressed={view === 'exposure'} onclick={() => (view = 'exposure')}>SSH exposure</button>
+    <button class:on={view === 'exposure'} aria-pressed={view === 'exposure'} onclick={() => (view = 'exposure')}>Exposure</button>
   </div>
 </div>
 

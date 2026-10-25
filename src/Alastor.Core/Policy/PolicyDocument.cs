@@ -121,6 +121,12 @@ public sealed class NetworkPolicy
 
     /// <summary>SSH reachable from the internet is intended here (a bastion, no other way in): shown as accepted, never alerted.</summary>
     public bool? AllowPublicSsh { get; set; }
+
+    /// <summary>
+    /// Ports meant to be reachable from the internet (<c>443</c>, <c>443/tcp</c>, <c>51820/udp</c>, <c>60000-61000/udp</c>).
+    /// Other public services are reported as unexpected. Merged as a union across layers.
+    /// </summary>
+    public List<string>? AllowPublicPorts { get; set; }
 }
 
 public sealed class MalwarePolicy

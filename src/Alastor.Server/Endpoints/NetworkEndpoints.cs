@@ -23,11 +23,26 @@ public static class NetworkEndpoints
         bool? LastCheckSucceeded,
         string? LastCheckError,
         DateTime? LastAttemptAt,
-        ReportEndpoints.ScheduleDto Schedule);
+        ReportEndpoints.ScheduleDto Schedule)
+    {
+        /// <summary>The effective <c>network.allowPublicPorts</c>.</summary>
+        public IReadOnlyList<string> AllowPublicPorts { get; init; } = [];
+
+        /// <summary>Keys (<c>6379/tcp</c>) of public services that aren't SSH and aren't allowed.</summary>
+        public IReadOnlyList<string> UnexpectedPublic { get; init; } = [];
+    }
 
     public sealed record FleetRow(Guid HostId, string Name, bool Online, string? GroupName, SshExposureLevel? Exposure, bool Accepted, bool? PasswordAuth,
         IReadOnlyList<int> Ports, string? FirewallTool, FirewallSshVerdict? Firewall, string? TailscaleState, string? TailscaleIp, bool? TailscaleSsh,
-        DateTime? CheckedAt, string? Error);
+        DateTime? CheckedAt, string? Error)
+    {
+        /// <summary>Unexpected public services, as "6379/tcp redis-server". Null when the agent doesn't report services yet.</summary>
+        public IReadOnlyList<string>? PublicServices { get; init; }
+
+        /// <summary>Listening services in the last report, and how many face the internet (allowed ones included).</summary>
+        public int? Services { get; init; }
+        public int? PublicTotal { get; init; }
+    }
 
     public static void MapNetworkEndpoints(this IEndpointRouteBuilder app)
     {
@@ -47,7 +62,11 @@ public static class NetworkEndpoints
         var schedule = ScheduleDefaults.Resolve(eff).First(s => s.Path == "network.checkSchedule");
         return Results.Ok(new HostNetworkDto(h.Id, h.Name, report, report is null ? null : NetworkService.Assess(h, report, accepted), h.ObservedAddress, accepted,
             CoversTailnet(eff.Banning?.Allowlist), h.NetworkCheckedAt, row?.Success, row?.Error, row?.FinishedAt,
-            new ReportEndpoints.ScheduleDto(schedule.Path, schedule.Value, schedule.IsDefault)));
+            new ReportEndpoints.ScheduleDto(schedule.Path, schedule.Value, schedule.IsDefault))
+        {
+            AllowPublicPorts = eff.Network?.AllowPublicPorts ?? [],
+            UnexpectedPublic = report is null ? [] : (NetworkService.UnexpectedPublicServices(report, eff.Network) ?? []).Select(e => e.Split(' ')[0]).ToList(),
+        });
     }
 
     private static async Task<List<FleetRow>> FleetAsync(AlastorDbContext db, CancellationToken ct)
@@ -60,7 +79,12 @@ public static class NetworkEndpoints
             var report = NetworkService.Read(row);
             return new FleetRow(h.Id, h.Name, h.IsOnline, h.Group?.Name, h.SshExposure, h.SshExposureAccepted, h.SshPasswordAuth, report?.Ssh?.Ports ?? [],
                 report?.Firewall.Tool, report?.Firewall.Verdict, h.TailscaleState, h.TailscaleIp, report?.Tailscale?.SshEnabled, h.NetworkCheckedAt,
-                row is { Success: false } ? row.Error : null);
+                row is { Success: false } ? row.Error : null)
+            {
+                PublicServices = h.PublicServices,
+                Services = report?.Services?.Count,
+                PublicTotal = report?.Services?.Count(s => s.Reach == ServiceReach.Public),
+            };
         }).ToList();
     }
 

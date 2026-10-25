@@ -1,0 +1,1 @@
+[{"unit":"nginx.service","exposure":"9.6","predicate":"UNSAFE","happy":"😨"},{"unit":"redis-server.service","exposure":"4.7","predicate":"OK","happy":"🙂"},{"unit":"sshd.service","exposure":9.6,"predicate":"UNSAFE","happy":"😨"}]

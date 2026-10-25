@@ -1,0 +1,6 @@
+udp   UNCONN 0      0       [fe80::5054:ff:fe12:3456]%eth0:546        [::]:*    users:(("systemd-network",pid=402,fd=21))
+udp   UNCONN 0      0                         [::]:51820              [::]:*
+tcp   LISTEN 0      4096                         *:80                    *:*    users:(("caddy",pid=1031,fd=7))
+tcp   LISTEN 0      128                       [::]:22                 [::]:*    users:(("sshd",pid=812,fd=4))
+tcp   LISTEN 0      511                   [::ffff:127.0.0.1]:3000     *:*    users:(("node",pid=2210,fd=19))
+tcp   LISTEN 0      244             [2001:db8::10]:5432              [::]:*    users:(("postgres",pid=990,fd=6),("postgres",pid=991,fd=6))

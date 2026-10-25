@@ -232,6 +232,7 @@ export interface Overview {
   hostsWithHighCves: number | null;
   averageHardeningIndex: number | null;
   hostsWithPublicSsh: number | null;
+  hostsWithPublicServices: number | null;
   hostsWithMalware: number | null;
   averageBaselineScore: number | null;
   hostsFailingBaselineHigh: number;
@@ -612,6 +613,24 @@ export interface NetworkReport {
   ssh: { ports: number[]; passwordAuthentication: boolean; permitRootLogin: string; listeners: { address: string; port: number }[]; error: string | null } | null;
   firewall: { tool: string | null; verdict: FirewallSshVerdict; detail: string };
   exposure: SshExposure;
+  /** Every listening service; missing from agents older than the exposure inventory. */
+  services?: ListeningService[] | null;
+}
+
+export type ServiceReach = 'Public' | 'Restricted' | 'Private' | 'Tailnet' | 'Local';
+
+export interface ListeningService {
+  protocol: 'tcp' | 'udp';
+  port: number;
+  addresses: string[];
+  process: string | null;
+  unit: string | null;
+  reach: ServiceReach;
+  reachableOn: string[];
+  firewall: FirewallSshVerdict;
+  firewallDetail: string;
+  systemdExposure: number | null;
+  systemdRating: string | null;
 }
 
 export interface HostNetwork {
@@ -627,9 +646,16 @@ export interface HostNetwork {
   lastCheckError: string | null;
   lastAttemptAt: string | null;
   schedule: { key: string; value: string; isDefault: boolean };
+  allowPublicPorts: string[];
+  /** Keys (6379/tcp) of public services that aren't SSH and aren't allowed. */
+  unexpectedPublic: string[];
 }
 
 export interface FleetNetworkRow {
+  /** Unexpected public services, "6379/tcp redis-server"; null before the agent reports services. */
+  publicServices: string[] | null;
+  services: number | null;
+  publicTotal: number | null;
   hostId: string;
   name: string;
   online: boolean;
@@ -836,6 +862,7 @@ export interface PosturePoint {
   hostsNeedingUpdates: number | null;
   rebootRequired: number;
   publicSsh: number | null;
+  hostsWithPublicServices: number | null;
   malwareFindings: number | null;
 }
 

@@ -130,6 +130,8 @@ public static class EventKinds
     public const string ExposureDetected = "exposure.detected";
     /// <summary>The host's Tailscale node key expires soon, after which it drops off the tailnet.</summary>
     public const string TailscaleKeyExpiring = "tailscale.key-expiring";
+    /// <summary>A service other than SSH became reachable from the internet and isn't in <c>network.allowPublicPorts</c>.</summary>
+    public const string ServiceExposed = "exposure.service";
 
     // Reserved for later deliverables.
     public const string VulnerabilityFound = "vuln.found";

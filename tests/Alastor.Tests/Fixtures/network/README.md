@@ -12,6 +12,8 @@ hostname replaced):
 | `ts-needs-login.json` | `tailscale status --json` with tailscaled running but logged out |
 | `ts-running.json` | `tailscale status --json` joined to a tailnet with one online peer |
 | `ts-prefs.json`, `ts-prefs.ssh.json` | `tailscale debug prefs` with Tailscale SSH off and on |
+| `ss-tulpn.txt` | `ss -tulpnH` (iproute2 6.1.0) with test listeners on 443, 6379, 51820/udp, loopback 5432 and 53/udp; two unrelated processes renamed to `node` and `containerd`, and the test process's pid replaced |
+| `proc-net-udp.txt` | `cat /proc/net/udp` with those UDP sockets bound |
 
 For the running captures, tailscaled ran in userspace mode (`--tun=userspace-networking`) against a throwaway local
 [headscale](https://github.com/juanfont/headscale) control server, so `CurrentTailnet.Name` is the control server's
@@ -31,3 +33,6 @@ libnftables-json(5), `ip -j`), using the structure the tools emit:
 | `nft-ruleset.ufw-jump.json` | ufw's chains as iptables-nft writes them: INPUT jumps to `ufw-user-input`, which accepts 22 |
 
 Public addresses use the documentation ranges (203.0.113.0/24, 198.51.100.0/24, 2001:db8::/32).
+| `ss-tulpn.v6.txt` | `ss -tulpnH` address forms the container can't produce (it has no IPv6): `[::]:22`, `*:80`, a link-local `%eth0` scope, a v4-mapped address, a socket without a process column, and two processes on one socket |
+| `cgroup.v2.txt`, `cgroup.v1.txt`, `cgroup.session.txt` | `/proc/<pid>/cgroup` for a service on the unified hierarchy, on a hybrid v1 host, and for a login session |
+| `systemd-analyze-security.json` | `systemd-analyze security --json=short` (systemd(1) 250+; this container doesn't boot systemd): scores as strings and as a number, since versions differ |

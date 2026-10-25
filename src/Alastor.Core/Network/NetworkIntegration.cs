@@ -12,11 +12,13 @@ using Alastor.Core.Policy;
 namespace Alastor.Core.Network;
 
 /// <summary>
-/// Tailscale detection and SSH exposure. Tailscale is opt-in and never installed by the agent (it comes from Tailscale's
-/// own package repository, and joining a tailnet needs the admin's login anyway); the agent reports whether it's up and
-/// on which tailnet. The exposure check (<c>network.checkSchedule</c>) works out whether sshd can be reached from the
-/// internet: its ports from <c>sshd -T</c>, listening sockets from <c>/proc/net/tcp{,6}</c>, addresses from
-/// <c>ip -j addr</c>, and the host firewall from ufw or nftables. It only reads; nothing is changed.
+/// Tailscale detection, SSH exposure and the exposure inventory. Tailscale is opt-in and never installed by the agent (it
+/// comes from Tailscale's own package repository, and joining a tailnet needs the admin's login anyway); the agent reports
+/// whether it's up and on which tailnet. The exposure check (<c>network.checkSchedule</c>) works out whether sshd can be
+/// reached from the internet: its ports from <c>sshd -T</c>, listening sockets from <c>/proc/net/tcp{,6}</c>, addresses
+/// from <c>ip -j addr</c>, and the host firewall from ufw or nftables. The same check lists every listening service
+/// (<c>ss -tulpn</c>, or <c>/proc/net</c> without it), its systemd unit and <c>systemd-analyze security</c> score, and
+/// judges each against the firewall. It only reads; nothing is changed.
 /// </summary>
 public sealed class NetworkIntegration(
     ICommandRunner runner,
@@ -28,6 +30,10 @@ public sealed class NetworkIntegration(
     public const string CheckJob = "network.check";
     private const string StateLastLevel = "network.lastLevel";
     private const string StateKeyExpiryWarned = "network.tailscaleExpiryWarned";
+    private const string StatePublicServices = "network.publicServices";
+
+    /// <summary>Services kept in a report; a host with more is unusual (and the rest would only add noise).</summary>
+    public const int MaxServices = 200;
 
     /// <summary>Warn this long before the node key expires.</summary>
     public static readonly TimeSpan KeyExpiryWarning = TimeSpan.FromDays(14);
@@ -108,11 +114,13 @@ public sealed class NetworkIntegration(
             var (ts, tsError) = runner.Which("tailscale") is null ? (null, null) : await TailscaleAsync(ct);
             var addresses = await AddressesAsync(ct);
             var ssh = await SshAsync(ct);
-            var firewall = await FirewallAsync(ssh?.Ports ?? [22], ct);
+            var judge = await FirewallAsync(ct);
+            var firewall = judge(ssh?.Ports ?? [22], "tcp", null);
             var accepted = policy.Network?.AllowPublicSsh == true;
             var exposure = ExposureAssessor.Assess(ssh, addresses, firewall, ts, null, accepted);
-            var report = new NetworkReport(ts, tsError, addresses, ssh, firewall, exposure);
-            await RaiseEventsAsync(report, ct);
+            var services = await ServicesAsync(addresses, ts, judge, ct);
+            var report = new NetworkReport(ts, tsError, addresses, ssh, firewall, exposure) { Services = services };
+            await RaiseEventsAsync(report, policy, ct);
             logger.LogInformation("Network check: SSH {Level}{Accepted}; firewall {Verdict}; Tailscale {Tailscale}", exposure.Level,
                 accepted ? " (accepted)" : "", firewall.Verdict, ts?.BackendState ?? "not installed");
             return new AgentReport(CheckJob, started, time.GetUtcNow().UtcDateTime, true, null) { Network = report };
@@ -189,43 +197,97 @@ public sealed class NetworkIntegration(
         return new SshFacts(ports, password, root, listeners.Distinct().ToList(), r.Success ? null : FirstLine(r.CombinedOutput));
     }
 
-    private async Task<FirewallAssessment> FirewallAsync(IReadOnlyCollection<int> ports, CancellationToken ct)
+    /// <summary>
+    /// Reads the host firewall once (ufw, then nftables) and returns a judge for (ports, protocol, label): the verdict for
+    /// those ports. A null label means SSH. Each service is judged from the same snapshot of the rules.
+    /// </summary>
+    private async Task<Func<IReadOnlyCollection<int>, string, string?, FirewallAssessment>> FirewallAsync(CancellationToken ct)
     {
         var errors = new List<string>();
+        string? ufwStatus = null;
         if (runner.Which("ufw") is not null)
         {
             var r = await runner.RunAsync("ufw", ["status", "verbose"], null, ct);
-            if (r.Success && NetworkParsers.ParseUfwSsh(r.StdOut, ports) is { } ufw) return ufw;
-            if (!r.Success) errors.Add($"ufw: {FirstLine(r.CombinedOutput)}");
+            if (r.Success) ufwStatus = r.StdOut;
+            else errors.Add($"ufw: {FirstLine(r.CombinedOutput)}");
         }
+        string? nftJson = null;
+        var legacyRules = false;
         if (runner.Which("nft") is not null)
         {
             var r = await runner.RunAsync("nft", ["-j", "list", "ruleset"], null, ct);
-            if (r.Success)
+            if (r.Success) nftJson = r.StdOut;
+            else errors.Add($"nft: {FirstLine(r.CombinedOutput)}");
+            if (runner.Which("iptables-legacy") is not null)
+            {
+                // Rules loaded with iptables-legacy don't show up in nftables.
+                var legacy = await runner.RunAsync("iptables-legacy", ["-S", "INPUT"], null, ct);
+                legacyRules = legacy.Success && legacy.StdOut.Split('\n').Any(l => l.StartsWith("-A INPUT", StringComparison.Ordinal) || l.Trim() is "-P INPUT DROP");
+            }
+        }
+
+        return (ports, protocol, label) =>
+        {
+            var text = label ?? (ports.Count == 1 ? $"SSH (port {ports.First()})" : $"SSH (ports {string.Join(", ", ports)})");
+            var nftErrors = new List<string>();
+            if (ufwStatus is not null && NetworkParsers.ParseUfw(ufwStatus, ports, protocol, text) is { } ufw) return ufw;
+            if (nftJson is not null)
             {
                 try
                 {
-                    var nft = NetworkParsers.ParseNftSsh(r.StdOut, ports);
-                    if (nft.Verdict != FirewallSshVerdict.NoFirewall || runner.Which("iptables-legacy") is null) return nft;
-                    // Rules loaded with iptables-legacy don't show up in nftables.
-                    var legacy = await runner.RunAsync("iptables-legacy", ["-S", "INPUT"], null, ct);
-                    if (legacy.Success && legacy.StdOut.Split('\n').Any(l => l.StartsWith("-A INPUT", StringComparison.Ordinal) || l.Trim() is "-P INPUT DROP"))
-                        return new(null, FirewallSshVerdict.Unknown, "The firewall uses iptables-legacy rules, which Alastor doesn't read. Check that SSH is restricted there.");
-                    return nft;
+                    var nft = NetworkParsers.ParseNft(nftJson, ports, protocol, text);
+                    if (nft.Verdict != FirewallSshVerdict.NoFirewall || !legacyRules) return nft;
+                    return new(null, FirewallSshVerdict.Unknown, $"The firewall uses iptables-legacy rules, which Alastor doesn't read. Check that {text} is restricted there.");
                 }
                 catch (System.Text.Json.JsonException ex)
                 {
-                    errors.Add($"nft: {ex.Message}");
+                    nftErrors.Add($"nft: {ex.Message}");
                 }
             }
-            else errors.Add($"nft: {FirstLine(r.CombinedOutput)}");
-        }
-        return new(null, FirewallSshVerdict.Unknown, errors.Count > 0
-            ? $"Couldn't read the firewall ({string.Join("; ", errors)})."
-            : "Neither ufw nor nftables is installed, so the host firewall couldn't be read.");
+            var all = errors.Concat(nftErrors).ToList();
+            return new(null, FirewallSshVerdict.Unknown, all.Count > 0
+                ? $"Couldn't read the firewall ({string.Join("; ", all)})."
+                : "Neither ufw nor nftables is installed, so the host firewall couldn't be read.");
+        };
     }
 
-    private async Task RaiseEventsAsync(NetworkReport report, CancellationToken ct)
+    /// <summary>Every listening TCP and UDP service, with its owner, systemd unit and hardening score where available.</summary>
+    private async Task<IReadOnlyList<ListeningService>> ServicesAsync(IReadOnlyList<HostAddress> addresses, TailscaleInfo? ts,
+        Func<IReadOnlyCollection<int>, string, string?, FirewallAssessment> judge, CancellationToken ct)
+    {
+        var sockets = new List<ListenSocket>();
+        if (runner.Which("ss") is not null)
+        {
+            var r = await runner.RunAsync("ss", ["-tulpnH"], null, ct);
+            if (r.Success) sockets = NetworkParsers.ParseSs(r.StdOut);
+        }
+        if (sockets.Count == 0)
+            foreach (var (path, proto) in new[] { ("/proc/net/tcp", "tcp"), ("/proc/net/tcp6", "tcp"), ("/proc/net/udp", "udp"), ("/proc/net/udp6", "udp") })
+                if (await fs.ReadAllTextAsync(path, ct) is { } content)
+                    sockets.AddRange(NetworkParsers.ParseProcNet(content, proto));
+
+        var units = new Dictionary<int, string>();
+        foreach (var pid in sockets.Where(s => s.Pid is not null).Select(s => s.Pid!.Value).Distinct())
+            if (await fs.ReadAllTextAsync($"/proc/{pid}/cgroup", ct) is { } cg && NetworkParsers.ParseCgroupUnit(cg) is { } unit)
+                units[pid] = unit;
+
+        // systemd 250+ prints JSON; older versions reject the flag, and then services simply carry no score.
+        var scores = new Dictionary<string, (double, string)>();
+        if (units.Count > 0 && runner.Which("systemd-analyze") is not null)
+        {
+            var r = await runner.RunAsync("systemd-analyze", ["security", "--json=short", "--no-pager", .. units.Values.Distinct().Order(StringComparer.Ordinal)],
+                new CommandOptions { Timeout = TimeSpan.FromSeconds(60) }, ct);
+            if (r.Success)
+            {
+                try { scores = NetworkParsers.ParseSystemdSecurity(r.StdOut); }
+                catch (System.Text.Json.JsonException ex) { logger.LogDebug(ex, "Unreadable systemd-analyze output"); }
+            }
+        }
+        return ServiceExposureAssessor.Assess(sockets, addresses, ts, (port, proto) => judge([port], proto, $"port {port}/{proto}"), units, scores)
+            .Take(MaxServices).ToList();
+    }
+
+    private async Task RaiseEventsAsync(NetworkReport report, PolicyDocument policy, CancellationToken ct)
     {
         var level = report.Exposure.Level;
         var previous = state.Get(StateLastLevel);
@@ -239,6 +301,16 @@ public sealed class NetworkIntegration(
                 "ssh"));
         }
         await state.SetAsync(StateLastLevel, report.Exposure.Accepted && level == SshExposureLevel.Public ? "PublicAccepted" : level.ToString(), ct);
+
+        // Alert once per service when it becomes reachable from the internet without being in network.allowPublicPorts.
+        var unexpected = ServiceExposureAssessor.Unexpected(report.Services, report.Ssh?.Ports ?? [22], policy.Network?.AllowPublicPorts).ToList();
+        var known = (state.Get(StatePublicServices) ?? "").Split(',', StringSplitOptions.RemoveEmptyEntries).ToHashSet(StringComparer.Ordinal);
+        foreach (var svc in unexpected.Where(s => !known.Contains(s.Key)))
+            _events.Enqueue(Event(EventKinds.ServiceExposed, Severity.Medium,
+                $"{svc.Label} is reachable from the internet on {string.Join(", ", svc.ReachableOn.Where(AddressClassifier.IsPublic))}. " +
+                $"{svc.FirewallDetail} If that's intended, add {svc.Key} to network.allowPublicPorts; otherwise bind it to localhost or a private address, or firewall it.",
+                svc.Key) with { DedupKey = $"network:{EventKinds.ServiceExposed}:{svc.Key}" });
+        await state.SetAsync(StatePublicServices, string.Join(',', unexpected.Select(s => s.Key)), ct);
 
         if (report.Tailscale is { Running: true, KeyExpiry: { } expiry })
         {

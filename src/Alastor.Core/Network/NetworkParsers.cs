@@ -7,9 +7,10 @@ namespace Alastor.Core.Network;
 
 /// <summary>
 /// Readers for the structured output the exposure check uses: <c>tailscale status --json</c>, <c>ip -j addr</c>,
-/// <c>sshd -T</c>, the kernel's <c>/proc/net/tcp{,6}</c> (documented in the kernel's proc_net_tcp.txt; there is no
-/// structured API for listening sockets besides netlink), <c>nft -j list ruleset</c> (libnftables-json) and
-/// <c>ufw status verbose</c> (ufw has no machine-readable output). All are tested against captured fixtures.
+/// <c>sshd -T</c>, <c>ss -tulpnH</c> (iproute2's socket list with owning processes) and, without it, the kernel's
+/// <c>/proc/net/{tcp,udp}{,6}</c> (documented in the kernel's proc_net_tcp.txt), <c>/proc/&lt;pid&gt;/cgroup</c> for the
+/// systemd unit, <c>systemd-analyze security --json=short</c>, <c>nft -j list ruleset</c> (libnftables-json) and
+/// <c>ufw status verbose</c> (ufw has no machine-readable output). All are tested against fixtures.
 /// </summary>
 public static partial class NetworkParsers
 {
@@ -79,13 +80,21 @@ public static partial class NetworkParsers
     /// <c>/proc/net/tcp</c> or <c>tcp6</c>: rows of "sl local_address rem_address st …". Addresses are hex, each 32-bit word
     /// in host (little-endian) byte order; ports are hex in network order; state 0A is LISTEN.
     /// </summary>
-    public static List<TcpListenSocket> ParseProcNetTcp(string content)
+    public static List<TcpListenSocket> ParseProcNetTcp(string content) =>
+        ParseProcNet(content, "tcp").Select(s => new TcpListenSocket(s.Address, s.Port)).Distinct().ToList();
+
+    /// <summary>
+    /// Listening sockets from <c>/proc/net/{tcp,tcp6,udp,udp6}</c>, without owners. TCP: state 0A (LISTEN). UDP: state 07
+    /// (unconnected) with no remote address, which is how a bound, receiving UDP socket appears.
+    /// </summary>
+    public static List<ListenSocket> ParseProcNet(string content, string protocol)
     {
-        var result = new List<TcpListenSocket>();
+        var result = new List<ListenSocket>();
         foreach (var line in content.Split('\n').Skip(1))
         {
             var cols = line.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-            if (cols.Length < 4 || cols[3] != "0A") continue;
+            if (cols.Length < 4) continue;
+            if (protocol == "tcp" ? cols[3] != "0A" : cols[3] != "07" || cols[2].Trim('0', ':').Length > 0) continue;
             var colon = cols[1].IndexOf(':');
             if (colon <= 0) continue;
             var hex = cols[1][..colon];
@@ -97,9 +106,75 @@ public static partial class NetworkParsers
                     bytes[word * 4 + b] = byte.Parse(hex.AsSpan(word * 8 + (3 - b) * 2, 2), NumberStyles.HexNumber, CultureInfo.InvariantCulture);
             var ip = new IPAddress(bytes);
             if (ip.IsIPv4MappedToIPv6) ip = ip.MapToIPv4();
-            result.Add(new TcpListenSocket(ip.ToString(), port));
+            result.Add(new ListenSocket(protocol, ip.ToString(), port));
         }
         return result.Distinct().ToList();
+    }
+
+    /// <summary>
+    /// <c>ss -tulpnH</c>: "Netid State Recv-Q Send-Q Local:Port Peer:Port [users:((name,pid=N,fd=N),…)]". Local addresses
+    /// look like <c>0.0.0.0:22</c>, <c>[::]:443</c>, <c>*:80</c> (any family), <c>127.0.0.53%lo:53</c> or
+    /// <c>[fe80::1]%eth0:546</c>. The process column needs root; without it the owner is null.
+    /// </summary>
+    public static List<ListenSocket> ParseSs(string output)
+    {
+        var result = new List<ListenSocket>();
+        foreach (var raw in output.Split('\n'))
+        {
+            var cols = raw.Split((char[])[' ', '\t'], StringSplitOptions.RemoveEmptyEntries);
+            if (cols.Length < 5 || cols[0] is not ("tcp" or "udp") || cols[1] is not ("LISTEN" or "UNCONN")) continue;
+            var local = cols[4];
+            var colon = local.LastIndexOf(':');
+            if (colon <= 0 || !int.TryParse(local[(colon + 1)..], NumberStyles.Integer, CultureInfo.InvariantCulture, out var port) || port is <= 0 or > 65535) continue;
+            var host = local[..colon];
+            var pct = host.IndexOf('%');
+            if (pct >= 0) host = host[..pct];
+            host = host.Trim('[', ']');
+            if (host == "*") host = "::";
+            if (!IPAddress.TryParse(host, out var ip)) continue;
+            if (ip.IsIPv4MappedToIPv6) ip = ip.MapToIPv4();
+            var users = SsUsers().Match(raw);
+            result.Add(new ListenSocket(cols[0], ip.ToString(), port,
+                users.Success ? users.Groups[1].Value : null,
+                users.Success && int.TryParse(users.Groups[2].Value, CultureInfo.InvariantCulture, out var pid) ? pid : null));
+        }
+        return result.Distinct().ToList();
+    }
+
+    /// <summary>
+    /// <c>/proc/&lt;pid&gt;/cgroup</c>: the systemd service the process runs in, from the unified (<c>0::/system.slice/nginx.service</c>)
+    /// or the v1 <c>name=systemd</c> hierarchy. Null for processes outside a service (sessions, containers' own init).
+    /// </summary>
+    public static string? ParseCgroupUnit(string content)
+    {
+        foreach (var line in content.Split('\n'))
+        {
+            var parts = line.Trim().Split(':', 3);
+            if (parts.Length != 3 || !(parts[0] == "0" && parts[1] == "" || parts[1] == "name=systemd")) continue;
+            var unit = parts[2].Split('/').LastOrDefault(seg => seg.EndsWith(".service", StringComparison.Ordinal));
+            if (unit is not null) return unit;
+        }
+        return null;
+    }
+
+    /// <summary>
+    /// <c>systemd-analyze security --json=short UNIT…</c> (systemd 250+): <c>[{"unit":…,"exposure":…,"predicate":…}]</c>, the
+    /// exposure score from 0.0 (locked down) to 10.0 (no sandboxing) and its rating (OK, MEDIUM, EXPOSED, UNSAFE).
+    /// The score is printed as a string by some versions and a number by others.
+    /// </summary>
+    public static Dictionary<string, (double Exposure, string Rating)> ParseSystemdSecurity(string json)
+    {
+        var result = new Dictionary<string, (double, string)>(StringComparer.Ordinal);
+        using var doc = JsonDocument.Parse(json);
+        if (doc.RootElement.ValueKind != JsonValueKind.Array) return result;
+        foreach (var e in doc.RootElement.EnumerateArray())
+        {
+            if (Str(e, "unit") is not { } unit || !e.TryGetProperty("exposure", out var x)) continue;
+            double? exposure = x.ValueKind == JsonValueKind.Number ? x.GetDouble()
+                : x.ValueKind == JsonValueKind.String && double.TryParse(x.GetString(), NumberStyles.Float, CultureInfo.InvariantCulture, out var d) ? d : null;
+            if (exposure is { } v) result[unit] = (v, Str(e, "predicate") ?? "");
+        }
+        return result;
     }
 
     /// <summary>
@@ -136,7 +211,13 @@ public static partial class NetworkParsers
     /// <c>ufw status verbose</c>. ufw is first-match: the first rule covering the SSH port decides. Returns null when ufw is
     /// inactive (the caller then reads nftables) or the output isn't recognized.
     /// </summary>
-    public static FirewallAssessment? ParseUfwSsh(string output, IReadOnlyCollection<int> ports)
+    public static FirewallAssessment? ParseUfwSsh(string output, IReadOnlyCollection<int> ports) => ParseUfw(output, ports, "tcp", PortText(ports));
+
+    /// <summary>
+    /// The same first-match reading for any ports and protocol; <paramref name="label"/> names them in the detail text
+    /// (<c>port 443/tcp</c>).
+    /// </summary>
+    public static FirewallAssessment? ParseUfw(string output, IReadOnlyCollection<int> ports, string protocol, string label)
     {
         var lines = output.Split('\n').Select(l => l.TrimEnd('\r')).ToList();
         var status = lines.FirstOrDefault(l => l.StartsWith("Status:", StringComparison.OrdinalIgnoreCase));
@@ -144,7 +225,7 @@ public static partial class NetworkParsers
         var defaultLine = lines.FirstOrDefault(l => l.StartsWith("Default:", StringComparison.OrdinalIgnoreCase)) ?? "";
         var defaultAllow = DefaultIncoming().Match(defaultLine) is { Success: true } m && m.Groups[1].Value is "allow";
 
-        var portText = PortText(ports);
+        var portText = label;
         var restrictions = new List<string>();
         var start = lines.FindIndex(l => l.StartsWith("--", StringComparison.Ordinal));
         foreach (var line in start < 0 ? [] : lines.Skip(start + 1))
@@ -156,7 +237,7 @@ public static partial class NetworkParsers
             var on = to.IndexOf(" on ", StringComparison.Ordinal);
             var iface = on > 0 ? to[(on + 4)..].Replace(" (v6)", "").Trim() : null;
             var target = (on > 0 ? to[..on] : to).Replace(" (v6)", "").Trim();
-            if (!UfwCovers(target, ports)) continue;
+            if (!UfwCovers(target, ports, protocol)) continue;
             var anywhere = from.StartsWith("Anywhere", StringComparison.OrdinalIgnoreCase) && iface is null;
             var allows = action.StartsWith("ALLOW", StringComparison.Ordinal) || action.StartsWith("LIMIT", StringComparison.Ordinal);
             if (allows && anywhere)
@@ -174,17 +255,18 @@ public static partial class NetworkParsers
             : new("ufw", FirewallSshVerdict.Blocked, $"ufw denies incoming traffic by default and no rule allows {portText}.");
     }
 
-    /// <summary>"22/tcp", "22", "22,80/tcp", "1000:2000/tcp", "Anywhere" (every port), or an app profile like "OpenSSH".</summary>
-    private static bool UfwCovers(string target, IReadOnlyCollection<int> ports)
+    /// <summary>
+    /// "22/tcp", "22" (tcp and udp), "22,80/tcp", "1000:2000/tcp", "Anywhere" (every port), or an app profile like
+    /// "OpenSSH" or "Nginx Full".
+    /// </summary>
+    private static bool UfwCovers(string target, IReadOnlyCollection<int> ports, string protocol)
     {
         if (target.Equals("Anywhere", StringComparison.OrdinalIgnoreCase)) return true;
         var slash = target.IndexOf('/');
-        var proto = slash > 0 ? target[(slash + 1)..] : "tcp";
-        if (proto != "tcp") return false;
+        if (slash > 0 && target[(slash + 1)..] != protocol) return false;
         var spec = slash > 0 ? target[..slash] : target;
         if (!char.IsDigit(spec.FirstOrDefault()))
-            // ufw's OpenSSH/SSH profiles are 22/tcp.
-            return spec.Contains("ssh", StringComparison.OrdinalIgnoreCase) && ports.Contains(22);
+            return protocol == "tcp" && UfwProfilePorts(spec).Any(ports.Contains);
         foreach (var part in spec.Split(','))
         {
             var range = part.Split(':');
@@ -194,6 +276,20 @@ public static partial class NetworkParsers
         return false;
     }
 
+    /// <summary>
+    /// Ports of the app profiles distributions ship in /etc/ufw/applications.d (OpenSSH, nginx, Apache). Other profiles
+    /// are unknown here and don't count as covering a port.
+    /// </summary>
+    private static int[] UfwProfilePorts(string profile)
+    {
+        var p = profile.ToLowerInvariant();
+        if (p.Contains("ssh", StringComparison.Ordinal)) return [22];
+        if (p is "nginx full" or "apache full" or "www full") return [80, 443];
+        if (p is "nginx http" or "apache" or "www") return [80];
+        if (p is "nginx https" or "apache secure" or "www secure") return [443];
+        return [];
+    }
+
     // ---- firewall: nftables ----
 
     /// <summary>
@@ -201,7 +297,10 @@ public static partial class NetworkParsers
     /// rule that decides the SSH port. Rules for established connections and loopback are skipped. This reads rules; it
     /// doesn't simulate packets, so unusual matches (marks, sets of interfaces, xt compat matches) count as restrictions.
     /// </summary>
-    public static FirewallAssessment ParseNftSsh(string json, IReadOnlyCollection<int> ports)
+    public static FirewallAssessment ParseNftSsh(string json, IReadOnlyCollection<int> ports) => ParseNft(json, ports, "tcp", PortText(ports));
+
+    /// <summary>The same reading for any ports and protocol; <paramref name="label"/> names them in the detail text.</summary>
+    public static FirewallAssessment ParseNft(string json, IReadOnlyCollection<int> ports, string protocol, string label)
     {
         using var doc = JsonDocument.Parse(json);
         var chains = new Dictionary<(string, string, string), (string? Hook, string? Policy)>();
@@ -219,7 +318,7 @@ public static partial class NetworkParsers
                 }
             }
 
-        var portText = PortText(ports);
+        var portText = label;
         var bases = chains.Where(c => c.Value.Hook == "input").ToList();
         if (bases.Count == 0) return new("nftables", FirewallSshVerdict.NoFirewall, "No nftables chain filters incoming traffic.");
 
@@ -260,9 +359,9 @@ public static partial class NetworkParsers
                 {
                     if (e.TryGetProperty("match", out var m))
                     {
-                        switch (ClassifyMatch(m, ports, out var detail))
+                        switch (ClassifyMatch(m, ports, protocol, out var detail))
                         {
-                            case MatchEffect.NotForSsh: applies = false; break;
+                            case MatchEffect.NotForPort: applies = false; break;
                             case MatchEffect.Restricts: restricted.Add(detail!); break;
                         }
                     }
@@ -302,10 +401,13 @@ public static partial class NetworkParsers
         }
     }
 
-    private enum MatchEffect { Neutral, NotForSsh, Restricts }
+    private enum MatchEffect { Neutral, NotForPort, Restricts }
 
-    private static MatchEffect ClassifyMatch(JsonElement m, IReadOnlyCollection<int> ports, out string? detail)
+    private static readonly Dictionary<string, int> ProtocolNumbers = new() { ["tcp"] = 6, ["udp"] = 17 };
+
+    private static MatchEffect ClassifyMatch(JsonElement m, IReadOnlyCollection<int> ports, string protocol, out string? detail)
     {
+        var number = ProtocolNumbers.GetValueOrDefault(protocol);
         detail = null;
         var op = Str(m, "op") ?? "==";
         if (!m.TryGetProperty("left", out var left) || !m.TryGetProperty("right", out var right)) return MatchEffect.Neutral;
@@ -313,7 +415,7 @@ public static partial class NetworkParsers
         {
             var proto = Str(payload, "protocol");
             var field = Str(payload, "field");
-            if (field == "dport" && proto is "tcp" or "th")
+            if (field == "dport" && (proto == protocol || proto == "th"))
             {
                 var hit = Values(right).Any(v => v switch
                 {
@@ -321,16 +423,16 @@ public static partial class NetworkParsers
                     (int lo, int hi) => ports.Any(p => p >= lo && p <= hi),
                     _ => false,
                 });
-                return (op == "!=" ? !hit : hit) ? MatchEffect.Neutral : MatchEffect.NotForSsh;
+                return (op == "!=" ? !hit : hit) ? MatchEffect.Neutral : MatchEffect.NotForPort;
             }
-            if (field == "dport" && proto is "udp" or "udplite" or "sctp") return MatchEffect.NotForSsh;
+            if (field == "dport" && proto is "tcp" or "udp" or "udplite" or "sctp" or "dccp") return MatchEffect.NotForPort;
             if (field == "saddr" && proto is "ip" or "ip6")
             {
                 detail = $"from {(op == "!=" ? "anywhere except " : "")}{string.Join(", ", Values(right).Select(v => v.ToString()))}";
                 return MatchEffect.Restricts;
             }
             if (field == "protocol" && proto == "ip" || field == "nexthdr" && proto == "ip6")
-                return Values(right).Any(v => v is "tcp" or 6) ? MatchEffect.Neutral : MatchEffect.NotForSsh;
+                return Values(right).Any(v => v is string n && n == protocol || v is int i && i == number) ? MatchEffect.Neutral : MatchEffect.NotForPort;
             if (field is "sport" or "daddr") return MatchEffect.Neutral;
         }
         if (left.TryGetProperty("meta", out var meta))
@@ -339,11 +441,11 @@ public static partial class NetworkParsers
             {
                 case "iifname" or "iif":
                     var names = Values(right).Select(v => v.ToString()).ToList();
-                    if (op == "==" && names.All(n => n == "lo")) return MatchEffect.NotForSsh;
+                    if (op == "==" && names.All(n => n == "lo")) return MatchEffect.NotForPort;
                     detail = $"on {(op == "!=" ? "interfaces other than " : "")}{string.Join(", ", names)}";
                     return MatchEffect.Restricts;
                 case "l4proto":
-                    return Values(right).Any(v => v is "tcp" or 6) == (op != "!=") ? MatchEffect.Neutral : MatchEffect.NotForSsh;
+                    return Values(right).Any(v => v is string n && n == protocol || v is int i && i == number) == (op != "!=") ? MatchEffect.Neutral : MatchEffect.NotForPort;
                 case "nfproto" or "pkttype" or "oifname" or "oif":
                     return MatchEffect.Neutral;
             }
@@ -352,7 +454,7 @@ public static partial class NetworkParsers
         {
             // Rules for established/related/invalid traffic never decide a new connection.
             var states = Values(right).Select(v => v.ToString()).ToList();
-            return op != "!=" && !states.Contains("new") ? MatchEffect.NotForSsh : MatchEffect.Neutral;
+            return op != "!=" && !states.Contains("new") ? MatchEffect.NotForPort : MatchEffect.Neutral;
         }
         detail = "under extra conditions";
         return MatchEffect.Restricts;
@@ -393,4 +495,7 @@ public static partial class NetworkParsers
 
     [GeneratedRegex(@"\s{2,}")]
     private static partial Regex Columns();
+
+    [GeneratedRegex(@"users:\(\(""([^""]+)"",pid=(\d+)")]
+    private static partial Regex SsUsers();
 }

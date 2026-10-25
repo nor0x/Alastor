@@ -1,5 +1,6 @@
 <script lang="ts">
-  import { api, errorText, type Command, type HostNetwork } from './api';
+  import { api, errorText, type Command, type HostNetwork, type ListeningService, type PolicyLayerDetail } from './api';
+  import { parseDocument } from 'yaml';
   import { setLayerKey } from './baseline';
   import { on, refreshOn } from './live.svelte';
   import { exposureLook, firewallLabels } from './network';
@@ -64,6 +65,43 @@
       checking = true;
       toast(isOnline ? 'Check queued; it takes a second.' : 'The host is offline; it checks when the agent reconnects.');
       setTimeout(() => (checking = false), 5 * 60_000);
+    } catch (e) {
+      toast(errorText(e), 'error');
+    }
+  }
+
+  // Services: unexpected public ones first, then by how far they reach. Loopback-only ones are folded away by default.
+  const reachOrder = { Public: 0, Restricted: 1, Private: 2, Tailnet: 3, Local: 4 } as const;
+  let showLocal = $state(false);
+  const services = $derived(
+    (report?.services ?? []).slice().sort((a, b) =>
+      Number(isUnexpected(b)) - Number(isUnexpected(a)) || reachOrder[a.reach] - reachOrder[b.reach] || a.port - b.port),
+  );
+  const localCount = $derived(services.filter((s) => s.reach === 'Local').length);
+  const key = (s: ListeningService) => `${s.port}/${s.protocol}`;
+  const isUnexpected = (s: ListeningService) => data?.unexpectedPublic.includes(key(s)) ?? false;
+  const isSsh = (s: ListeningService) => s.protocol === 'tcp' && (report?.ssh?.ports ?? []).includes(s.port);
+
+  function reachLook(s: ListeningService): { tone: string; label: string } {
+    if (s.reach === 'Public') return isUnexpected(s) ? { tone: 'bad', label: 'public · unexpected' } : isSsh(s) ? { tone: 'warn', label: 'public (SSH)' } : { tone: 'ok', label: 'public · allowed' };
+    if (s.reach === 'Restricted') return { tone: 'info', label: 'firewalled' };
+    return { tone: 'muted', label: s.reach === 'Local' ? 'localhost' : s.reach.toLowerCase() };
+  }
+  // systemd-analyze's own bands: ≤ 4.9 OK, ≤ 6.9 MEDIUM, ≤ 8.9 EXPOSED, above UNSAFE.
+  const scoreTone = (v: number) => (v < 5 ? 'ok' : v < 7 ? 'info' : v < 9 ? 'warn' : 'bad');
+
+  async function allowPort(s: ListeningService) {
+    const ok = await confirm(`Allow ${key(s)} from the internet on this host?`,
+      `${s.process ?? 'This service'} stays listed as public but no longer counts as unexpected. Adds ${key(s)} to network.allowPublicPorts on this host.`,
+      { confirmLabel: 'Allow' });
+    if (!ok) return;
+    try {
+      // Merged as a union across layers, so the host layer only needs its own additions.
+      const layer = await api<PolicyLayerDetail>(`/api/policies/host/${hostId}`);
+      const doc = (parseDocument(layer.yaml || '').toJS() ?? {}) as { network?: { allowPublicPorts?: string[] } };
+      const current = doc.network?.allowPublicPorts ?? [];
+      await setLayerKey({ scope: 'host', id: hostId }, ['network', 'allowPublicPorts'], [...new Set([...current, key(s)])], `Network: allow public ${key(s)}`);
+      toast(`${key(s)} is allowed on this host.`);
     } catch (e) {
       toast(errorText(e), 'error');
     }
@@ -187,6 +225,45 @@
       {/if}
     </section>
 
+    {#if report?.services}
+      <section class="card">
+        <header>
+          <h2>Listening services</h2>
+          <span class="hint">{services.length - localCount} reachable beyond this host · {localCount} on localhost only</span>
+        </header>
+        <div class="table-wrap">
+          <table class="table">
+            <thead><tr><th>Service</th><th>Port</th><th>Reach</th><th class="hide-sm">Bound to</th><th class="hide-sm" title="systemd-analyze security: 0 = sandboxed, 10 = unprotected">Hardening</th><th></th></tr></thead>
+            <tbody>
+              {#each services.filter((s) => showLocal || s.reach !== 'Local') as s (key(s))}
+                {@const look = reachLook(s)}
+                <tr>
+                  <td>
+                    {#if s.process}<strong>{s.process}</strong>{:else}<span class="muted">unknown process</span>{/if}
+                    {#if s.unit}<div class="mono small muted">{s.unit}</div>{/if}
+                  </td>
+                  <td class="mono">{key(s)}</td>
+                  <td>
+                    <span class="pill {look.tone}">{look.label}</span>
+                    {#if s.reach === 'Public' || s.reach === 'Restricted'}<div class="small muted fw">{s.firewallDetail}</div>{/if}
+                  </td>
+                  <td class="hide-sm mono small">{s.addresses.join(', ')}</td>
+                  <td class="hide-sm">{#if s.systemdExposure !== null}<span class="pill {scoreTone(s.systemdExposure)}" title={s.systemdRating ?? ''}>{s.systemdExposure.toFixed(1)}</span>{:else}<span class="muted">—</span>{/if}</td>
+                  <td class="num">{#if canWrite() && isUnexpected(s)}<button class="btn small" onclick={() => allowPort(s)}>Allow</button>{/if}</td>
+                </tr>
+              {:else}
+                <tr><td colspan="6" class="muted">Nothing listens beyond localhost.</td></tr>
+              {/each}
+            </tbody>
+          </table>
+        </div>
+        <div class="foot-row">
+          {#if localCount}<button class="btn ghost small" onclick={() => (showLocal = !showLocal)}>{showLocal ? 'Hide' : 'Show'} {localCount} localhost-only</button>{/if}
+          <span class="muted small">Allowed on the internet: {#if data.allowPublicPorts.length}<span class="mono">{data.allowPublicPorts.join(', ')}</span>{:else}nothing{/if} (<code>network.allowPublicPorts</code>)</span>
+        </div>
+      </section>
+    {/if}
+
     {#if report}
       <section class="card">
         <header><h2>Addresses</h2><span class="hint">{#if data.observedAddress}the server sees this host as <span class="mono">{data.observedAddress}</span>{/if}</span></header>
@@ -211,8 +288,9 @@
         <h2 class="h-sm">Check settings</h2>
         <p class="muted small">
           Schedule <code>{data.schedule.value}</code>{data.schedule.isDefault ? ' (default)' : ''}. The agent reads sshd's ports (<code>sshd -T</code>),
-          its listening sockets, the host's addresses and the ufw or nftables rules, and changes nothing. It can't see your provider's firewall or
-          security groups. New public exposure raises an alert (High when passwords are allowed).
+          every listening service (<code>ss -tulpn</code>) with its systemd unit and <code>systemd-analyze security</code> score, the host's addresses
+          and the ufw or nftables rules, and changes nothing. It can't see your provider's firewall or security groups. New public SSH raises an
+          alert (High when passwords are allowed), and so does any other public port not in <code>network.allowPublicPorts</code>.
         </p>
         <p class="small"><a href="/policies/host/{hostId}">Change for this host</a> · <a href="/policies/global">for all hosts</a></p>
       </section>
@@ -239,6 +317,8 @@
   .commands { display: flex; flex-direction: column; gap: 6px; }
   .cmd { display: flex; align-items: flex-start; gap: 8px; }
   .cmd code { flex: 1; min-width: 0; padding: 6px 8px; border-radius: 6px; background: var(--surface-2); font-size: 12px; overflow-wrap: anywhere; white-space: pre-wrap; }
+  .fw { margin-top: 2px; max-width: 360px; }
+  .foot-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 16px; border-top: 1px solid var(--border); }
   .kv { display: grid; grid-template-columns: max-content 1fr; gap: 6px 16px; margin: 0; }
   .kv dt { color: var(--muted); }
   .kv dd { margin: 0; overflow-wrap: anywhere; }

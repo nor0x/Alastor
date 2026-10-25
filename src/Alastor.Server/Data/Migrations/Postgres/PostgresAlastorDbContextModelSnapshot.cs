@@ -703,6 +703,9 @@ namespace Alastor.Server.Data.Migrations.Postgres
                     b.Property<bool>("Online")
                         .HasColumnType("boolean");
 
+                    b.Property<int?>("PublicServices")
+                        .HasColumnType("integer");
+
                     b.Property<bool?>("PublicSsh")
                         .HasColumnType("boolean");
 
@@ -1072,6 +1075,9 @@ namespace Alastor.Server.Data.Migrations.Postgres
                         .HasColumnType("boolean");
 
                     b.Property<string>("PolicyReportJson")
+                        .HasColumnType("text");
+
+                    b.Property<string>("PublicServices")
                         .HasColumnType("text");
 
                     b.Property<bool>("RebootRequired")
