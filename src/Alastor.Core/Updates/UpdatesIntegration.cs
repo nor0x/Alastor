@@ -19,6 +19,9 @@ namespace Alastor.Core.Updates;
 /// <c>needs-restarting -r</c> for reboots.</item>
 /// <item>Alpine: <c>apk list --upgradable</c> and <c>apk upgrade</c>. Alpine publishes no security metadata, so every update counts.</item>
 /// </list>
+/// After every check and install, services still running replaced code are listed with needrestart (<c>needrestart -b -r l</c>,
+/// list only; adopted, never installed, because installing it changes how apt restarts services) or dnf's
+/// <c>needs-restarting -s</c>.
 /// The agent manages no config files here; whether the OS installs updates by itself is a baseline check.
 /// </summary>
 public sealed class UpdatesIntegration(
@@ -38,6 +41,7 @@ public sealed class UpdatesIntegration(
     private const string StateLastApply = "updates.lastApply";
     private const string StateKnownSecurity = "updates.knownSecurity";
     private const string StateReboot = "updates.rebootRequired";
+    private const string StateRestart = "updates.restartServices";
 
     private static readonly CommandOptions Slow = new() { Timeout = TimeSpan.FromMinutes(10), Environment = new Dictionary<string, string> { ["DEBIAN_FRONTEND"] = "noninteractive" } };
     private static readonly CommandOptions Upgrade = new() { Timeout = TimeSpan.FromMinutes(60), Environment = new Dictionary<string, string> { ["DEBIAN_FRONTEND"] = "noninteractive" } };
@@ -187,7 +191,20 @@ public sealed class UpdatesIntegration(
         var rebootPkgs = reboot && await fs.ReadAllTextAsync(RebootRequiredFile + ".pkgs", ct) is { } pkgs
             ? pkgs.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).Distinct().ToList()
             : [];
-        return new UpdatesReport("apt", UpdateParsers.ParseAptSimulation(sim.StdOut), reboot, rebootPkgs, null);
+        var report = new UpdatesReport("apt", UpdateParsers.ParseAptSimulation(sim.StdOut), reboot, rebootPkgs, null);
+        if (runner.Which("needrestart") is null) return report;
+        // -b: batch output; -r l: list only, never restart anything.
+        var nr = await runner.RunAsync("needrestart", ["-b", "-r", "l"], new CommandOptions { Timeout = TimeSpan.FromMinutes(2) }, ct);
+        if (!nr.Success) return report;
+        var parsed = UpdateParsers.ParseNeedrestart(nr.StdOut);
+        return report with
+        {
+            RestartServices = parsed.Services,
+            RestartTool = "needrestart",
+            RunningKernel = parsed.KernelUpgradePending ? parsed.RunningKernel : null,
+            ExpectedKernel = parsed.KernelUpgradePending ? parsed.ExpectedKernel : null,
+            RebootRequired = reboot || parsed.KernelUpgradePending,
+        };
     }
 
     private async Task<UpdatesReport> CheckDnfAsync(CancellationToken ct)
@@ -201,9 +218,14 @@ public sealed class UpdatesIntegration(
         var list = UpdateParsers.ParseDnfCheckUpdate(all.StdOut)
             .Select(x => new PendingUpdate(x.Name, null, x.Candidate, x.Repo, security.Contains(x.Name))).ToList();
         var reboot = false;
+        List<string>? restart = null;
         if (runner.Which("needs-restarting") is not null)
+        {
             reboot = (await runner.RunAsync("needs-restarting", ["-r"], ct: ct)).ExitCode == 1; // documented: 1 = reboot needed
-        return new UpdatesReport("dnf", list, reboot, [], null);
+            var s = await runner.RunAsync("needs-restarting", ["-s"], ct: ct);
+            if (s.Success) restart = UpdateParsers.ParseNeedsRestartingServices(s.StdOut);
+        }
+        return new UpdatesReport("dnf", list, reboot, [], null) { RestartServices = restart, RestartTool = restart is null ? null : "needs-restarting" };
     }
 
     private async Task<UpdatesReport> CheckApkAsync(bool refresh, CancellationToken ct)
@@ -238,6 +260,17 @@ public sealed class UpdatesIntegration(
             _events.Enqueue(Event(EventKinds.RebootRequired, Severity.Medium,
                 "A reboot is required to finish installing updates" + (report.RebootPackages.Count > 0 ? $" ({string.Join(", ", report.RebootPackages.Take(6))})" : "") + ". The running kernel or libraries are still the old, vulnerable ones.", null));
         await state.SetAsync(StateReboot, report.RebootRequired ? "true" : "false", ct);
+
+        if (report.RestartServices is { } services)
+        {
+            var before = (state.Get(StateRestart) ?? "").Split(' ', StringSplitOptions.RemoveEmptyEntries).ToHashSet(StringComparer.Ordinal);
+            var added = services.Where(s => !before.Contains(s)).ToList();
+            if (added.Count > 0)
+                _events.Enqueue(Event(EventKinds.RestartRequired, Severity.Medium,
+                    $"{services.Count} service{(services.Count == 1 ? "" : "s")} still run code that updates replaced, so the fixes aren't active yet: " +
+                    $"{string.Join(", ", services.Take(8))}{(services.Count > 8 ? " …" : "")}. Restart them (systemctl restart) or reboot.", null));
+            await state.SetAsync(StateRestart, string.Join(' ', services), ct);
+        }
     }
 
     // ---- apply ----

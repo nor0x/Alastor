@@ -16,6 +16,7 @@
   import HostHardening from '../lib/HostHardening.svelte';
   import HostNetwork from '../lib/HostNetwork.svelte';
   import HostMalware from '../lib/HostMalware.svelte';
+  import HostLogins from '../lib/HostLogins.svelte';
   import { exposureLook, isExposed } from '../lib/network';
   import { indexTone } from '../lib/hardening';
   import UpdatesBadge from '../lib/ui/UpdatesBadge.svelte';
@@ -424,6 +425,7 @@
     <HostHardening hostId={id} isOnline={s.isOnline} osId={host.osId} />
   {:else if tab === 'network'}
     <HostNetwork hostId={id} isOnline={s.isOnline} />
+    <div class="logins"><HostLogins hostId={id} /></div>
   {:else if tab === 'updates'}
     <HostUpdates hostId={id} isOnline={s.isOnline} />
   {:else if tab === 'vulnerabilities'}
@@ -549,6 +551,7 @@
 {/if}
 
 <style>
+  .logins { margin-top: 16px; }
   .posture-bars { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 18px 28px; }
   .posture { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 18px 24px; border-top: 1px solid var(--border); }
   .title { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }

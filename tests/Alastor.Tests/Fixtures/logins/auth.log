@@ -1,0 +1,4 @@
+2026-10-25T09:14:03.512345+00:00 web-01 sshd[2211]: Accepted publickey for root from 203.0.113.5 port 39750 ssh2: ED25519 SHA256:CUyavIDXWKw6a7MAF+K2UrUb96wV0chzcsj3Lw8Uy/Q
+2026-10-25T09:14:03.600123+00:00 web-01 sshd[2211]: pam_unix(sshd:session): session opened for user root(uid=0) by root(uid=0)
+2026-10-25T09:17:41.012345+00:00 web-01 sshd[2390]: Accepted password for alice from 198.51.100.7 port 39762 ssh2
+2026-10-25T09:18:02.000001+00:00 web-01 sudo:    alice : TTY=pts/0 ; PWD=/home/alice ; USER=root ; COMMAND=/usr/bin/apt update

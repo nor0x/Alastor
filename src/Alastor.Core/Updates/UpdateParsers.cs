@@ -21,6 +21,26 @@ public sealed record UpdatesReport(
 
     /// <summary>Security updates, or null if the package manager can't tell (then every update counts as possibly one).</summary>
     public int? Security => Packages.Any(p => p.Security is null) ? null : Packages.Count(p => p.Security == true);
+
+    /// <summary>
+    /// Services still running code from libraries or binaries that updates replaced (needrestart, dnf needs-restarting).
+    /// Null when neither tool is installed, so "nothing to restart" and "can't tell" stay apart.
+    /// </summary>
+    public IReadOnlyList<string>? RestartServices { get; init; }
+
+    /// <summary>Which tool reported <see cref="RestartServices"/>: <c>needrestart</c> or <c>needs-restarting</c>.</summary>
+    public string? RestartTool { get; init; }
+
+    /// <summary>needrestart's kernel check: the running kernel and the newest installed one, when they differ.</summary>
+    public string? RunningKernel { get; init; }
+    public string? ExpectedKernel { get; init; }
+}
+
+/// <summary>needrestart's batch report (<c>needrestart -b</c>).</summary>
+/// <param name="KernelStatus">NEEDRESTART-KSTA: 0 unknown, 1 current, 2 ABI-compatible upgrade pending, 3 version upgrade pending.</param>
+public sealed record NeedrestartReport(IReadOnlyList<string> Services, int KernelStatus, string? RunningKernel, string? ExpectedKernel)
+{
+    public bool KernelUpgradePending => KernelStatus >= 2;
 }
 
 /// <summary>
@@ -30,6 +50,35 @@ public sealed record UpdatesReport(
 /// </summary>
 public static partial class UpdateParsers
 {
+    /// <summary>
+    /// <c>needrestart -b</c>: one <c>NEEDRESTART-KEY: value</c> per line (needrestart(1), batch mode). Lines it doesn't know
+    /// (containers, sessions, microcode) are ignored; Perl warnings go to stderr.
+    /// </summary>
+    public static NeedrestartReport ParseNeedrestart(string output)
+    {
+        var services = new List<string>();
+        int ksta = 0;
+        string? current = null, expected = null;
+        foreach (var raw in output.Split('\n'))
+        {
+            var colon = raw.IndexOf(':');
+            if (colon <= 0 || !raw.StartsWith("NEEDRESTART-", StringComparison.Ordinal)) continue;
+            var value = raw[(colon + 1)..].Trim();
+            switch (raw[..colon])
+            {
+                case "NEEDRESTART-SVC" when value.Length > 0: services.Add(value); break;
+                case "NEEDRESTART-KSTA": int.TryParse(value, System.Globalization.CultureInfo.InvariantCulture, out ksta); break;
+                case "NEEDRESTART-KCUR": current = value.Length > 0 ? value : null; break;
+                case "NEEDRESTART-KEXP": expected = value.Length > 0 ? value : null; break;
+            }
+        }
+        return new NeedrestartReport(services.Distinct().ToList(), ksta, current, expected);
+    }
+
+    /// <summary><c>needs-restarting -s</c> (dnf-utils): the systemd units that need a restart, one per line.</summary>
+    public static List<string> ParseNeedsRestartingServices(string output) =>
+        output.Split('\n').Select(l => l.Trim()).Where(l => l.EndsWith(".service", StringComparison.Ordinal) && !l.Contains(' ')).Distinct().ToList();
+
     /// <summary>
     /// <c>apt-get -s dist-upgrade</c>: <c>Inst name [installed] (candidate origin/suite[, origin/suite] [arch])</c>. A candidate
     /// is a security update if one of its origins is a security pocket (<c>noble-security</c>, <c>Debian-Security:</c>).

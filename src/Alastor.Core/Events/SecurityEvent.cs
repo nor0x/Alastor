@@ -25,6 +25,9 @@ public enum Capability
     Hardening,
     Network,
     Malware,
+
+    /// <summary>Who logs in: successful SSH logins and first-seen sources.</summary>
+    Access,
 }
 
 /// <summary>
@@ -88,6 +91,12 @@ public static class EventKinds
     public const string BanRestored = "ban.restored";
     public const string AuthFailures = "auth.failures";
 
+    // Access (SSH logins)
+    /// <summary>A successful SSH login (Info). The server learns each host's (user, address) pairs from these.</summary>
+    public const string Login = "auth.login";
+    /// <summary>Raised by the server: the first login of a user from an address on this host.</summary>
+    public const string LoginNewSource = "auth.login-new-source";
+
     // Tool and agent lifecycle
     public const string ToolError = "tool.error";
     public const string ToolInstalled = "tool.installed";
@@ -112,6 +121,8 @@ public static class EventKinds
     public const string UpdatesApplied = "updates.applied";
     public const string UpdatesFailed = "updates.failed";
     public const string RebootRequired = "updates.reboot-required";
+    /// <summary>Services still run code from libraries or binaries an update replaced (needrestart, needs-restarting).</summary>
+    public const string RestartRequired = "updates.restart-required";
 
     // Vulnerabilities
     /// <summary>A scan found new fixable vulnerabilities at or above <c>vulnerabilities.alertSeverity</c>.</summary>

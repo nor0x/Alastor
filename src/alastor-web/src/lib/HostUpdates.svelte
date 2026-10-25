@@ -1,4 +1,5 @@
 <script lang="ts">
+  import CopyButton from './ui/CopyButton.svelte';
   import { api, errorText, type Command, type HostUpdates, type PendingUpdate } from './api';
   import { setLayerKey } from './baseline';
   import { on, refreshOn } from './live.svelte';
@@ -125,8 +126,24 @@
         <p>
           <strong>This host needs a reboot</strong> to finish installing{report.rebootPackages.length ? `: ${report.rebootPackages.join(', ')}` : ' updates'}.
           Until then the old kernel or libraries keep running. Alastor never reboots hosts; schedule a reboot when it suits you.
+          {#if report.expectedKernel}Running kernel <span class="mono">{report.runningKernel}</span>, installed <span class="mono">{report.expectedKernel}</span>.{/if}
         </p>
       </div>
+    {/if}
+
+    {#if report?.restartServices?.length}
+      {@const cmd = `sudo systemctl restart ${report.restartServices.join(' ')}`}
+      <section class="card restart">
+        <header><h2>Services to restart</h2><span class="hint">from {report.restartTool}</span></header>
+        <div class="card-body">
+          <p class="small">These services still run code from libraries or binaries that updates replaced, so the fixes aren't active in them yet. Restarting them is enough; no reboot needed for these.</p>
+          <ul class="svc">{#each report.restartServices as s (s)}<li class="mono small">{s}</li>{/each}</ul>
+          <div class="cmd"><code>{cmd}</code><CopyButton text={cmd} /></div>
+          {#if report.restartServices.some((s) => s.startsWith('ssh'))}<p class="small muted">Restarting sshd keeps existing sessions open.</p>{/if}
+        </div>
+      </section>
+    {:else if report && report.restartServices === null && report.manager !== 'apk'}
+      <p class="small muted">Install <code>{report.manager === 'apt' ? 'needrestart' : 'dnf-utils'}</code> to see which services still run replaced code after updates. The agent only lists them; it never restarts anything.</p>
     {/if}
 
     {#if !report}
@@ -217,6 +234,11 @@
 {/if}
 
 <style>
+  .restart { margin-bottom: 16px; }
+  .restart p { margin: 0 0 8px; }
+  .svc { margin: 0 0 10px; padding-left: 18px; columns: 2; }
+  .cmd { display: flex; align-items: flex-start; gap: 8px; }
+  .cmd code { flex: 1; min-width: 0; padding: 6px 8px; border-radius: 6px; background: var(--surface-2); font-size: 12px; overflow-wrap: anywhere; }
   .summary { display: flex; flex-wrap: wrap; align-items: center; gap: 16px 32px; padding: 16px; }
   .figure { display: flex; flex-direction: column; min-width: 96px; }
   .figure .big { font-size: 34px; font-weight: 600; line-height: 1; font-variant-numeric: tabular-nums; color: var(--text-strong); }

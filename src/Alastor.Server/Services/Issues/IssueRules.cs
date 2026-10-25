@@ -35,6 +35,7 @@ public static class IssueRules
         ["baseline.failed"] = "Baseline check failing",
         ["updates.security"] = "Security updates pending",
         ["updates.reboot"] = "Reboot required",
+        ["updates.restart"] = "Services running replaced code",
     };
 
     public static List<Condition> Evaluate(ManagedHost h, Facts facts)
@@ -85,6 +86,10 @@ public static class IssueRules
         if (h.PendingUpdates is not null && (h.SecurityUpdates ?? h.PendingUpdates) is > 0 and var n)
             open.Add(new("updates.security", "", Severity.Medium,
                 h.SecurityUpdates is null ? $"{n} pending update{(n == 1 ? "" : "s")}" : $"{n} security update{(n == 1 ? "" : "s")} pending", null, "updates"));
+        if (h.ServicesNeedingRestart is { Count: > 0 } restart)
+            open.Add(new("updates.restart", "", Severity.Medium,
+                restart.Count == 1 ? $"{restart[0]} runs code an update replaced" : $"{restart.Count} services run code updates replaced",
+                $"The fixes aren't active until they restart: sudo systemctl restart {string.Join(' ', restart.Take(10))}", "updates"));
         if (h.RebootRequired)
             open.Add(new("updates.reboot", "", Severity.Low, "A reboot is required", "Updated packages (often the kernel) only take effect after a reboot.", "updates"));
         return open;

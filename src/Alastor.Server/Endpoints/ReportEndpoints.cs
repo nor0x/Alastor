@@ -147,6 +147,7 @@ public static class ReportEndpoints
             host.PendingUpdates = u.Pending;
             host.SecurityUpdates = u.Security;
             host.RebootRequired = u.RebootRequired;
+            host.ServicesNeedingRestart = u.RestartServices?.Take(50).ToList();
             if (report.Success) host.UpdatesCheckedAt = report.FinishedAtUtc;
         }
         await db.SaveChangesAsync(ct);

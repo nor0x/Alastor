@@ -79,6 +79,7 @@ builder.Services.AddSingleton<IToolIntegration>(sp => platform.CreateBlocklist(s
 builder.Services.AddSingleton<IToolIntegration>(sp => platform.CreateUpdates(sp.GetRequiredService<ILogger<UpdatesIntegration>>()));
 builder.Services.AddSingleton<IToolIntegration>(sp => platform.CreateHardening(sp.GetRequiredService<ILogger<HardeningIntegration>>()));
 builder.Services.AddSingleton<IToolIntegration>(sp => platform.CreateNetwork(sp.GetRequiredService<ILogger<NetworkIntegration>>()));
+builder.Services.AddSingleton<IToolIntegration>(sp => platform.CreateLogins(sp.GetRequiredService<ILogger<Alastor.Core.Access.LoginIntegration>>()));
 builder.Services.AddSingleton<IToolIntegration>(sp => platform.CreateClamAv(sp.GetRequiredService<ServerClient>(), sp.GetRequiredService<ILogger<ClamAvIntegration>>()));
 builder.Services.AddSingleton<IToolIntegration>(sp => platform.CreateVulnerabilities(sp.GetRequiredService<ServerClient>(), sp.GetRequiredService<ILogger<VulnerabilityIntegration>>()));
 builder.Services.AddSingleton<Supervisor>();
@@ -186,6 +187,7 @@ internal sealed record PlatformServices(OsInfo Os, ICommandRunner Runner, IFileS
         new(Runner, Fs, PackageManagers.For(Os.Family, Runner), State, StateDir, logger, TimeProvider.System);
 
     public NetworkIntegration CreateNetwork(ILogger<NetworkIntegration> logger) => new(Runner, Fs, State, logger, TimeProvider.System);
+    public Alastor.Core.Access.LoginIntegration CreateLogins(ILogger<Alastor.Core.Access.LoginIntegration> logger) => new(Runner, Fs, State, logger, TimeProvider.System);
 
     public VulnerabilityIntegration CreateVulnerabilities(IVulnDbSource? dbSource, ILogger<VulnerabilityIntegration> logger) =>
         new(Runner, PackageManagers.For(Os.Family, Runner), State, Os, StateDir, dbSource ?? NoVulnDb.Instance, logger, TimeProvider.System);

@@ -637,6 +637,41 @@ namespace Alastor.Server.Data.Migrations.Sqlite
                     b.ToTable("Issues");
                 });
 
+            modelBuilder.Entity("Alastor.Server.Data.HostLoginSource", b =>
+                {
+                    b.Property<Guid>("HostId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("User")
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Address")
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("Alerted")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("FirstSeenAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("LastMethod")
+                        .IsRequired()
+                        .HasMaxLength(48)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("LastSeenAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("Logins")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("HostId", "User", "Address");
+
+                    b.ToTable("LoginSources");
+                });
+
             modelBuilder.Entity("Alastor.Server.Data.HostMetricSample", b =>
                 {
                     b.Property<long>("Id")
@@ -1073,6 +1108,9 @@ namespace Alastor.Server.Data.Migrations.Sqlite
                     b.Property<int?>("SecurityUpdates")
                         .HasColumnType("INTEGER");
 
+                    b.Property<string>("ServicesNeedingRestart")
+                        .HasColumnType("TEXT");
+
                     b.Property<string>("SshExposure")
                         .HasMaxLength(24)
                         .HasColumnType("TEXT");
@@ -1418,6 +1456,15 @@ namespace Alastor.Server.Data.Migrations.Sqlite
                 });
 
             modelBuilder.Entity("Alastor.Server.Data.HostIssue", b =>
+                {
+                    b.HasOne("Alastor.Server.Data.ManagedHost", null)
+                        .WithMany()
+                        .HasForeignKey("HostId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Alastor.Server.Data.HostLoginSource", b =>
                 {
                     b.HasOne("Alastor.Server.Data.ManagedHost", null)
                         .WithMany()

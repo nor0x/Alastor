@@ -70,6 +70,8 @@ public static partial class PolicyYaml
         if (canonical.Hardening?.Ignore is { } hi) canonical.Hardening.Ignore = hi.Order(StringComparer.OrdinalIgnoreCase).ToList();
         if (canonical.Vulnerabilities?.Ignore is { } vi) canonical.Vulnerabilities.Ignore = vi.Order(StringComparer.OrdinalIgnoreCase).ToList();
         if (canonical.Blocklists?.Extra is { } extra) canonical.Blocklists.Extra = extra.Order(StringComparer.Ordinal).ToList();
+        if (canonical.Network?.AllowPublicPorts is { } ports) canonical.Network.AllowPublicPorts = ports.Order(StringComparer.OrdinalIgnoreCase).ToList();
+        if (canonical.Logins?.TrustedSources is { } trusted) canonical.Logins.TrustedSources = trusted.Order(StringComparer.Ordinal).ToList();
         if (canonical.Baseline?.Mitigations is { } m)
             canonical.Baseline.Mitigations = m.OrderBy(kv => kv.Key, StringComparer.Ordinal).ToDictionary(StringComparer.Ordinal);
         var json = JsonSerializer.SerializeToUtf8Bytes(canonical, PolicyJsonContext.Default.PolicyDocument);
@@ -111,6 +113,8 @@ public static partial class PolicyYaml
         CheckSchedule("baseline.checkSchedule", doc.Baseline?.CheckSchedule);
         CheckSchedule("blocklists.refreshSchedule", doc.Blocklists?.RefreshSchedule);
         CheckSchedule("network.checkSchedule", doc.Network?.CheckSchedule);
+        foreach (var (entry, i) in (doc.Logins?.TrustedSources ?? []).Select((e, i) => (e, i)))
+            if (!IpTarget.TryParse(entry, out _)) Error($"logins.trustedSources[{i}]", $"'{entry}' is not an IP address or CIDR.");
         foreach (var (spec, i) in (doc.Network?.AllowPublicPorts ?? []).Select((p, i) => (p, i)))
             if (!Alastor.Core.Network.ServiceExposureAssessor.TryParsePortSpec(spec, out _, out _, out _))
                 Error($"network.allowPublicPorts[{i}]", $"'{spec}' is not a port: use 443, 443/tcp, 51820/udp or a range like 60000-61000/udp.");

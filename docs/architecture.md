@@ -144,6 +144,7 @@ Cookie-authenticated writes must also send `X-Alastor-Request: 1` (CSRF guard on
 | `GET /api/hosts/{id}/hardening` | R | latest Lynis audit: hardening index, every warning and suggestion (category, details, solution, accepted), test ids resolved since the previous audit, Lynis status and schedule |
 | `GET /api/hosts/{id}/network` | R | latest network check: SSH ports, auth settings, listeners, addresses, firewall verdict, Tailscale state, and the exposure re-assessed with the address the server sees and `network.allowPublicSsh` |
 | `GET /api/network` | R | fleet view: per-host SSH exposure, password logins, firewall verdict, Tailscale state |
+| `GET /api/hosts/{id}/logins` | R | SSH login sources learned for the host (user, address, first/last seen, count, whether it alerted), the latest login events and the effective `logins` policy |
 | `GET /api/hosts/{id}/malware` | R | latest ClamAV scan: findings (path, signature), files scanned, unreadable paths, signature versions, scan settings, ClamAV status and the server mirror's state |
 | `GET /api/malware`, `GET /api/malware/db` | R | fleet view (scans on, findings per host) and the ClamAV signature mirror |
 | `GET /api/hardening?limit` | R | fleet view: average index, per-host index and counts, warnings and suggestions ranked by hosts affected (accepted excluded) |
@@ -366,8 +367,15 @@ server is unreachable. The server stores the latest report per host and kind, pl
   If it isn't installed (and `autoInstall` is off), the fallback is `apt-get install --only-upgrade` of the security
   packages only, keeping existing config files. RHEL family runs `dnf upgrade --security`, Alpine runs `apk upgrade`.
   The agent never reboots. It reports `updates.reboot-required` once, and the dashboard shows it.
+* **Services to restart.** After every check and install, `needrestart -b -r l` (batch output, list mode: it never
+  restarts anything) on Debian/Ubuntu, or `needs-restarting -s` on the RHEL family, lists the services still running
+  code from libraries or binaries an update replaced. needrestart is adopted, never installed: installing it changes how
+  apt restarts services after upgrades. Its kernel check (`NEEDRESTART-KSTA` 2 or 3: a newer kernel is installed than
+  the one running) also marks a reboot as required. The list is reported as `restartServices`, shown on the host's
+  *Updates* tab with a copy-paste `systemctl restart`, raised once as `updates.restart-required` (Medium) when it
+  grows, and kept as an `updates.restart` issue until the services restart. `null` means neither tool is installed.
 * **Events:** `updates.pending` when the set of pending security updates changes (not on every check),
-  `updates.applied` / `updates.failed` after an install, and `updates.reboot-required`. They go through the normal
+  `updates.applied` / `updates.failed` after an install, `updates.reboot-required` and `updates.restart-required`. They go through the normal
   alert pipeline (§5a).
 
 ## 5d. Vulnerability scans (Trivy / Grype)
@@ -555,6 +563,27 @@ score, CVE counts, pending updates, SSH exposure, …). Two server-side views si
   (`host.offline`, `exposure.detected`, `vulnerabilities.exploited`, `baseline.failed`, …), so issues don't notify
   again: opening and resolving are recorded as Info events (`issue.opened`, `issue.resolved`) on the timeline. Resolved
   issues are pruned with events.
+
+## 5j. SSH logins
+
+Code: `src/Alastor.Core/Access/`, `src/Alastor.Server/Services/Access/LoginService.cs`, `src/Alastor.Server/Endpoints/AccessEndpoints.cs`.
+Policy: `logins: {monitor, alertOnNewSource, trustedSources}`.
+
+* **Agent.** A built-in integration (capability `Access`) reads sshd's `Accepted <method> for <user> from <address>`
+  messages, at most every 30 s: from the journal with `journalctl -o json -t sshd -t sshd-session` (OpenSSH 9.8+
+  logs from `sshd-session`), resuming after the saved `__CURSOR`, or, where journald can't be read, from
+  `/var/log/auth.log` or `/var/log/secure` with the same offset-tracking tailer fail2ban uses. The first read starts
+  at "now": history is never replayed. Each login is an Info `auth.login` event (user, method, key fingerprint).
+* **Server.** `LoginService` keeps every host's (user, address) pairs (`LoginSources`: first and last seen, count,
+  last method). A pair it hasn't seen raises `auth.login-new-source`: High, Critical for root, and the message says
+  whether it's the user's first login on the host or a new address for a known user. Three exceptions are learned
+  without alerting: the host's first batch of logins (otherwise every admin would alert once when the agent starts
+  reporting), addresses in `logins.trustedSources`, and everything when `logins.alertOnNewSource` is false. Only login
+  events the server hasn't stored before are processed, so a re-delivered batch never alerts twice.
+* **Dashboard:** the host's *Network* tab lists the sources, newest first, marking the ones first seen this week and
+  the ones that alerted. `GET /api/hosts/{id}/logins`.
+* **Why built:** fail2ban and CrowdSec look at *failed* logins; nothing bundled reports the successful ones, which
+  are what matters after a key or password leaks. sshd's own messages and the journal do the work.
 
 ## 6. Security model
 

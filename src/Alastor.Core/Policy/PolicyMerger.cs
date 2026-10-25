@@ -32,6 +32,13 @@ public static class PolicyMerger
             MaxFileSize = overlay.Malware?.MaxFileSize ?? baseDoc.Malware?.MaxFileSize,
         },
         Baseline = Merge(baseDoc.Baseline, overlay.Baseline),
+        Logins = baseDoc.Logins is null && overlay.Logins is null ? null : new LoginsPolicy
+        {
+            Monitor = overlay.Logins?.Monitor ?? baseDoc.Logins?.Monitor,
+            AlertOnNewSource = overlay.Logins?.AlertOnNewSource ?? baseDoc.Logins?.AlertOnNewSource,
+            TrustedSources = baseDoc.Logins?.TrustedSources is null && overlay.Logins?.TrustedSources is null ? null
+                : (baseDoc.Logins?.TrustedSources ?? []).Concat(overlay.Logins?.TrustedSources ?? []).Distinct(StringComparer.Ordinal).ToList(),
+        },
         Network = baseDoc.Network is null && overlay.Network is null ? null : new NetworkPolicy
         {
             CheckSchedule = overlay.Network?.CheckSchedule ?? baseDoc.Network?.CheckSchedule,

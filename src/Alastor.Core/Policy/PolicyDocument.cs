@@ -15,6 +15,7 @@ public sealed class PolicyDocument
     public VulnerabilitiesPolicy? Vulnerabilities { get; set; }
     public HardeningPolicy? Hardening { get; set; }
     public MalwarePolicy? Malware { get; set; }
+    public LoginsPolicy? Logins { get; set; }
     public NetworkPolicy? Network { get; set; }
     public BaselinePolicy? Baseline { get; set; }
 
@@ -127,6 +128,18 @@ public sealed class NetworkPolicy
     /// Other public services are reported as unexpected. Merged as a union across layers.
     /// </summary>
     public List<string>? AllowPublicPorts { get; set; }
+}
+
+public sealed class LoginsPolicy
+{
+    /// <summary>Report successful SSH logins (from journald, or auth.log/secure). On by default; it only reads.</summary>
+    public bool? Monitor { get; set; }
+
+    /// <summary>Alert the first time a user logs in from an address (or a user logs in for the first time). High; Critical for root.</summary>
+    public bool? AlertOnNewSource { get; set; }
+
+    /// <summary>Addresses or CIDRs logins are expected from (the office, the VPN): never alerted. Merged as a union across layers.</summary>
+    public List<string>? TrustedSources { get; set; }
 }
 
 public sealed class MalwarePolicy

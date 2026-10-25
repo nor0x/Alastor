@@ -22,6 +22,7 @@ public abstract class AlastorDbContext(DbContextOptions options) : DbContext(opt
     public DbSet<HostMetricSample> MetricSamples => Set<HostMetricSample>();
     public DbSet<HostPostureSnapshot> PostureSnapshots => Set<HostPostureSnapshot>();
     public DbSet<HostIssue> Issues => Set<HostIssue>();
+    public DbSet<HostLoginSource> LoginSources => Set<HostLoginSource>();
     public DbSet<StoredEvent> Events => Set<StoredEvent>();
     public DbSet<ActiveBan> Bans => Set<ActiveBan>();
     public DbSet<AllowlistEntry> Allowlist => Set<AllowlistEntry>();
@@ -126,6 +127,15 @@ public abstract class AlastorDbContext(DbContextOptions options) : DbContext(opt
         {
             e.HasKey(s => new { s.HostId, s.Day });
             e.HasIndex(s => s.Day);
+            e.HasOne<ManagedHost>().WithMany().HasForeignKey(s => s.HostId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        m.Entity<HostLoginSource>(e =>
+        {
+            e.HasKey(s => new { s.HostId, s.User, s.Address });
+            e.Property(s => s.User).HasMaxLength(64);
+            e.Property(s => s.Address).HasMaxLength(64);
+            e.Property(s => s.LastMethod).HasMaxLength(48);
             e.HasOne<ManagedHost>().WithMany().HasForeignKey(s => s.HostId).OnDelete(DeleteBehavior.Cascade);
         });
 
