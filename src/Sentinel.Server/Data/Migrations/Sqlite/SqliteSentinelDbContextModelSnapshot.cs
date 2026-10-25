@@ -902,6 +902,13 @@ namespace Sentinel.Server.Data.Migrations.Sqlite
                         .IsRequired()
                         .HasColumnType("TEXT");
 
+                    b.Property<DateTime?>("NetworkCheckedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ObservedAddress")
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT");
+
                     b.Property<string>("OsId")
                         .IsRequired()
                         .HasColumnType("TEXT");
@@ -936,8 +943,26 @@ namespace Sentinel.Server.Data.Migrations.Sqlite
                     b.Property<int?>("SecurityUpdates")
                         .HasColumnType("INTEGER");
 
+                    b.Property<string>("SshExposure")
+                        .HasMaxLength(24)
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("SshExposureAccepted")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool?>("SshPasswordAuth")
+                        .HasColumnType("INTEGER");
+
                     b.Property<string>("Tags")
                         .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("TailscaleIp")
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("TailscaleState")
+                        .HasMaxLength(32)
                         .HasColumnType("TEXT");
 
                     b.Property<DateTime?>("UpdatesCheckedAt")

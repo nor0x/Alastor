@@ -1,0 +1,11 @@
+Status: active
+Logging: on (low)
+Default: deny (incoming), allow (outgoing), disabled (routed)
+New profiles: skip
+
+To                         Action      From
+--                         ------      ----
+OpenSSH                    LIMIT IN    Anywhere
+443/tcp                    ALLOW IN    Anywhere
+OpenSSH (v6)               LIMIT IN    Anywhere (v6)
+443/tcp (v6)               ALLOW IN    Anywhere (v6)

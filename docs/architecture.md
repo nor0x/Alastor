@@ -21,6 +21,7 @@ browser ──┤ Svelte SPA (embedded) · REST /api · SignalR /hubs/dashboard 
           │      ├── UpdatesIntegration ── apt-get -s / dnf / apk, unattended-upgrade
           │      ├── VulnerabilityIntegration ── trivy rootfs | grype dir:/ (offline, server db)
           │      ├── HardeningIntegration ── lynis audit system --cronjob → report.dat
+          │      ├── NetworkIntegration ── tailscale status --json, sshd -T, /proc/net/tcp, ip -j, ufw/nft
           │      ├── (CrowdSec, ClamAV, … later)
           └───────────────────────────────────────────────────────────────────────┘
 ```
@@ -135,6 +136,8 @@ Cookie-authenticated writes must also send `X-Sentinel-Request: 1` (CSRF guard o
 | `GET /api/vulnerabilities?minSeverity&fixable&kev&q&limit` | R | fleet view: open CVEs ranked KEV → severity → hosts affected, per-host counts, database mirror status |
 | `GET /api/vulnerabilities/db` · `POST /api/vulnerabilities/db/{trivy\|grype}/refresh` | R · A | mirror status · check upstream now |
 | `GET /api/hosts/{id}/hardening` | R | latest Lynis audit: hardening index, every warning and suggestion (category, details, solution, accepted), test ids resolved since the previous audit, Lynis status and schedule |
+| `GET /api/hosts/{id}/network` | R | latest network check: SSH ports, auth settings, listeners, addresses, firewall verdict, Tailscale state, and the exposure re-assessed with the address the server sees and `network.allowPublicSsh` |
+| `GET /api/network` | R | fleet view: per-host SSH exposure, password logins, firewall verdict, Tailscale state |
 | `GET /api/hardening?limit` | R | fleet view: average index, per-host index and counts, warnings and suggestions ranked by hosts affected (accepted excluded) |
 | `GET /api/baseline` · `GET /api/baseline/catalog` | R | fleet baseline: per-check pass/fail counts with failing hosts, per-host scores · check catalog |
 | `GET /api/hosts/{id}/baseline` | R | every baseline check merged with this host's result, copy-paste commands and the policy key that fixes it |
@@ -223,6 +226,7 @@ times, so the editor can show `0 4 * * 1-5` as "Mon 04:00, Tue 04:00, …".
 | `updates.applySchedule` | `off` | ≥1m | install security updates automatically, e.g. `0 4 * * *`; `off` = report only plus "Install now" |
 | `vulnerabilities.scanSchedule` | `0 3 * * *` | ≥1m | Trivy/Grype scan of installed packages; also at agent start and on "Scan now" |
 | `hardening.auditSchedule` | `0 5 * * 0` | ≥1m | Lynis audit (§5e) |
+| `network.checkSchedule` | `every 1h` | ≥1m | SSH exposure and Tailscale check (§5f) |
 | `malware.scanSchedule` | `off` | ≥1m | ClamAV, opt-in (D10) |
 | *notification digest* | `off` | ≥1m | per channel, set on *Settings → Notifications*; same `Schedule` type, server time zone |
 
@@ -425,6 +429,38 @@ Policy: `hardening: {auditSchedule, ignore}`.
   (SSH and kernel settings and automatic updates are baseline fixes; pending updates and vulnerable packages have
   their own tabs; DEB-0880's `jail.local` advice doesn't apply to the jail.d drop-in), the row says so and links
   there. The Baseline page's *Lynis audit* view ranks findings across the fleet.
+
+## 5f. SSH exposure and Tailscale
+
+Code: `src/Sentinel.Core/Network/`, `src/Sentinel.Server/Services/Network/`, `src/Sentinel.Server/Endpoints/NetworkEndpoints.cs`.
+Policy: `network: {checkSchedule, allowPublicSsh}`.
+
+* **Tailscale is detected, never installed.** It isn't in most distributions' repositories, and joining a tailnet
+  needs the admin's login, so the agent only adopts it: `tailscale status --json` (ipnstate.Status) gives the backend
+  state, tailnet, addresses, peers and node-key expiry; `tailscale debug prefs` adds whether Tailscale SSH is on (best
+  effort). The tool reports *disabled* when absent, which isn't a problem. The agent warns
+  (`tailscale.key-expiring`) 14 days before the node key expires, when the host would drop off the tailnet.
+* **SSH exposure** is worked out from what the host shows, read-only, on `network.checkSchedule`:
+  sshd's ports and auth settings from `sshd -T`; listening sockets from `/proc/net/tcp{,6}` (the kernel's documented
+  format; without netlink there's no other API); the host's addresses from `ip -j addr`; and the host firewall from
+  `ufw status verbose` when ufw is active (first matching rule for the SSH port decides; ufw has no machine-readable
+  output) or `nft -j list ruleset` otherwise (input-hook base chains read in order, following jumps, skipping
+  established/loopback rules; a source or interface match makes an accept a *restriction*). Rules loaded with
+  iptables-legacy are reported as unreadable rather than guessed. The result is one level: `Public`, `PossiblyPublic`,
+  `Restricted`, `PrivateOnly`, `TailnetOnly`, `LocalOnly`, `NotListening`, `NoSsh` or `Unknown`, with the reasons.
+* **The server's view.** On AWS, GCP and Azure an instance often has only a private interface address behind 1:1 NAT.
+  The server records the address each agent's requests come from; a wildcard-bound sshd on a host with only private
+  addresses, seen from a public address, is `PossiblyPublic`. Provider firewalls and security groups are invisible to
+  both, and the dashboard says so instead of claiming the port is reachable.
+* **Alerts:** `exposure.detected` when SSH becomes `Public` (High with password logins on, Medium for key-only), once
+  per transition. `network.allowPublicSsh: true` (a bastion) marks it accepted: listed, not counted, not alerted,
+  applied by the server at once.
+* **Dashboard:** a host's *Network* tab shows the level, the reasons, copy-paste ufw commands that close the port (to
+  the tailnet when Tailscale is up, else to an admin address), Tailscale details, and a hint when the ban allowlist
+  doesn't cover the tailnet (100.64.0.0/10). The Baseline page's *SSH exposure* view and an overview tile cover the
+  fleet.
+* **Why built:** no bundled tool answers "can the internet reach this host's SSH?". Lynis and the baseline check
+  sshd's *settings*; this combines sockets, addresses, firewall and the server's view of the host.
 
 ## 6. Security model
 

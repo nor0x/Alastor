@@ -110,6 +110,7 @@ public static partial class PolicyYaml
         CheckSchedule("malware.scanSchedule", doc.Malware?.ScanSchedule);
         CheckSchedule("baseline.checkSchedule", doc.Baseline?.CheckSchedule);
         CheckSchedule("blocklists.refreshSchedule", doc.Blocklists?.RefreshSchedule);
+        CheckSchedule("network.checkSchedule", doc.Network?.CheckSchedule);
         if (doc.Blocklists is { } bl)
         {
             foreach (var (id, i) in (bl.Lists ?? []).Select((id, i) => (id, i)))

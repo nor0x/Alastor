@@ -28,6 +28,11 @@ public static class PolicyMerger
             ScanSchedule = overlay.Malware?.ScanSchedule ?? baseDoc.Malware?.ScanSchedule,
         },
         Baseline = Merge(baseDoc.Baseline, overlay.Baseline),
+        Network = baseDoc.Network is null && overlay.Network is null ? null : new NetworkPolicy
+        {
+            CheckSchedule = overlay.Network?.CheckSchedule ?? baseDoc.Network?.CheckSchedule,
+            AllowPublicSsh = overlay.Network?.AllowPublicSsh ?? baseDoc.Network?.AllowPublicSsh,
+        },
     };
 
     private static VulnerabilitiesPolicy? Merge(VulnerabilitiesPolicy? b, VulnerabilitiesPolicy? o)

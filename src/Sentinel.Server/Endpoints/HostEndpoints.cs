@@ -102,6 +102,7 @@ public static class HostEndpoints
                 "apply-updates" => (AgentCommandTypes.RunJob, "updates.apply"),
                 "scan-vulnerabilities" => (AgentCommandTypes.RunJob, Sentinel.Core.Vulnerabilities.VulnerabilityIntegration.ScanJob),
                 "run-audit" => (AgentCommandTypes.RunJob, Sentinel.Core.Hardening.HardeningIntegration.AuditJob),
+                "check-network" => (AgentCommandTypes.RunJob, Sentinel.Core.Network.NetworkIntegration.CheckJob),
                 _ => ((string?)null, (string?)null),
             };
             if (type is null) return Results.Problem($"Unknown action '{action}'.", statusCode: 400);
@@ -127,6 +128,6 @@ public static class HostEndpoints
             h.CpuPercent, Dto.Percent(h.MemoryUsedBytes, h.MemoryTotalBytes), Dto.Percent(h.DiskUsedBytes, h.DiskTotalBytes), h.Load1,
             h.GroupId, h.Group?.Name, h.Tags, bans, sync, h.Tools.Count(t => t.Running), problems,
             h.BaselineScore, baselineFailing, h.PendingUpdates, h.SecurityUpdates, h.RebootRequired, h.VulnCritical, h.VulnHigh, h.VulnTotal, h.VulnFixable,
-            h.HardeningIndex, h.HardeningWarnings);
+            h.HardeningIndex, h.HardeningWarnings, h.SshExposure, h.SshExposureAccepted, h.TailscaleState);
     }
 }

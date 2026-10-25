@@ -15,6 +15,7 @@ public sealed class PolicyDocument
     public VulnerabilitiesPolicy? Vulnerabilities { get; set; }
     public HardeningPolicy? Hardening { get; set; }
     public MalwarePolicy? Malware { get; set; }
+    public NetworkPolicy? Network { get; set; }
     public BaselinePolicy? Baseline { get; set; }
 
     public PolicyDocument Clone() => PolicyMerger.Merge(new PolicyDocument(), this);
@@ -111,6 +112,15 @@ public sealed class HardeningPolicy
 
     /// <summary>Lynis test ids (SSH-7408, KRNL-6000, …) accepted as risks: still listed, not counted. Merged as a union across layers.</summary>
     public List<string>? Ignore { get; set; }
+}
+
+public sealed class NetworkPolicy
+{
+    /// <summary>SSH exposure and Tailscale check. Takes well under a second.</summary>
+    public string? CheckSchedule { get; set; }
+
+    /// <summary>SSH reachable from the internet is intended here (a bastion, no other way in): shown as accepted, never alerted.</summary>
+    public bool? AllowPublicSsh { get; set; }
 }
 
 public sealed class MalwarePolicy

@@ -95,6 +95,11 @@
       <span class="big">{data.hostsWithHighCves ?? '—'}</span>
       <span class="foot muted">{data.hostsWithHighCves === null ? 'not scanned yet' : `host${data.hostsWithHighCves === 1 ? '' : 's'} affected`}</span>
     </a>
+    <a class="tile" href="/baseline?view=exposure">
+      <span class="label">Public SSH</span>
+      <span class="big">{data.hostsWithPublicSsh ?? '—'}</span>
+      <span class="foot muted">{data.hostsWithPublicSsh === null ? 'not checked yet' : `host${data.hostsWithPublicSsh === 1 ? '' : 's'} reachable from the internet`}</span>
+    </a>
     <a class="tile" href="/baseline?view=lynis">
       <span class="label">Hardening index</span>
       <span class="big">{data.averageHardeningIndex?.toFixed(0) ?? '—'}</span>

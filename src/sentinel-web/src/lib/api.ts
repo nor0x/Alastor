@@ -129,6 +129,9 @@ export interface HostSummary {
   vulnFixable: number | null;
   hardeningIndex: number | null;
   hardeningWarnings: number | null;
+  sshExposure: SshExposureLevel | null;
+  sshExposureAccepted: boolean;
+  tailscaleState: string | null;
 }
 
 export interface ToolStatus {
@@ -227,6 +230,7 @@ export interface Overview {
   hostsWithPendingSecurityUpdates: number | null;
   hostsWithHighCves: number | null;
   averageHardeningIndex: number | null;
+  hostsWithPublicSsh: number | null;
   averageBaselineScore: number | null;
   hostsFailingBaselineHigh: number;
   recentAlerts: SecurityEvent[];
@@ -572,6 +576,73 @@ export interface FleetHardening {
 /** CISOfy documents every Lynis control at a stable URL. */
 export function lynisUrl(testId: string): string {
   return `https://cisofy.com/lynis/controls/${encodeURIComponent(testId)}/`;
+}
+
+export type SshExposureLevel = 'Public' | 'PossiblyPublic' | 'Restricted' | 'PrivateOnly' | 'TailnetOnly' | 'LocalOnly' | 'NotListening' | 'NoSsh' | 'Unknown';
+export type FirewallSshVerdict = 'NoFirewall' | 'OpenToAnywhere' | 'Restricted' | 'Blocked' | 'Unknown';
+export type AddressKind = 'Public' | 'Private' | 'Tailnet' | 'Loopback' | 'LinkLocal' | 'Other';
+
+export interface TailscaleInfo {
+  version: string | null;
+  backendState: string;
+  ips: string[];
+  dnsName: string | null;
+  tailnet: string | null;
+  peersTotal: number;
+  peersOnline: number;
+  sshEnabled: boolean | null;
+  keyExpiry: string | null;
+  health: string[];
+  running: boolean;
+}
+
+export interface SshExposure {
+  level: SshExposureLevel;
+  reachableOn: string[];
+  reasons: string[];
+  accepted: boolean;
+}
+
+export interface NetworkReport {
+  tailscale: TailscaleInfo | null;
+  tailscaleError: string | null;
+  addresses: { interface: string; address: string; prefixLength: number; kind: AddressKind }[];
+  ssh: { ports: number[]; passwordAuthentication: boolean; permitRootLogin: string; listeners: { address: string; port: number }[]; error: string | null } | null;
+  firewall: { tool: string | null; verdict: FirewallSshVerdict; detail: string };
+  exposure: SshExposure;
+}
+
+export interface HostNetwork {
+  hostId: string;
+  hostName: string;
+  report: NetworkReport | null;
+  exposure: SshExposure | null;
+  observedAddress: string | null;
+  allowPublicSsh: boolean;
+  tailnetAllowlisted: boolean;
+  checkedAt: string | null;
+  lastCheckSucceeded: boolean | null;
+  lastCheckError: string | null;
+  lastAttemptAt: string | null;
+  schedule: { key: string; value: string; isDefault: boolean };
+}
+
+export interface FleetNetworkRow {
+  hostId: string;
+  name: string;
+  online: boolean;
+  groupName: string | null;
+  exposure: SshExposureLevel | null;
+  accepted: boolean;
+  passwordAuth: boolean | null;
+  ports: number[];
+  firewallTool: string | null;
+  firewall: FirewallSshVerdict | null;
+  tailscaleState: string | null;
+  tailscaleIp: string | null;
+  tailscaleSsh: boolean | null;
+  checkedAt: string | null;
+  error: string | null;
 }
 
 export interface BlocklistList {

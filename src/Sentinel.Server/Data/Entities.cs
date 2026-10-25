@@ -121,6 +121,17 @@ public sealed class ManagedHost
     public int? HardeningWarnings { get; set; }
     public int? HardeningSuggestions { get; set; }
     public DateTime? HardeningAuditedAt { get; set; }
+
+    /// <summary>The address the agent's requests come from, as this server sees it. Reveals 1:1 NAT in clouds.</summary>
+    public string? ObservedAddress { get; set; }
+
+    // Latest network check (SSH exposure, Tailscale), denormalized for list views.
+    public Sentinel.Core.Network.SshExposureLevel? SshExposure { get; set; }
+    public bool SshExposureAccepted { get; set; }
+    public bool? SshPasswordAuth { get; set; }
+    public string? TailscaleState { get; set; }
+    public string? TailscaleIp { get; set; }
+    public DateTime? NetworkCheckedAt { get; set; }
 }
 
 /// <summary>One Lynis warning or suggestion on one host, from the latest audit. Replaced as a set per audit.</summary>

@@ -122,7 +122,7 @@ public static class AgentEndpoints
     }
 
     private static async Task<IResult> Heartbeat(HeartbeatRequest hb, ClaimsPrincipal user, SentinelDbContext db, PolicyService policies,
-        EventIngestService ingest, DashboardNotifier notifier, IOptions<SentinelOptions> opt, TimeProvider time, CancellationToken ct)
+        EventIngestService ingest, DashboardNotifier notifier, IOptions<SentinelOptions> opt, TimeProvider time, HttpContext http, CancellationToken ct)
     {
         var hostId = user.HostId();
         var now = time.GetUtcNow().UtcDateTime;
@@ -136,6 +136,8 @@ public static class AgentEndpoints
         host.OsPrettyName = Clip(hb.OsPrettyName, 128);
         host.KernelVersion = Clip(hb.KernelVersion, 128);
         host.IpAddresses = hb.IpAddresses.Take(32).Select(i => Clip(i, 64)).ToList();
+        if (http.Connection.RemoteIpAddress is { } remote)
+            host.ObservedAddress = (remote.IsIPv4MappedToIPv6 ? remote.MapToIPv4() : remote).ToString();
         var m = hb.Metrics;
         host.CpuPercent = Math.Round(m.CpuPercent, 1);
         host.MemoryTotalBytes = m.MemoryTotalBytes;

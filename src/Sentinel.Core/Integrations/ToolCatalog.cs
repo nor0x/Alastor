@@ -28,7 +28,7 @@ public static class ToolCatalog
         new(Updates.UpdatesIntegration.Info, Implemented: true, OptIn: false),
         new(Vulnerabilities.VulnerabilityIntegration.Info, Implemented: true, OptIn: false),
         new(Hardening.HardeningIntegration.Info, Implemented: true, OptIn: false),
-        new(D("tailscale", "Tailscale", Capability.Network, "BSD-3-Clause", "https://tailscale.com/", "tailscale", "WireGuard-based private networking."), false, true),
+        new(Network.NetworkIntegration.Info, Implemented: true, OptIn: true),
         new(D("clamav", "ClamAV", Capability.Malware, "GPL-2.0", "https://www.clamav.net/", "clamav", "Antivirus scanning of web roots and upload dirs."), false, true),
     ];
 
