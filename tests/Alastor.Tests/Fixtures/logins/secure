@@ -1,0 +1,2 @@
+Oct 25 09:14:03 db-01 sshd[1882]: Accepted publickey for root from 203.0.113.5 port 39750 ssh2: RSA SHA256:7Xo2nY0w0p4cS3Pz3E6uU7k9vYw2a5zB1nCq8dEfGhI
+Oct 25 09:14:03 db-01 sshd[1882]: pam_unix(sshd:session): session opened for user root(uid=0) by (uid=0)

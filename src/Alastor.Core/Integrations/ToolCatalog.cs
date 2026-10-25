@@ -29,6 +29,7 @@ public static class ToolCatalog
         new(Hardening.HardeningIntegration.Info, Implemented: true, OptIn: false),
         new(Network.NetworkIntegration.Info, Implemented: true, OptIn: true),
         new(Malware.ClamAvIntegration.Info, Implemented: true, OptIn: true),
+        new(Access.LoginIntegration.Info, Implemented: true, OptIn: false),
     ];
 
     public static Entry? Find(string id) => All.FirstOrDefault(e => e.Descriptor.Id == id);

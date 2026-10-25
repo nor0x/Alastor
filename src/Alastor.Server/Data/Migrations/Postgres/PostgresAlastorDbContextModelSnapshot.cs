@@ -650,6 +650,41 @@ namespace Alastor.Server.Data.Migrations.Postgres
                     b.ToTable("Issues");
                 });
 
+            modelBuilder.Entity("Alastor.Server.Data.HostLoginSource", b =>
+                {
+                    b.Property<Guid>("HostId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("User")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("Address")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<bool>("Alerted")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateTime>("FirstSeenAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("LastMethod")
+                        .IsRequired()
+                        .HasMaxLength(48)
+                        .HasColumnType("character varying(48)");
+
+                    b.Property<DateTime>("LastSeenAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("Logins")
+                        .HasColumnType("integer");
+
+                    b.HasKey("HostId", "User", "Address");
+
+                    b.ToTable("LoginSources");
+                });
+
             modelBuilder.Entity("Alastor.Server.Data.HostMetricSample", b =>
                 {
                     b.Property<long>("Id")
@@ -1090,6 +1125,9 @@ namespace Alastor.Server.Data.Migrations.Postgres
                     b.Property<int?>("SecurityUpdates")
                         .HasColumnType("integer");
 
+                    b.Property<string>("ServicesNeedingRestart")
+                        .HasColumnType("text");
+
                     b.Property<string>("SshExposure")
                         .HasMaxLength(24)
                         .HasColumnType("character varying(24)");
@@ -1439,6 +1477,15 @@ namespace Alastor.Server.Data.Migrations.Postgres
                 });
 
             modelBuilder.Entity("Alastor.Server.Data.HostIssue", b =>
+                {
+                    b.HasOne("Alastor.Server.Data.ManagedHost", null)
+                        .WithMany()
+                        .HasForeignKey("HostId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Alastor.Server.Data.HostLoginSource", b =>
                 {
                     b.HasOne("Alastor.Server.Data.ManagedHost", null)
                         .WithMany()

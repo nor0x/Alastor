@@ -20,7 +20,10 @@ Svelte dashboard cover:
 - **Issues:** open problems per host (public SSH, exploited CVEs, malware, failing checks, tools down, …) that resolve on
   their own when fixed, with acknowledge and a badge in the navigation.
 - **Blocklists:** public IP blocklists, merged by the server.
-- **Security updates:** reported, installed now or on a schedule.
+- **Security updates:** reported, installed now or on a schedule, with the services still running replaced code
+  (needrestart / needs-restarting) and a kernel-reboot check.
+- **SSH logins:** successful logins from the journal or auth.log, with an alert on a user's first login from a new
+  address (Critical for root) and trusted sources that never alert.
 - **CVE scans:** Trivy or Grype against a server-mirrored database, joined with CISA KEV.
 - **Lynis audits:** hardening index and a remediation checklist.
 - **Exposure:** warnings when SSH is reachable from the internet, an inventory of every listening service (owner,
@@ -115,6 +118,8 @@ you install them from their vendor's repository (Alpine's `trivy` package is the
 | [fail2ban](https://github.com/fail2ban/fail2ban) | Banning | writes `jail.d/alastor.local` from policy, validates, reloads, streams bans/unbans | GPL-2.0-or-later | ✅ |
 | [nftables](https://netfilter.org/projects/nftables/) / ipset | Blocklists | loads merged public blocklists into its own `inet alastor` table (ipset + iptables fallback) | GPL-2.0 | ✅ |
 | [unattended-upgrades](https://wiki.debian.org/UnattendedUpgrades), dnf, apk | Updates | counts pending security updates, installs them on schedule or on demand, flags required reboots | GPL-2.0 | ✅ |
+| [needrestart](https://github.com/liske/needrestart), dnf `needs-restarting` | Updates | adopted, never installed: after each check lists services still running replaced libraries (`needrestart -b -r l`, list only) and a pending kernel | GPL-2.0 | ✅ |
+| SSH login monitor (built in) | Access | reads sshd's `Accepted …` messages from the journal (or auth.log / secure); the server alerts on new (user, address) pairs | MIT | ✅ |
 | [Trivy](https://github.com/aquasecurity/trivy) or [Grype](https://github.com/anchore/grype) | Vulnerabilities | offline CVE scans of OS and language packages against a server-mirrored database | Apache-2.0 | ✅ |
 | [Lynis](https://cisofy.com/lynis/) | Hardening | scheduled audits; hardening index, warnings and suggestions as a checklist | GPL-3.0 | ✅ |
 | Exposure inventory (built in) | Network | every listening service from `ss -tulpn` (iproute2), its systemd unit and `systemd-analyze security` score, judged against ufw/nft; flags public ports outside `network.allowPublicPorts` | MIT | ✅ |

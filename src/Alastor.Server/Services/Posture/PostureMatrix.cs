@@ -87,6 +87,7 @@ public static class PostureMatrix
         if (h.PendingUpdates is null) return new(Unknown, "not checked");
         var security = h.SecurityUpdates ?? h.PendingUpdates.Value;
         if (security > 0) return new(Warn, h.SecurityUpdates is null ? $"{security} pending" : $"{security} security");
-        return h.RebootRequired ? new(Warn, "reboot required") : new(Ok, "up to date");
+        if (h.RebootRequired) return new(Warn, "reboot required");
+        return h.ServicesNeedingRestart is { Count: > 0 } r ? new(Warn, $"{r.Count} to restart") : new(Ok, "up to date");
     }
 }

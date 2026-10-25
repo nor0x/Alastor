@@ -89,8 +89,8 @@ export interface TagCount {
 
 // ---- Fleet, events, bans, policy, admin (see docs/architecture.md §3) ----
 
-export type Capability = 'Agent' | 'Banning' | 'Blocklist' | 'Firewall' | 'Updates' | 'Vulnerabilities' | 'Hardening' | 'Network' | 'Malware';
-export const capabilities: Capability[] = ['Agent', 'Banning', 'Blocklist', 'Firewall', 'Updates', 'Vulnerabilities', 'Hardening', 'Network', 'Malware'];
+export type Capability = 'Agent' | 'Banning' | 'Blocklist' | 'Firewall' | 'Updates' | 'Vulnerabilities' | 'Hardening' | 'Network' | 'Malware' | 'Access';
+export const capabilities: Capability[] = ['Agent', 'Banning', 'Blocklist', 'Firewall', 'Updates', 'Vulnerabilities', 'Hardening', 'Network', 'Malware', 'Access'];
 export type Availability = 'Available' | 'Unavailable' | 'Disabled';
 export type Ownership = 'Managed' | 'Adopted' | 'NotInstalled';
 export type ConfigState = 'Unknown' | 'InSync' | 'Pending' | 'Drifted' | 'Conflict' | 'Rejected';
@@ -391,6 +391,29 @@ export interface UpdatesReport {
   lastApply: UpdateApplyResult | null;
   pending: number;
   security: number | null;
+  /** Services still running replaced code; null when neither needrestart nor needs-restarting is installed. */
+  restartServices?: string[] | null;
+  restartTool?: string | null;
+  runningKernel?: string | null;
+  expectedKernel?: string | null;
+}
+
+export interface LoginSource {
+  user: string;
+  address: string;
+  firstSeenAt: string;
+  lastSeenAt: string;
+  lastMethod: string;
+  logins: number;
+  alerted: boolean;
+}
+
+export interface HostLogins {
+  monitor: boolean;
+  alertOnNewSource: boolean;
+  trustedSources: string[];
+  sources: LoginSource[];
+  recent: SecurityEvent[];
 }
 
 export interface HostUpdates {

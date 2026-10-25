@@ -133,6 +133,9 @@ public sealed class ManagedHost
     public string? TailscaleIp { get; set; }
     public DateTime? NetworkCheckedAt { get; set; }
 
+    /// <summary>Services still running code that updates replaced (needrestart, needs-restarting). Null when the host can't tell.</summary>
+    public List<string>? ServicesNeedingRestart { get; set; }
+
     /// <summary>
     /// Services reachable from the internet that aren't SSH and aren't in <c>network.allowPublicPorts</c>, as
     /// "6379/tcp redis-server" (the owner may be missing). Null until an agent reports its services.
@@ -311,6 +314,21 @@ public sealed class HostIssue
     public DateTime? AcknowledgedAt { get; set; }
     public string? AcknowledgedBy { get; set; }
     public string? AckNote { get; set; }
+}
+
+/// <summary>A (user, address) pair that has logged in to a host over SSH, learned from <c>auth.login</c> events.</summary>
+public sealed class HostLoginSource
+{
+    public Guid HostId { get; set; }
+    public required string User { get; set; }
+    public required string Address { get; set; }
+    public DateTime FirstSeenAt { get; set; }
+    public DateTime LastSeenAt { get; set; }
+    public string LastMethod { get; set; } = "";
+    public int Logins { get; set; }
+
+    /// <summary>The first login raised <c>auth.login-new-source</c> (false while the host's sources were still being learned, or for trusted sources).</summary>
+    public bool Alerted { get; set; }
 }
 
 /// <summary>A <see cref="SecurityEvent"/> as stored by the server. The id comes from the agent, so re-delivery is idempotent.</summary>

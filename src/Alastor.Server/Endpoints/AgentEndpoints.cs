@@ -28,10 +28,12 @@ public static class AgentEndpoints
             var eff = await policies.GetEffectiveAsync(user.HostId(), ct);
             return new DesiredStateResponse(eff.Revision, eff.Document);
         });
-        a.MapPost("/events", async (EventBatch batch, ClaimsPrincipal user, EventIngestService ingest, CancellationToken ct) =>
+        a.MapPost("/events", async (EventBatch batch, ClaimsPrincipal user, EventIngestService ingest, Services.Access.LoginService logins, CancellationToken ct) =>
         {
             if (batch.Events.Count > 1000) return Results.Problem("At most 1000 events per batch.", statusCode: 413);
+            var fresh = await logins.FreshAsync(batch.Events, ct);
             var (accepted, dupes) = await ingest.IngestAsync(user.HostId(), batch.Events, ct);
+            await logins.ProcessAsync(user.HostId(), fresh, ct);
             return Results.Ok(new EventBatchResult(accepted, dupes));
         });
         a.MapPost("/bans", BanSnapshotHandler);

@@ -1,0 +1,8 @@
+Server listening on 127.0.0.1 port 2222.
+Accepted publickey for alastortest from 127.0.0.1 port 39750 ssh2: ED25519 SHA256:CUyavIDXWKw6a7MAF+K2UrUb96wV0chzcsj3Lw8Uy/Q
+Received disconnect from 127.0.0.1 port 39750:11: disconnected by user
+Disconnected from user alastortest 127.0.0.1 port 39750
+Accepted password for alastortest from 127.0.0.1 port 39762 ssh2
+Received disconnect from 127.0.0.1 port 39762:11: disconnected by user
+Disconnected from user alastortest 127.0.0.1 port 39762
+Received signal 15; terminating.
