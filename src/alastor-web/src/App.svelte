@@ -4,6 +4,7 @@
   import { session } from './lib/session.svelte';
   import { live, startLive, stopLive } from './lib/live.svelte';
   import { refreshFleet, wireFleet } from './lib/fleet.svelte';
+  import { issues, refreshIssues, wireIssues } from './lib/issues.svelte';
   import Login from './lib/Login.svelte';
   import ConfirmHost from './lib/ui/ConfirmHost.svelte';
   import Toasts from './lib/ui/Toasts.svelte';
@@ -11,6 +12,7 @@
   import Hosts from './pages/Hosts.svelte';
   import HostDetail from './pages/HostDetail.svelte';
   import Events from './pages/Events.svelte';
+  import Issues from './pages/Issues.svelte';
   import Bans from './pages/Bans.svelte';
   import Blocklists from './pages/Blocklists.svelte';
   import Baseline from './pages/Baseline.svelte';
@@ -36,8 +38,10 @@
   function signedIn(me: Me) {
     session.me = me;
     wireFleet();
+    wireIssues();
     startLive();
     refreshFleet();
+    refreshIssues();
   }
 
   function signedOut() {
@@ -52,6 +56,7 @@
 
   const nav = [
     { href: '/', label: 'Overview', match: (p: string) => p === '/' },
+    { href: '/issues', label: 'Issues', match: (p: string) => p.startsWith('/issues') },
     { href: '/hosts', label: 'Hosts', match: (p: string) => p.startsWith('/hosts') },
     { href: '/baseline', label: 'Baseline', match: (p: string) => p.startsWith('/baseline') },
     { href: '/vulnerabilities', label: 'CVEs', match: (p: string) => p.startsWith('/vulnerabilities') },
@@ -75,6 +80,7 @@
     if (p === '/hosts') return { name: 'hosts' } as const;
     if ((m = match('/hosts/:id', p))) return { name: 'host', id: m.id } as const;
     if (p === '/events') return { name: 'events' } as const;
+    if (p === '/issues') return { name: 'issues' } as const;
     if (p === '/bans') return { name: 'bans' } as const;
     if (p === '/blocklists') return { name: 'blocklists' } as const;
     if (p === '/baseline') return { name: 'baseline' } as const;
@@ -90,7 +96,7 @@
     return { name: 'notfound' } as const;
   });
 
-  const titles: Record<string, string> = { overview: 'Overview', hosts: 'Hosts', host: 'Host', events: 'Events', bans: 'Bans', blocklists: 'Blocklists', baseline: 'Security baseline', vulnerabilities: 'Vulnerabilities', policies: 'Policies', policy: 'Policy', feed: 'Threat feed', settings: 'Settings', about: 'About', notfound: 'Not found' };
+  const titles: Record<string, string> = { overview: 'Overview', hosts: 'Hosts', host: 'Host', events: 'Events', issues: 'Issues', bans: 'Bans', blocklists: 'Blocklists', baseline: 'Security baseline', vulnerabilities: 'Vulnerabilities', policies: 'Policies', policy: 'Policy', feed: 'Threat feed', settings: 'Settings', about: 'About', notfound: 'Not found' };
   $effect(() => {
     document.title = `${titles[page.name]} · Alastor`;
   });
@@ -114,7 +120,13 @@
     <nav id="main-nav" aria-label="Main" class:open={menuOpen}>
       {#each nav as item (item.href)}
         {@const active = item.match(route.path)}
-        <a href={item.href} class:active aria-current={active ? 'page' : undefined}>{item.label}</a>
+        {@const badge = item.href === '/issues' ? issues.summary : null}
+        <a href={item.href} class:active aria-current={active ? 'page' : undefined}>
+          {item.label}
+          {#if badge && badge.unacknowledged > 0}
+            <span class="badge sev-{badge.topSeverity?.toLowerCase()}" title="{badge.unacknowledged} unacknowledged issue{badge.unacknowledged === 1 ? '' : 's'}, most severe: {badge.topSeverity}">{badge.unacknowledged}</span>
+          {/if}
+        </a>
       {/each}
     </nav>
     <div class="user">
@@ -130,6 +142,7 @@
     {:else if page.name === 'hosts'}<Hosts />
     {:else if page.name === 'host'}{#key page.id}<HostDetail id={page.id} />{/key}
     {:else if page.name === 'events'}<Events />
+    {:else if page.name === 'issues'}<Issues />
     {:else if page.name === 'bans'}<Bans />
     {:else if page.name === 'blocklists'}<Blocklists />
     {:else if page.name === 'baseline'}<Baseline />
@@ -163,6 +176,14 @@
   nav { display: flex; gap: 2px; flex: 1; overflow-x: auto; }
   nav a { padding: 4px 10px; border-radius: var(--radius); color: var(--muted); white-space: nowrap; }
   nav a.active { color: var(--text-strong); background: var(--surface-2); }
+  .badge {
+    display: inline-block; min-width: 18px; margin-left: 4px; padding: 0 5px; border-radius: 9px; text-align: center;
+    font-size: 11px; font-weight: 600; line-height: 16px; color: #fff; background: var(--muted); font-variant-numeric: tabular-nums;
+  }
+  .badge.sev-critical { background: var(--sev-critical); }
+  .badge.sev-high { background: var(--sev-high); }
+  .badge.sev-medium { background: var(--sev-medium); color: #1c1300; }
+  .badge.sev-low { background: var(--sev-low); color: #04170a; }
   nav a:hover { text-decoration: none; color: var(--text-strong); }
   .menu-btn { display: none; }
   .user { display: flex; align-items: center; gap: 12px; }

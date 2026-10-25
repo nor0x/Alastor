@@ -129,6 +129,8 @@ Cookie-authenticated writes must also send `X-Alastor-Request: 1` (CSRF guard on
 | `GET /api/stats/bans?hours&hostId` | R | bans and auth-failure events per hour |
 | `GET /api/stats/posture?days&hostId` | R | fleet (or one host's) daily posture from the snapshots: average baseline score and hardening index, CVE and KEV totals, hosts needing updates, reboots, public SSH, malware findings; null where no host reported |
 | `GET /api/stats/matrix` | R | host × capability grid: `ok`/`warn`/`bad`/`unknown`/`off` with a short label per cell |
+| `GET /api/issues?state&hostId&minSeverity&rule` · `GET /api/issues/summary` · `GET /api/issues/rules` | R | open problems (`state`: open, unacknowledged, acknowledged, resolved, all) with per-severity counts · counts for the navigation badge · rule ids and labels |
+| `POST /api/issues/{id}/ack` `{note}` · `POST /api/issues/{id}/unack` | A | acknowledge an open issue (audited); it stops counting in the badge until it resolves or reopens |
 | `GET /api/hosts` · `GET /api/hosts/{id}` | R | summaries · detail with capability matrix and policy report |
 | `GET /api/hosts/{id}/metrics?hours=` | R | downsampled CPU/mem/disk/load history |
 | `GET /api/hosts/{id}/effective-policy` · `/commands` | R | merged YAML and revision · command history |
@@ -177,7 +179,7 @@ Cookie-authenticated writes must also send `X-Alastor-Request: 1` (CSRF guard on
 | `GET /api/agent/blocklist` | Ag | this host's merged blocklist as minimal CIDRs; `ETag`/`If-None-Match` (304), gzip |
 | `POST /api/agent/bans` | Ag | full ban snapshot per tool (server replaces that host's active set) |
 | `GET /api/agent/commands` · `POST /api/agent/commands/{id}/result` | Ag | pull pending commands · report outcome |
-| `/hubs/agent` · `/hubs/dashboard` | Ag · R | SignalR: `Wake(reason)` to agents · `hostUpdated`, `eventsCreated`, `bansChanged`, `policyChanged`, `commandUpdated`, `feedUpdated`, `baselineUpdated` to browsers |
+| `/hubs/agent` · `/hubs/dashboard` | Ag · R | SignalR: `Wake(reason)` to agents · `hostUpdated`, `eventsCreated`, `bansChanged`, `policyChanged`, `commandUpdated`, `feedUpdated`, `baselineUpdated`, `issuesChanged` to browsers |
 
 ### Agent ↔ server protocol
 
@@ -521,6 +523,27 @@ the ClamAV part of `VulnDbMirror`. Policy: `malware: {scanSchedule, paths, exclu
 * **Report only.** Nothing is deleted or quarantined; a false positive in a web root would take a site down.
   `malware.found` (High) fires once per new file and signature. The host's *Malware* tab lists findings, unreadable
   paths, the scan settings and the mirror's state; the Hosts list and an overview tile flag hosts with findings.
+
+## 5i. Posture history and issues
+
+The report tables keep only the latest result per host, and the host row carries denormalized summaries (baseline
+score, CVE counts, pending updates, SSH exposure, …). Two server-side views sit on top of those columns:
+
+* **Posture snapshots** (`PostureSnapshots`): one row per host per UTC day with the day's latest values. Report,
+  baseline and presence handlers write the reporting host's row; `PostureWorker` writes every host hourly, which
+  carries values forward through quiet days. A measure stays null until the host first reports it, so charts show a
+  gap rather than a false zero. `/api/stats/posture` aggregates them per day (averages for scores, sums for counts),
+  and the dashboard draws them as trends. Pruned after `ALASTOR_POSTURERETENTION` (365 days).
+* **Issues** (`Issues`): `IssueRules` turns a host's current state into the problems open right now: host offline,
+  failed policy apply, a tool down or with a refused or hand-edited config, SSH reachable from the internet, password SSH
+  on a public host, known-exploited (KEV) CVEs, critical CVEs, malware, failing high or critical baseline checks,
+  pending security updates and a required reboot. `IssueService` diffs that against the stored rows after every report,
+  after a heartbeat that changed tool health, on presence changes, after policy saves (which can accept a risk) and
+  hourly. A cleared condition resolves its issue; one that comes back reopens the same row with a new occurrence and
+  without its acknowledgement. Every one of these conditions already raises its own alerting event when it starts
+  (`host.offline`, `exposure.detected`, `vulnerabilities.exploited`, `baseline.failed`, …), so issues don't notify
+  again: opening and resolving are recorded as Info events (`issue.opened`, `issue.resolved`) on the timeline. Resolved
+  issues are pruned with events.
 
 ## 6. Security model
 

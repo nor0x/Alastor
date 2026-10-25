@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { api, errorText, type Ban, type Command, type EventPage, type HostDetail, type MetricPoint, type SecurityEvent, type ToolStatus } from '../lib/api';
+  import { api, errorText, type Ban, type Command, type EventPage, type HostDetail, type IssueList as IssueListDto, type MetricPoint, type SecurityEvent, type ToolStatus } from '../lib/api';
   import { fleet, refreshFleet } from '../lib/fleet.svelte';
   import { on, refreshOn } from '../lib/live.svelte';
   import { navigate, route } from '../lib/router.svelte';
@@ -21,6 +21,8 @@
   import UpdatesBadge from '../lib/ui/UpdatesBadge.svelte';
   import VulnBadge from '../lib/ui/VulnBadge.svelte';
   import EventList from '../lib/ui/EventList.svelte';
+  import IssueList from '../lib/IssueList.svelte';
+  import { refreshIssues } from '../lib/issues.svelte';
   import MetricChart from '../lib/ui/MetricChart.svelte';
   import Modal from '../lib/ui/Modal.svelte';
   import Time from '../lib/ui/Time.svelte';
@@ -39,6 +41,7 @@
   let events = $state<SecurityEvent[]>([]);
   let eventsNext = $state<string | null>(null);
   let bans = $state<Ban[]>([]);
+  let hostIssues = $state<IssueListDto | null>(null);
   let commands = $state<Command[]>([]);
   let effective = $state<{ revision: string; yaml: string; layers: { layerId: string; scope: string; targetId: string | null; version: number }[] } | null>(null);
   let banOpen = $state(false);
@@ -54,6 +57,7 @@
     }
   }
   const loadMetrics = async () => (metrics = await api<MetricPoint[]>(`/api/hosts/${id}/metrics?hours=${hours}`).catch(() => metrics));
+  const loadIssues = async () => (hostIssues = await api<IssueListDto>(`/api/issues?hostId=${id}`).catch(() => hostIssues));
   const loadBans = async () => (bans = await api<Ban[]>(`/api/bans?hostId=${id}`).catch(() => bans));
   const loadCommands = async () => (commands = await api<Command[]>(`/api/hosts/${id}/commands`).catch(() => commands));
   const loadEffective = async () => (effective = await api<typeof effective>(`/api/hosts/${id}/effective-policy`).catch(() => effective));
@@ -74,6 +78,7 @@
     loadHost();
     loadMetrics();
     loadBans();
+    loadIssues();
     loadEvents();
     loadCommands();
     loadEffective();
@@ -87,6 +92,7 @@
   $effect(() => {
     const offs = [
       refreshOn(['policyChanged'], () => { loadHost(); loadEffective(); }),
+      refreshOn(['issuesChanged'], loadIssues),
       on('hostUpdated', (h: { id: string }) => {
         if (h.id !== id) return;
         loadHost();
@@ -267,6 +273,12 @@
 
   {#if tab === 'overview'}
     <div class="stack">
+      {#if hostIssues?.items.length}
+        <section class="card">
+          <header><h2>Open issues</h2><a class="hint" href="/issues?hostId={id}">History →</a></header>
+          <IssueList issues={hostIssues.items} showHost={false} onchange={() => { loadIssues(); refreshIssues(); }} />
+        </section>
+      {/if}
       <section class="card">
         <header>
           <h2>Live metrics</h2>

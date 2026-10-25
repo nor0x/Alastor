@@ -1,13 +1,15 @@
 <script lang="ts">
-  import { api, type Overview } from '../lib/api';
+  import { api, type IssueList as IssueListDto, type Overview } from '../lib/api';
   import { refreshOn } from '../lib/live.svelte';
   import { fleet, hostNames } from '../lib/fleet.svelte';
   import { number } from '../lib/format';
   import EventList from '../lib/ui/EventList.svelte';
-  import Time from '../lib/ui/Time.svelte';
   import Meter from '../lib/ui/Meter.svelte';
+  import IssueList from '../lib/IssueList.svelte';
+  import { refreshIssues } from '../lib/issues.svelte';
 
   let data = $state<Overview | null>(null);
+  let openIssues = $state<IssueListDto | null>(null);
   let error = $state('');
 
   async function load() {
@@ -19,17 +21,17 @@
     }
   }
 
+  const loadIssues = async () => (openIssues = await api<IssueListDto>('/api/issues?state=unacknowledged').catch(() => openIssues));
+
   $effect(() => {
     load();
-    return refreshOn(['hostUpdated', 'eventsCreated', 'bansChanged', 'policyChanged'], load);
+    loadIssues();
+    const offs = [
+      refreshOn(['hostUpdated', 'eventsCreated', 'bansChanged', 'policyChanged'], load),
+      refreshOn(['issuesChanged'], loadIssues),
+    ];
+    return () => offs.forEach((o) => o());
   });
-
-  // Hosts needing attention first: offline, tool problems, policy not applied.
-  const attention = $derived(
-    fleet.hosts
-      .filter((h) => !h.isOnline || h.toolsWithProblems > 0 || h.policySync !== 'in-sync')
-      .slice(0, 6),
-  );
 </script>
 
 <div class="page-head">
@@ -126,24 +128,17 @@
 
     <div class="stack">
       <section class="card">
-        <header><h2>Needs attention</h2><a class="hint" href="/hosts">All hosts →</a></header>
-        {#if attention.length}
-          <ul class="hosts">
-            {#each attention as h (h.id)}
-              <li>
-                <a href="/hosts/{h.id}">{h.name}</a>
-                <span class="why">
-                  {#if !h.isOnline}<span class="pill bad">offline · <Time iso={h.lastSeenAt} /></span>{/if}
-                  {#if h.toolsWithProblems > 0}<span class="pill warn">{h.toolsWithProblems} tool problem{h.toolsWithProblems > 1 ? 's' : ''}</span>{/if}
-                  {#if h.policySync === 'failed'}<span class="pill bad">policy failed</span>{:else if h.policySync === 'pending'}<span class="pill info">policy pending</span>{/if}
-                </span>
-              </li>
-            {/each}
-          </ul>
-        {:else if fleet.hosts.length}
-          <div class="empty">All hosts are online, in sync and healthy.</div>
+        <header>
+          <h2>Open issues</h2>
+          <a class="hint" href="/issues">{openIssues && openIssues.summary.acknowledged > 0 ? `All issues (${openIssues.summary.acknowledged} acknowledged) →` : 'All issues →'}</a>
+        </header>
+        {#if openIssues?.items.length}
+          <IssueList issues={openIssues.items.slice(0, 8)} compact onchange={() => { loadIssues(); refreshIssues(); }} />
+          {#if openIssues.items.length > 8}<div class="more"><a href="/issues?state=unacknowledged">{openIssues.items.length - 8} more →</a></div>{/if}
+        {:else if openIssues}
+          <div class="empty">{fleet.hosts.length ? 'No open issues. Hosts are online, healthy and match their policy.' : 'No hosts yet.'}</div>
         {:else}
-          <div class="empty">No hosts yet.</div>
+          <div class="skeleton-block" style="height:120px"></div>
         {/if}
       </section>
 
@@ -208,7 +203,5 @@
   .foot { font-size: 12px; display: inline-flex; align-items: center; gap: 6px; }
   .foot.bad { color: var(--bad); }
   .foot.warn { color: var(--warn); }
-  .hosts { list-style: none; margin: 0; padding: 4px 0; }
-  .hosts li { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 8px 16px; flex-wrap: wrap; }
-  .why { display: flex; gap: 6px; flex-wrap: wrap; }
+  .more { padding: 8px 16px; border-top: 1px solid var(--border); font-size: 12px; }
 </style>

@@ -15,6 +15,8 @@ Svelte dashboard cover:
   history and revert.
 - **Security baseline:** 21 checks per host with one-click, reversible fixes.
 - **Alerts:** email, webhook and ntfy channels, with dedup and digests.
+- **Issues:** open problems per host (public SSH, exploited CVEs, malware, failing checks, tools down, …) that resolve on
+  their own when fixed, with acknowledge and a badge in the navigation.
 - **Blocklists:** public IP blocklists, merged by the server.
 - **Security updates:** reported, installed now or on a schedule.
 - **CVE scans:** Trivy or Grype against a server-mirrored database, joined with CISA KEV.

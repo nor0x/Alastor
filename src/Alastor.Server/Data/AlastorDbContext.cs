@@ -21,6 +21,7 @@ public abstract class AlastorDbContext(DbContextOptions options) : DbContext(opt
     public DbSet<HostBaselineCheck> BaselineChecks => Set<HostBaselineCheck>();
     public DbSet<HostMetricSample> MetricSamples => Set<HostMetricSample>();
     public DbSet<HostPostureSnapshot> PostureSnapshots => Set<HostPostureSnapshot>();
+    public DbSet<HostIssue> Issues => Set<HostIssue>();
     public DbSet<StoredEvent> Events => Set<StoredEvent>();
     public DbSet<ActiveBan> Bans => Set<ActiveBan>();
     public DbSet<AllowlistEntry> Allowlist => Set<AllowlistEntry>();
@@ -126,6 +127,21 @@ public abstract class AlastorDbContext(DbContextOptions options) : DbContext(opt
             e.HasKey(s => new { s.HostId, s.Day });
             e.HasIndex(s => s.Day);
             e.HasOne<ManagedHost>().WithMany().HasForeignKey(s => s.HostId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        m.Entity<HostIssue>(e =>
+        {
+            e.Property(i => i.Rule).HasMaxLength(48);
+            e.Property(i => i.Subject).HasMaxLength(128);
+            e.Property(i => i.Title).HasMaxLength(256);
+            e.Property(i => i.Detail).HasMaxLength(1024);
+            e.Property(i => i.Tab).HasMaxLength(32);
+            e.Property(i => i.AcknowledgedBy).HasMaxLength(64);
+            e.Property(i => i.AckNote).HasMaxLength(512);
+            e.Property(i => i.Severity).HasConversion<int>(); // ordered, like events
+            e.HasIndex(i => new { i.HostId, i.Rule, i.Subject }).IsUnique();
+            e.HasIndex(i => i.ResolvedAt);
+            e.HasOne<ManagedHost>().WithMany().HasForeignKey(i => i.HostId).OnDelete(DeleteBehavior.Cascade);
         });
 
         m.Entity<StoredEvent>(e =>

@@ -76,12 +76,12 @@ public static class ReportEndpoints
 
     private static async Task<IResult> Receive(AgentReport report, ClaimsPrincipal user, AlastorDbContext db, PolicyService policies, DashboardNotifier notifier,
         Services.Vulnerabilities.VulnerabilityService vulnerabilities, Services.Hardening.HardeningService hardening,
-        Services.Network.NetworkService network, Services.Malware.MalwareService malware, Services.Posture.PostureService posture,
+        Services.Network.NetworkService network, Services.Malware.MalwareService malware, HostStateService hostState,
         TimeProvider time, CancellationToken ct)
     {
         var hostId = user.HostId();
         var result = await ReceiveCoreAsync(hostId, report, db, policies, notifier, vulnerabilities, hardening, network, malware, time, ct);
-        if (result is IStatusCodeHttpResult { StatusCode: 204 }) await posture.SnapshotAsync(hostId, ct);
+        if (result is IStatusCodeHttpResult { StatusCode: 204 }) await hostState.ChangedAsync(hostId, ct);
         return result;
     }
 

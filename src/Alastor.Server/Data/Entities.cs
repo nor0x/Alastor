@@ -269,6 +269,41 @@ public sealed class HostPostureSnapshot
     public int? MalwareFindings { get; set; }
 }
 
+/// <summary>
+/// An open (or since resolved) problem on one host, such as public SSH, a known-exploited CVE or malware. Derived on the
+/// server from the host's current state by <see cref="Alastor.Server.Services.Issues.IssueRules"/>, so it closes on
+/// its own when the condition clears. One row per host, rule and subject: a condition that comes back reopens it.
+/// </summary>
+public sealed class HostIssue
+{
+    public long Id { get; set; }
+    public Guid HostId { get; set; }
+
+    /// <summary>Rule id, e.g. <c>ssh.public</c> or <c>cve.exploited</c>. See <see cref="Alastor.Server.Services.Issues.IssueRules"/>.</summary>
+    public required string Rule { get; set; }
+
+    /// <summary>What the issue is about within the rule (a CVE id, check id or tool id); empty when the rule has one issue per host.</summary>
+    public string Subject { get; set; } = "";
+
+    public Severity Severity { get; set; }
+    public required string Title { get; set; }
+    public string? Detail { get; set; }
+
+    /// <summary>The host detail tab that shows the cause and the fix.</summary>
+    public string Tab { get; set; } = "overview";
+
+    public DateTime FirstSeenAt { get; set; }
+    public DateTime LastSeenAt { get; set; }
+    public DateTime? ResolvedAt { get; set; }
+
+    /// <summary>How many times the condition has opened. Reopening clears the acknowledgement.</summary>
+    public int Occurrences { get; set; } = 1;
+
+    public DateTime? AcknowledgedAt { get; set; }
+    public string? AcknowledgedBy { get; set; }
+    public string? AckNote { get; set; }
+}
+
 /// <summary>A <see cref="SecurityEvent"/> as stored by the server. The id comes from the agent, so re-delivery is idempotent.</summary>
 public sealed class StoredEvent
 {

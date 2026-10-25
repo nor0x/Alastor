@@ -578,6 +578,78 @@ namespace Alastor.Server.Data.Migrations.Postgres
                     b.ToTable("HardeningItems");
                 });
 
+            modelBuilder.Entity("Alastor.Server.Data.HostIssue", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<string>("AckNote")
+                        .HasMaxLength(512)
+                        .HasColumnType("character varying(512)");
+
+                    b.Property<DateTime?>("AcknowledgedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("AcknowledgedBy")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("Detail")
+                        .HasMaxLength(1024)
+                        .HasColumnType("character varying(1024)");
+
+                    b.Property<DateTime>("FirstSeenAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("HostId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("LastSeenAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("Occurrences")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("ResolvedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Rule")
+                        .IsRequired()
+                        .HasMaxLength(48)
+                        .HasColumnType("character varying(48)");
+
+                    b.Property<int>("Severity")
+                        .HasMaxLength(32)
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Subject")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<string>("Tab")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ResolvedAt");
+
+                    b.HasIndex("HostId", "Rule", "Subject")
+                        .IsUnique();
+
+                    b.ToTable("Issues");
+                });
+
             modelBuilder.Entity("Alastor.Server.Data.HostMetricSample", b =>
                 {
                     b.Property<long>("Id")
@@ -1352,6 +1424,15 @@ namespace Alastor.Server.Data.Migrations.Postgres
                 });
 
             modelBuilder.Entity("Alastor.Server.Data.HostHardeningItem", b =>
+                {
+                    b.HasOne("Alastor.Server.Data.ManagedHost", null)
+                        .WithMany()
+                        .HasForeignKey("HostId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Alastor.Server.Data.HostIssue", b =>
                 {
                     b.HasOne("Alastor.Server.Data.ManagedHost", null)
                         .WithMany()

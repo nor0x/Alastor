@@ -3,7 +3,6 @@ using Microsoft.Extensions.Options;
 using Alastor.Core.Events;
 using Alastor.Server.Data;
 using Alastor.Server.Services;
-using Alastor.Server.Services.Posture;
 using Alastor.Server.Services.ThreatFeed;
 
 namespace Alastor.Server.Workers;
@@ -54,7 +53,7 @@ public sealed class PresenceWorker(IServiceScopeFactory scopes, IOptions<Alastor
             ], ct);
             await notifier.HostUpdatedAsync(new { host.Id, host.IsOnline }, ct);
         }
-        if (stale.Count > 0) await scope.ServiceProvider.GetRequiredService<PostureService>().SnapshotAsync(stale.Select(h => h.Id).ToList(), ct);
+        if (stale.Count > 0) await scope.ServiceProvider.GetRequiredService<HostStateService>().ChangedAsync(stale.Select(h => h.Id).ToList(), ct);
 
         // Commands delivered but not acknowledged go back to pending (CommandRedeliverAfter), up to CommandMaxAttempts.
         var redeliverBefore = now - opt.CommandRedeliverAfterValue;
@@ -102,6 +101,7 @@ public sealed class RetentionWorker(IServiceScopeFactory scopes, IOptions<Alasto
                 var f = await db.FeedItems.Where(x => x.PublishedAt < feedBefore).ExecuteDeleteAsync(ct);
                 var postureBefore = DateOnly.FromDateTime(now - options.Value.PostureRetentionValue);
                 await db.PostureSnapshots.Where(x => x.Day < postureBefore).ExecuteDeleteAsync(ct);
+                await db.Issues.Where(x => x.ResolvedAt != null && x.ResolvedAt < eventsBefore).ExecuteDeleteAsync(ct);
                 // Drained dedup buckets carry no information once the window has long passed.
                 var bucketsBefore = now - options.Value.AlertDedupWindowValue * 4 - TimeSpan.FromDays(1);
                 await db.AlertBuckets.Where(x => x.UpdatedAt < bucketsBefore && x.Suppressed == 0).ExecuteDeleteAsync(ct);
@@ -114,8 +114,9 @@ public sealed class RetentionWorker(IServiceScopeFactory scopes, IOptions<Alasto
 }
 
 /// <summary>
-/// Writes every host's posture snapshot for today once an hour (and shortly after startup), so days without reports
-/// still get a row carrying the last known values. Report handlers write the reporting host's row as they go.
+/// Writes every host's posture snapshot for today and re-evaluates its issues once an hour (and shortly after startup),
+/// so days without reports still get a row carrying the last known values. Report handlers do the same for the reporting
+/// host as they go.
 /// </summary>
 public sealed class PostureWorker(IServiceScopeFactory scopes, TimeProvider time, ILogger<PostureWorker> logger) : BackgroundService
 {
@@ -130,9 +131,9 @@ public sealed class PostureWorker(IServiceScopeFactory scopes, TimeProvider time
             try
             {
                 await using var scope = scopes.CreateAsyncScope();
-                await scope.ServiceProvider.GetRequiredService<PostureService>().SnapshotAsync(null, ct);
+                await scope.ServiceProvider.GetRequiredService<HostStateService>().ChangedAsync(null, ct);
             }
-            catch (Exception ex) when (ex is not OperationCanceledException) { logger.LogError(ex, "Posture snapshot failed"); }
+            catch (Exception ex) when (ex is not OperationCanceledException) { logger.LogError(ex, "Posture snapshot or issue check failed"); }
         } while (await timer.WaitForNextTickAsync(ct));
     }
 }

@@ -774,3 +774,38 @@ export interface NotificationDelivery {
 export function errorText(e: unknown): string {
   return e instanceof Error ? e.message : 'Something went wrong.';
 }
+
+export interface Issue {
+  id: number;
+  hostId: string;
+  hostName: string;
+  hostOnline: boolean;
+  rule: string;
+  ruleLabel: string;
+  subject: string;
+  severity: Severity;
+  title: string;
+  detail: string | null;
+  /** Host detail tab that shows the cause and the fix. */
+  tab: string;
+  firstSeenAt: string;
+  lastSeenAt: string;
+  resolvedAt: string | null;
+  occurrences: number;
+  acknowledgedAt: string | null;
+  acknowledgedBy: string | null;
+  ackNote: string | null;
+}
+
+export interface IssueSummary {
+  open: number;
+  acknowledged: number;
+  unacknowledged: number;
+  topSeverity: Severity | null;
+  unacknowledgedBySeverity: Partial<Record<Severity, number>>;
+}
+
+export interface IssueList {
+  items: Issue[];
+  summary: IssueSummary;
+}
