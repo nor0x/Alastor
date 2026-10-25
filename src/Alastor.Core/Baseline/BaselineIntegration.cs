@@ -58,7 +58,7 @@ public sealed class BaselineIntegration(
         "Security baseline",
         Capability.Hardening,
         "MIT (part of Alastor)",
-        "https://github.com/nor0x/DefBox",
+        "https://github.com/nor0x/Alastor",
         new Dictionary<DistroFamily, string>(),
         "The most common server hardening checks (SSH, firewall, updates, kernel, accounts), with fixes the agent can apply.");
 

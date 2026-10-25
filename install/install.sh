@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Alastor server installer.
 #
-#   curl -fsSL https://raw.githubusercontent.com/nor0x/DefBox/main/install/install.sh | sudo bash
+#   curl -fsSL https://raw.githubusercontent.com/nor0x/Alastor/main/install/install.sh | sudo bash
 #   curl -fsSL …/install.sh | sudo bash -s -- --domain alastor.example.com --with-agent
 #
 # Installs (or upgrades, when run again) the alastor-server binary, the agent binaries it hands out to
@@ -20,13 +20,13 @@
 #
 # Environment:
 #   GITHUB_TOKEN             read access to the repository while it is private
-#   ALASTOR_REPO            GitHub repository to download releases from (default nor0x/DefBox)
-#   ALASTOR_DOWNLOAD_BASE   download BASE/<version>/<asset> instead of GitHub releases (a mirror or website)
+#   ALASTOR_REPO             GitHub repository to download releases from (default nor0x/Alastor)
+#   ALASTOR_DOWNLOAD_BASE    download BASE/<version>/<asset> instead of GitHub releases (a mirror or website)
 set -euo pipefail
 
 # Everything runs from main(), so a download cut off midway through `curl | bash` executes nothing.
 main() {
-  REPO="${ALASTOR_REPO:-nor0x/DefBox}"
+  REPO="${ALASTOR_REPO:-nor0x/Alastor}"
   PREFIX=/opt/alastor
   CONF_DIR=/etc/alastor
   ENV_FILE="$CONF_DIR/server.env"
