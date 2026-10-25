@@ -108,6 +108,9 @@ public sealed class HardeningPolicy
 {
     /// <summary>Lynis audit.</summary>
     public string? AuditSchedule { get; set; }
+
+    /// <summary>Lynis test ids (SSH-7408, KRNL-6000, …) accepted as risks: still listed, not counted. Merged as a union across layers.</summary>
+    public List<string>? Ignore { get; set; }
 }
 
 public sealed class MalwarePolicy

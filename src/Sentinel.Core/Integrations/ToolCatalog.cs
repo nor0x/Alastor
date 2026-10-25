@@ -27,7 +27,7 @@ public static class ToolCatalog
         new(Blocklists.BlocklistIntegration.Info, Implemented: true, OptIn: false),
         new(Updates.UpdatesIntegration.Info, Implemented: true, OptIn: false),
         new(Vulnerabilities.VulnerabilityIntegration.Info, Implemented: true, OptIn: false),
-        new(D("lynis", "Lynis", Capability.Hardening, "GPL-3.0", "https://cisofy.com/lynis/", "lynis", "Security auditing and hardening index."), false, false),
+        new(Hardening.HardeningIntegration.Info, Implemented: true, OptIn: false),
         new(D("tailscale", "Tailscale", Capability.Network, "BSD-3-Clause", "https://tailscale.com/", "tailscale", "WireGuard-based private networking."), false, true),
         new(D("clamav", "ClamAV", Capability.Malware, "GPL-2.0", "https://www.clamav.net/", "clamav", "Antivirus scanning of web roots and upload dirs."), false, true),
     ];

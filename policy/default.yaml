@@ -60,6 +60,7 @@ vulnerabilities:
 
 hardening:
   auditSchedule: "0 5 * * 0" # Lynis audit, weekly (Sunday)
+  ignore: []                 # accepted Lynis test ids, e.g. [BANN-7126]; still listed, not counted; merged across layers
 
 malware:
   scanSchedule: "off"        # ClamAV is opt-in, e.g. "0 2 * * 6"

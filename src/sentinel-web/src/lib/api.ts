@@ -127,6 +127,8 @@ export interface HostSummary {
   vulnHigh: number | null;
   vulnTotal: number | null;
   vulnFixable: number | null;
+  hardeningIndex: number | null;
+  hardeningWarnings: number | null;
 }
 
 export interface ToolStatus {
@@ -507,6 +509,69 @@ export function vulnUrl(id: string): string {
   if (id.startsWith('CVE-')) return `https://nvd.nist.gov/vuln/detail/${id}`;
   if (id.startsWith('GHSA-')) return `https://github.com/advisories/${id}`;
   return `https://osv.dev/vulnerability/${encodeURIComponent(id)}`;
+}
+
+export type LynisItemKind = 'Warning' | 'Suggestion';
+
+export interface HardeningItem {
+  testId: string;
+  kind: LynisItemKind;
+  category: string;
+  text: string;
+  details: string | null;
+  solution: string | null;
+  accepted: boolean;
+  firstSeenAt: string;
+}
+
+export interface HostHardening {
+  hostId: string;
+  hostName: string;
+  tool: { version: string | null; availability: string | null; reason: string | null; ownership: string | null; installed: boolean };
+  hardeningIndex: number | null;
+  lynisVersion: string | null;
+  testsExecuted: number | null;
+  auditedAt: string | null;
+  lastAuditSucceeded: boolean | null;
+  lastAuditError: string | null;
+  lastAttemptAt: string | null;
+  schedule: { key: string; value: string; isDefault: boolean };
+  resolvedSinceLast: string[];
+  items: HardeningItem[];
+}
+
+export interface FleetHardeningHost {
+  hostId: string;
+  name: string;
+  online: boolean;
+  groupName: string | null;
+  hardeningIndex: number | null;
+  warnings: number | null;
+  suggestions: number | null;
+  auditedAt: string | null;
+  error: string | null;
+  availability: string | null;
+}
+
+export interface FleetHardeningItem {
+  testId: string;
+  kind: LynisItemKind;
+  category: string;
+  text: string;
+  solution: string | null;
+  hostCount: number;
+  hosts: { id: string; name: string }[];
+}
+
+export interface FleetHardening {
+  averageIndex: number | null;
+  hosts: FleetHardeningHost[];
+  items: FleetHardeningItem[];
+}
+
+/** CISOfy documents every Lynis control at a stable URL. */
+export function lynisUrl(testId: string): string {
+  return `https://cisofy.com/lynis/controls/${encodeURIComponent(testId)}/`;
 }
 
 export interface BlocklistList {

@@ -33,6 +33,7 @@ public abstract class SentinelDbContext(DbContextOptions options) : DbContext(op
     public DbSet<BlocklistSourceState> BlocklistSources => Set<BlocklistSourceState>();
     public DbSet<HostReport> HostReports => Set<HostReport>();
     public DbSet<HostVulnerability> Vulnerabilities => Set<HostVulnerability>();
+    public DbSet<HostHardeningItem> HardeningItems => Set<HostHardeningItem>();
     public DbSet<NotificationChannel> NotificationChannels => Set<NotificationChannel>();
     public DbSet<AlertBucket> AlertBuckets => Set<AlertBucket>();
     public DbSet<NotificationDelivery> NotificationDeliveries => Set<NotificationDelivery>();
@@ -87,6 +88,18 @@ public abstract class SentinelDbContext(DbContextOptions options) : DbContext(op
             e.HasIndex(v => v.HostId);
             e.HasIndex(v => v.VulnId);
             e.HasOne<ManagedHost>().WithMany().HasForeignKey(v => v.HostId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        m.Entity<HostHardeningItem>(e =>
+        {
+            e.HasKey(i => i.Id);
+            e.Property(i => i.TestId).HasMaxLength(32);
+            e.Property(i => i.Text).HasMaxLength(512);
+            e.Property(i => i.Details).HasMaxLength(512);
+            e.Property(i => i.Solution).HasMaxLength(512);
+            e.HasIndex(i => i.HostId);
+            e.HasIndex(i => i.TestId);
+            e.HasOne<ManagedHost>().WithMany().HasForeignKey(i => i.HostId).OnDelete(DeleteBehavior.Cascade);
         });
 
         m.Entity<HostBaselineCheck>(e =>

@@ -20,7 +20,8 @@ browser ──┤ Svelte SPA (embedded) · REST /api · SignalR /hubs/dashboard 
           │      ├── BaselineIntegration, BlocklistIntegration (nft / ipset)
           │      ├── UpdatesIntegration ── apt-get -s / dnf / apk, unattended-upgrade
           │      ├── VulnerabilityIntegration ── trivy rootfs | grype dir:/ (offline, server db)
-          │      ├── (CrowdSec, Lynis, … later)
+          │      ├── HardeningIntegration ── lynis audit system --cronjob → report.dat
+          │      ├── (CrowdSec, ClamAV, … later)
           └───────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -133,6 +134,8 @@ Cookie-authenticated writes must also send `X-Sentinel-Request: 1` (CSRF guard o
 | `GET /api/hosts/{id}/vulnerabilities` | R | every finding (package, installed → fixed, severity, CVSS, KEV flag, accepted), scanner and database info, ignored-package counts |
 | `GET /api/vulnerabilities?minSeverity&fixable&kev&q&limit` | R | fleet view: open CVEs ranked KEV → severity → hosts affected, per-host counts, database mirror status |
 | `GET /api/vulnerabilities/db` · `POST /api/vulnerabilities/db/{trivy\|grype}/refresh` | R · A | mirror status · check upstream now |
+| `GET /api/hosts/{id}/hardening` | R | latest Lynis audit: hardening index, every warning and suggestion (category, details, solution, accepted), test ids resolved since the previous audit, Lynis status and schedule |
+| `GET /api/hardening?limit` | R | fleet view: average index, per-host index and counts, warnings and suggestions ranked by hosts affected (accepted excluded) |
 | `GET /api/baseline` · `GET /api/baseline/catalog` | R | fleet baseline: per-check pass/fail counts with failing hosts, per-host scores · check catalog |
 | `GET /api/hosts/{id}/baseline` | R | every baseline check merged with this host's result, copy-paste commands and the policy key that fixes it |
 | `GET/POST/PUT/DELETE /api/groups[/{id}]` | R/A | host groups |
@@ -219,7 +222,7 @@ times, so the editor can show `0 4 * * 1-5` as "Mon 04:00, Tue 04:00, …".
 | `updates.checkSchedule` | `every 6h` | ≥1m | refresh package lists and count pending (security) updates; also at agent start and on "Check now" |
 | `updates.applySchedule` | `off` | ≥1m | install security updates automatically, e.g. `0 4 * * *`; `off` = report only plus "Install now" |
 | `vulnerabilities.scanSchedule` | `0 3 * * *` | ≥1m | Trivy/Grype scan of installed packages; also at agent start and on "Scan now" |
-| `hardening.auditSchedule` | `0 5 * * 0` | ≥1m | Lynis (D8) |
+| `hardening.auditSchedule` | `0 5 * * 0` | ≥1m | Lynis audit (§5e) |
 | `malware.scanSchedule` | `off` | ≥1m | ClamAV, opt-in (D10) |
 | *notification digest* | `off` | ≥1m | per channel, set on *Settings → Notifications*; same `Schedule` type, server time zone |
 
@@ -392,6 +395,37 @@ Policy: `vulnerabilities: {scanSchedule, scanner, languagePackages, ignorePackag
   `vulnerabilities.exploited` (Critical) when a host has a CVE in CISA's KEV catalog, which it already mirrors for the
   threat feed: at scan time for new findings, and when CISA adds a CVE that hosts already have.
 
+## 5e. Hardening audits (Lynis)
+
+Code: `src/Sentinel.Core/Hardening/`, `src/Sentinel.Server/Services/Hardening/`, `src/Sentinel.Server/Endpoints/HardeningEndpoints.cs`.
+Policy: `hardening: {auditSchedule, ignore}`.
+
+* **Installed from distro repos.** Lynis is packaged by Debian, Ubuntu, Alpine and EPEL, so the agent installs it like
+  fail2ban when `agent.autoInstall` allows (at most one attempt a day; the error mentions EPEL on the RHEL family), and
+  adopts an existing install otherwise. `hardening.auditSchedule: off` stops both installing and auditing.
+* **Audit:** `nice -n 15 lynis audit system --cronjob --quiet --no-colors --profile {state}/lynis/sentinel-vps.prf
+  --report-file {state}/lynis/report.dat --log-file {state}/lynis/lynis.log`. The profile only sets
+  `skip-upgrade-test=yes`: Lynis's upgrade check is a DNS query to cisofy.com, and agents talk only to their server.
+  Lynis merges it over its own `default.prf`, so an admin's `/etc/lynis/custom.prf` still applies. A full audit takes
+  about 3 minutes on this repo's dev container (243 tests). The report and log stay in the agent's state directory;
+  `/var/log/lynis*.log` (an admin's own cron runs) is left alone.
+* **Parsing:** the agent reads Lynis's machine-readable report file, which is the format Lynis's own `lynis show`
+  commands read: `hardening_index`, `lynis_version`, `lynis_tests_done`, and `warning[]` / `suggestion[]` lines of the
+  form `TEST-ID|text|details|solution|`. No console output is parsed. Only these fields go to the server, not the
+  rest of the report (installed packages, network listeners, users).
+* **Server side:** items are stored per host (`HardeningItems`, replaced per audit, `FirstSeenAt` kept); a failed audit
+  keeps the last good checklist. Each report records which test ids the previous audit had and this one doesn't
+  ("resolved since the previous audit"). Accepted items (`hardening.ignore`, Lynis test ids, a union across layers)
+  are applied by the server, like accepted CVEs, and re-applied on every policy save. They don't change Lynis's index,
+  which is its own; they drop out of the warning and suggestion counts and the fleet view.
+* **Alerts (agent):** `hardening.warning` (Medium) when a warning appears that the previous audit didn't have, and
+  `hardening.regressed` (Medium) when the index drops by 5 or more points between audits.
+* **Dashboard:** each host's *Hardening* tab shows the index, warnings first, and a checklist grouped by Lynis category,
+  with each test id linked to its CISOfy control page. Where a finding overlaps with something SentinelVPS already does
+  (SSH and kernel settings and automatic updates are baseline fixes; pending updates and vulnerable packages have
+  their own tabs; DEB-0880's `jail.local` advice doesn't apply to the jail.d drop-in), the row says so and links
+  there. The Baseline page's *Lynis audit* view ranks findings across the fleet.
+
 ## 6. Security model
 
 | Secret | At rest |
@@ -438,7 +472,7 @@ allowlist, and the operator's own address.
   firewall code for banning.
 * **Security baseline.** About twenty checks that matter most on an internet-facing server (SSH, firewall,
   automatic updates, pending reboot, kernel network hardening, UID 0 and empty-password accounts, shadow file
-  permissions, time sync). Lynis (D8) audits far more broadly, but it only *suggests*: it has no "apply" and no
+  permissions, time sync). Lynis (§5e) audits far more broadly, but it only *suggests*: it has no "apply" and no
   undo. The baseline exists for the short list where a fix is safe to automate. It still parses nothing by hand:
   checks read the system's own authoritative output (`sshd -T` for the *effective* SSH config, `sysctl -e`,
   `ufw status`, `nft -j list ruleset`, `iptables -S`, `apt-config dump`, `timedatectl show`, `passwd -S -a`,

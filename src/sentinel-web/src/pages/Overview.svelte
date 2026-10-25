@@ -95,11 +95,11 @@
       <span class="big">{data.hostsWithHighCves ?? '—'}</span>
       <span class="foot muted">{data.hostsWithHighCves === null ? 'not scanned yet' : `host${data.hostsWithHighCves === 1 ? '' : 's'} affected`}</span>
     </a>
-    <div class="tile later" title="Arrives with the Lynis integration (deliverable 8)">
+    <a class="tile" href="/baseline?view=lynis">
       <span class="label">Hardening index</span>
       <span class="big">{data.averageHardeningIndex?.toFixed(0) ?? '—'}</span>
-      <span class="foot muted">{data.averageHardeningIndex === null ? 'not audited yet' : 'Lynis average'}</span>
-    </div>
+      <span class="foot muted">{data.averageHardeningIndex === null ? 'not audited yet' : 'Lynis average across hosts'}</span>
+    </a>
   </section>
 
   <div class="grid-2">
@@ -189,7 +189,6 @@
     background: var(--surface); border: 1px solid var(--border); border-radius: 8px; color: inherit;
   }
   a.tile:hover { border-color: var(--border-strong); text-decoration: none; background: var(--surface-2); }
-  .tile.later { opacity: 0.7; }
   .label { color: var(--muted); font-size: 12px; }
   .big { font-size: 28px; font-weight: 600; color: var(--text-strong); font-variant-numeric: tabular-nums; line-height: 1.2; }
   .of { font-size: 16px; color: var(--muted); font-weight: 400; margin-left: 4px; }

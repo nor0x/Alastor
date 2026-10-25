@@ -12,13 +12,15 @@
   import { toast } from '../lib/toast.svelte';
   import { confirm } from '../lib/ui/confirm.svelte';
   import ApplyFixDialog from '../lib/ApplyFixDialog.svelte';
+  import FleetHardening from '../lib/FleetHardening.svelte';
   import Severity from '../lib/ui/Severity.svelte';
   import Time from '../lib/ui/Time.svelte';
 
   let data = $state<BaselineFleet | null>(null);
   let globalYaml = $state('');
   let error = $state('');
-  let view = $state<'checks' | 'hosts'>(new URLSearchParams(route.search).get('view') === 'hosts' ? 'hosts' : 'checks');
+  const initialView = new URLSearchParams(route.search).get('view');
+  let view = $state<'checks' | 'hosts' | 'lynis'>(initialView === 'hosts' || initialView === 'lynis' ? initialView : 'checks');
   let onlyFailing = $state(false);
   let fixFor = $state<BaselineCheck | null>(null);
   let fixOpen = $state(false);
@@ -40,7 +42,7 @@
   });
 
   $effect(() => {
-    history.replaceState(null, '', view === 'hosts' ? '/baseline?view=hosts' : '/baseline');
+    history.replaceState(null, '', view === 'checks' ? '/baseline' : `/baseline?view=${view}`);
   });
 
   /** What the global layer sets for a check: "apply", "ignore", true (sshd jail), or undefined. */
@@ -107,10 +109,13 @@
   <div class="seg" role="group" aria-label="View">
     <button class:on={view === 'checks'} aria-pressed={view === 'checks'} onclick={() => (view = 'checks')}>By check</button>
     <button class:on={view === 'hosts'} aria-pressed={view === 'hosts'} onclick={() => (view = 'hosts')}>By host</button>
+    <button class:on={view === 'lynis'} aria-pressed={view === 'lynis'} onclick={() => (view = 'lynis')}>Lynis audit</button>
   </div>
 </div>
 
-{#if error && !data}
+{#if view === 'lynis'}
+  <FleetHardening />
+{:else if error && !data}
   <div class="banner bad" role="alert"><p>Couldn't load the baseline: {error}</p></div>
 {:else if !data}
   <div class="skeleton-block"></div>

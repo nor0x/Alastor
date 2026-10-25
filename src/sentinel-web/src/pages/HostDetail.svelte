@@ -13,6 +13,8 @@
   import HostBaseline from '../lib/HostBaseline.svelte';
   import HostUpdates from '../lib/HostUpdates.svelte';
   import HostVulnerabilities from '../lib/HostVulnerabilities.svelte';
+  import HostHardening from '../lib/HostHardening.svelte';
+  import { indexTone } from '../lib/hardening';
   import UpdatesBadge from '../lib/ui/UpdatesBadge.svelte';
   import VulnBadge from '../lib/ui/VulnBadge.svelte';
   import EventList from '../lib/ui/EventList.svelte';
@@ -22,8 +24,8 @@
 
   let { id }: { id: string } = $props();
 
-  type Tab = 'overview' | 'baseline' | 'updates' | 'vulnerabilities' | 'events' | 'bans' | 'policy' | 'commands';
-  const tabs: [Tab, string][] = [['overview', 'Overview'], ['baseline', 'Baseline'], ['updates', 'Updates'], ['vulnerabilities', 'CVEs'], ['events', 'Events'], ['bans', 'Bans'], ['policy', 'Policy'], ['commands', 'Commands']];
+  type Tab = 'overview' | 'baseline' | 'hardening' | 'updates' | 'vulnerabilities' | 'events' | 'bans' | 'policy' | 'commands';
+  const tabs: [Tab, string][] = [['overview', 'Overview'], ['baseline', 'Baseline'], ['hardening', 'Hardening'], ['updates', 'Updates'], ['vulnerabilities', 'CVEs'], ['events', 'Events'], ['bans', 'Bans'], ['policy', 'Policy'], ['commands', 'Commands']];
   const tab = $derived((new URLSearchParams(route.search).get('tab') as Tab) || 'overview');
 
   let host = $state<HostDetail | null>(null);
@@ -250,6 +252,7 @@
         {label}
         {#if t === 'baseline' && s.baselineFailing}<span class="count">{s.baselineFailing}</span>{/if}
         {#if t === 'updates' && (s.securityUpdates ?? s.pendingUpdates)}<span class="count">{s.securityUpdates ?? s.pendingUpdates}</span>{/if}
+        {#if t === 'hardening' && s.hardeningWarnings}<span class="count">{s.hardeningWarnings}</span>{/if}
         {#if t === 'vulnerabilities' && (s.vulnCritical ?? 0) + (s.vulnHigh ?? 0) > 0}<span class="count">{(s.vulnCritical ?? 0) + (s.vulnHigh ?? 0)}</span>{/if}
         {#if t === 'bans' && bans.length}<span class="count">{bans.length}</span>{/if}
         {#if t === 'commands' && commands.some((c) => c.status === 'Pending' || c.status === 'Delivered')}<span class="count">…</span>{/if}
@@ -331,6 +334,13 @@
                 {#if s.baselineFailing}<span class="muted small">{s.baselineFailing} failing</span>{/if}
               {:else}<span class="muted">not checked yet</span>{/if}
             </dd>
+            <dt>Hardening</dt>
+            <dd>
+              {#if s.hardeningIndex !== null}
+                <a href="/hosts/{id}?tab=hardening"><span class="pill {indexTone(s.hardeningIndex)}">index {s.hardeningIndex}</span></a>
+                {#if s.hardeningWarnings}<span class="muted small">{s.hardeningWarnings} warning{s.hardeningWarnings === 1 ? '' : 's'}</span>{/if}
+              {:else}<span class="muted">not audited yet</span>{/if}
+            </dd>
             <dt>Updates</dt>
             <dd>
               {#if s.pendingUpdates !== null}
@@ -356,6 +366,8 @@
     </div>
   {:else if tab === 'baseline'}
     <HostBaseline hostId={id} groupId={s.groupId} groupName={s.groupName} isOnline={s.isOnline} />
+  {:else if tab === 'hardening'}
+    <HostHardening hostId={id} isOnline={s.isOnline} osId={host.osId} />
   {:else if tab === 'updates'}
     <HostUpdates hostId={id} isOnline={s.isOnline} />
   {:else if tab === 'vulnerabilities'}

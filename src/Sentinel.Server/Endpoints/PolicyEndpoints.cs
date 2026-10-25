@@ -45,7 +45,8 @@ public static class PolicyEndpoints
         });
 
         g.MapPut("/{scope}/{targetId:guid?}", async (string scope, Guid? targetId, SaveRequest req, ClaimsPrincipal user, SentinelDbContext db,
-            PolicyService policies, DashboardNotifier notifier, Services.Vulnerabilities.VulnerabilityService vulnerabilities, CancellationToken ct) =>
+            PolicyService policies, DashboardNotifier notifier, Services.Vulnerabilities.VulnerabilityService vulnerabilities,
+            Services.Hardening.HardeningService hardening, CancellationToken ct) =>
         {
             if (!TryScope(scope, targetId, out var s)) return Results.Problem("Scope must be global, group/{id} or host/{id}.", statusCode: 400);
             if (s == PolicyScope.Group && !await db.Groups.AnyAsync(x => x.Id == targetId, ct)) return Results.NotFound();
@@ -54,6 +55,7 @@ public static class PolicyEndpoints
             {
                 var v = await policies.SaveAsync(s, targetId, req.Yaml ?? "", req.Comment, user.Actor(), ct);
                 await vulnerabilities.RefreshAcceptedAsync(s, targetId, ct);
+                await hardening.RefreshAcceptedAsync(s, targetId, ct);
                 await notifier.PolicyChangedAsync(ct);
                 return Results.Ok(new VersionDto(v.Version, v.Comment, v.CreatedAt, v.CreatedBy));
             }
@@ -68,12 +70,14 @@ public static class PolicyEndpoints
         }).RequireAuthorization(AuthPolicies.Admin);
 
         g.MapPost("/layers/{layerId:guid}/revert/{version:int}", async (Guid layerId, int version, ClaimsPrincipal user,
-            SentinelDbContext db, PolicyService policies, DashboardNotifier notifier, Services.Vulnerabilities.VulnerabilityService vulnerabilities, CancellationToken ct) =>
+            SentinelDbContext db, PolicyService policies, DashboardNotifier notifier, Services.Vulnerabilities.VulnerabilityService vulnerabilities,
+            Services.Hardening.HardeningService hardening, CancellationToken ct) =>
         {
             if (!await db.PolicyVersions.AnyAsync(v => v.LayerId == layerId && v.Version == version, ct)) return Results.NotFound();
             var v = await policies.RevertAsync(layerId, version, user.Actor(), ct);
             var layer = await db.PolicyLayers.AsNoTracking().FirstAsync(l => l.Id == layerId, ct);
             await vulnerabilities.RefreshAcceptedAsync(layer.Scope, layer.TargetId, ct);
+            await hardening.RefreshAcceptedAsync(layer.Scope, layer.TargetId, ct);
             await notifier.PolicyChangedAsync(ct);
             return Results.Ok(new VersionDto(v.Version, v.Comment, v.CreatedAt, v.CreatedBy));
         }).RequireAuthorization(AuthPolicies.Admin);

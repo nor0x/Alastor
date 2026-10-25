@@ -131,6 +131,7 @@ builder.Services.AddHttpClient(BlocklistService.HttpClientName, c =>
 if (options.BlocklistsEnabled) builder.Services.AddHostedService<BlocklistWorker>();
 builder.Services.AddSingleton<VulnDbMirror>();
 builder.Services.AddScoped<VulnerabilityService>();
+builder.Services.AddScoped<Sentinel.Server.Services.Hardening.HardeningService>();
 builder.Services.AddHttpClient(VulnDbMirror.HttpClientName, c =>
 {
     c.Timeout = Timeout.InfiniteTimeSpan; // 100-200 MB archives; each request is bounded by the worker's token
@@ -185,6 +186,7 @@ app.MapNotificationEndpoints();
 app.MapBlocklistEndpoints();
 app.MapReportEndpoints();
 app.MapVulnerabilityEndpoints();
+app.MapHardeningEndpoints();
 app.MapHub<AgentHub>("/hubs/agent");
 app.MapHub<DashboardHub>("/hubs/dashboard");
 app.MapInstallScripts();

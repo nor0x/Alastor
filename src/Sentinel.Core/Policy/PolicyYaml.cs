@@ -67,6 +67,7 @@ public static partial class PolicyYaml
             if (b.Jails is not null) b.Jails = b.Jails.OrderBy(kv => kv.Key, StringComparer.Ordinal).ToDictionary(StringComparer.Ordinal);
             if (b.Allowlist is not null) b.Allowlist = b.Allowlist.Order(StringComparer.Ordinal).ToList();
         }
+        if (canonical.Hardening?.Ignore is { } hi) canonical.Hardening.Ignore = hi.Order(StringComparer.OrdinalIgnoreCase).ToList();
         if (canonical.Vulnerabilities?.Ignore is { } vi) canonical.Vulnerabilities.Ignore = vi.Order(StringComparer.OrdinalIgnoreCase).ToList();
         if (canonical.Blocklists?.Extra is { } extra) canonical.Blocklists.Extra = extra.Order(StringComparer.Ordinal).ToList();
         if (canonical.Baseline?.Mitigations is { } m)
@@ -125,6 +126,9 @@ public static partial class PolicyYaml
             if (bl.Enabled == true && (bl.Lists ?? []).Count == 0 && (bl.Extra ?? []).Count == 0)
                 Warn("blocklists", "Blocklists are enabled but no list and no extra entry is set, so nothing is blocked.");
         }
+        foreach (var (id, i) in (doc.Hardening?.Ignore ?? []).Select((id, i) => (id, i)))
+            if (!System.Text.RegularExpressions.Regex.IsMatch(id, @"^[A-Z]{2,6}-[0-9A-Z]{3,6}$"))
+                Error($"hardening.ignore[{i}]", $"'{id}' isn't a Lynis test id (examples: SSH-7408, KRNL-6000).");
         if (doc.Vulnerabilities is { } vp)
         {
             if (vp.Scanner is { } sc && sc is not ("auto" or "trivy" or "grype" or "off"))

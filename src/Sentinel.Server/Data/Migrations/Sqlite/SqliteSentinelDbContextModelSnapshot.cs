@@ -520,6 +520,53 @@ namespace Sentinel.Server.Data.Migrations.Sqlite
                     b.ToTable("Groups");
                 });
 
+            modelBuilder.Entity("Sentinel.Server.Data.HostHardeningItem", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool>("Accepted")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Details")
+                        .HasMaxLength(512)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("FirstSeenAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("HostId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Solution")
+                        .HasMaxLength(512)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("TestId")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Text")
+                        .IsRequired()
+                        .HasMaxLength(512)
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("HostId");
+
+                    b.HasIndex("TestId");
+
+                    b.ToTable("HardeningItems");
+                });
+
             modelBuilder.Entity("Sentinel.Server.Data.HostMetricSample", b =>
                 {
                     b.Property<long>("Id")
@@ -799,6 +846,18 @@ namespace Sentinel.Server.Data.Migrations.Sqlite
 
                     b.Property<Guid?>("GroupId")
                         .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("HardeningAuditedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int?>("HardeningIndex")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("HardeningSuggestions")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("HardeningWarnings")
+                        .HasColumnType("INTEGER");
 
                     b.Property<int>("HeartbeatIntervalSeconds")
                         .HasColumnType("INTEGER");
@@ -1186,6 +1245,15 @@ namespace Sentinel.Server.Data.Migrations.Sqlite
                 });
 
             modelBuilder.Entity("Sentinel.Server.Data.HostCommand", b =>
+                {
+                    b.HasOne("Sentinel.Server.Data.ManagedHost", null)
+                        .WithMany()
+                        .HasForeignKey("HostId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Sentinel.Server.Data.HostHardeningItem", b =>
                 {
                     b.HasOne("Sentinel.Server.Data.ManagedHost", null)
                         .WithMany()
