@@ -22,7 +22,7 @@ public static class ToolCatalog
         new(Fail2BanIntegration.Info, Implemented: true, OptIn: false),
         new(Baseline.BaselineIntegration.Info, Implemented: true, OptIn: false),
         new(CrowdSec.CrowdSecIntegration.Info, Implemented: true, OptIn: true),
-        new(D("ufw", "ufw", Capability.Firewall, "GPL-3.0", "https://launchpad.net/ufw", "ufw", "Uncomplicated Firewall front-end."), false, false),
+        new(Firewall.UfwIntegration.Info, Implemented: true, OptIn: true),
         new(Blocklists.BlocklistIntegration.Info, Implemented: true, OptIn: false),
         new(Updates.UpdatesIntegration.Info, Implemented: true, OptIn: false),
         new(Vulnerabilities.VulnerabilityIntegration.Info, Implemented: true, OptIn: false),

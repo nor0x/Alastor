@@ -114,6 +114,11 @@ public sealed class ManagedHost
     /// <summary>Findings a package update fixes.</summary>
     public int? VulnFixable { get; set; }
 
+    // Container images scanned with vulnerabilities.scanContainers (not in the counts above, which are the host's own packages).
+    public int? ImagesScanned { get; set; }
+    public int? ImageVulnCritical { get; set; }
+    public int? ImageVulnHigh { get; set; }
+
     public DateTime? VulnScannedAt { get; set; }
 
     // Latest Lynis audit, denormalized for list views (accepted items excluded from the counts).
@@ -189,6 +194,9 @@ public sealed class HostVulnerability
     public string? Title { get; set; }
     public string PkgType { get; set; } = "";
     public string? Path { get; set; }
+
+    /// <summary>The container image the package is in; null for the host's own packages.</summary>
+    public string? Image { get; set; }
 
     /// <summary>Listed in the host's effective <c>vulnerabilities.ignore</c>. Refreshed when policy changes.</summary>
     public bool Accepted { get; set; }

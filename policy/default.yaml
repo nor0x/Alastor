@@ -55,6 +55,7 @@ vulnerabilities:
   scanSchedule: "0 3 * * *"  # Trivy/Grype package scan, nightly
   scanner: auto              # auto (Trivy if installed, else Grype) | trivy | grype | off
   languagePackages: true     # also npm, pip, gems, Go binaries found on disk, not only OS packages
+  scanContainers: false      # also scan images of running Docker/Podman containers (local images only, nothing is pulled)
   ignorePackages: [linux-libc-dev]  # kernel headers: every kernel CVE is tracked against them, but no kernel code runs from them
   ignore: []                 # accepted CVE ids (still listed, not counted or alerted); merged across layers
   alertSeverity: high        # alert on new *fixable* findings at or above: low | medium | high | critical | off
@@ -80,6 +81,12 @@ network:
   checkSchedule: every 1h    # is SSH reachable from the internet? is Tailscale up? (reads sockets, addresses, firewall)
   allowPublicSsh: false      # true on hosts where public SSH is intended (bastion): shown as accepted, not alerted
   allowPublicPorts: [80/tcp, 443/tcp]  # services meant to face the internet; other public ports are flagged. Merged across layers
+
+firewall:
+  manage: false              # opt-in: the agent manages ufw rules tagged "alastor" (Debian/Ubuntu); others are left alone
+  ssh: [any]                 # where SSH may come from: any | from CIDR | on tailscale0 (never empty, so SSH can't be locked out)
+  allow: []                  # extra rules, e.g. [5432/tcp from 10.0.0.0/8, 9100/tcp on tailscale0]; network.allowPublicPorts are allowed too
+  defaultIncoming: deny      # deny | reject for anything not allowed
 
 logins:
   monitor: true              # report successful SSH logins (journald, or auth.log / secure); read-only

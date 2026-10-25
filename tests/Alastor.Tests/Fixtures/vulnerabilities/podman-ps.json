@@ -1,0 +1,15 @@
+[
+  {
+    "AutoRemove": false,
+    "Command": ["postgres"],
+    "Created": 1792918800,
+    "CreatedAt": "2026-10-25T09:00:00Z",
+    "Exited": false,
+    "Id": "6f5e4d3c2b1a09f8e7d6c5b4a3928170",
+    "Image": "docker.io/library/postgres:16",
+    "ImageID": "8f2b…",
+    "Names": ["db"],
+    "State": "running",
+    "Status": "Up 2 hours"
+  }
+]

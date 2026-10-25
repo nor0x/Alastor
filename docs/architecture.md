@@ -416,6 +416,13 @@ Policy: `vulnerabilities: {scanSchedule, scanner, languagePackages, ignorePackag
   `alertSeverity` (default `high`): an alert should come with something to do. The server raises
   `vulnerabilities.exploited` (Critical) when a host has a CVE in CISA's KEV catalog, which it already mirrors for the
   threat feed: at scan time for new findings, and when CISA adds a CVE that hosts already have.
+* **Container images** (`vulnerabilities.scanContainers: true`, off by default): after the host scan, the agent lists
+  running containers (`docker ps --format '{{json .}}'`, `podman ps --format json`) and scans each distinct image, at
+  most 20, from the local image store: `trivy image --image-src docker|podman --offline-scan` or
+  `grype docker:|podman:`, against the same mirrored database. Nothing is pulled from a registry. One image failing is
+  recorded in the report's `images` list and doesn't fail the scan. Findings carry their `image`; the host's counts
+  stay its own packages (host updates don't reach images), images get their own counts, a `cve.image-critical` issue
+  and a source filter on the host's *CVEs* tab. The new-findings alert stays about host packages.
 
 ## 5e. Hardening audits (Lynis)
 
@@ -480,6 +487,8 @@ Policy: `network: {checkSchedule, allowPublicSsh, allowPublicPorts}`.
   is *unexpected*: the agent raises `exposure.service` (Medium) once per port, the server lists it on the host row
   (`PublicServices`), and it becomes a `service.public` issue until the port closes or is allowed. The host's
   *Network* tab lists the services with an *Allow* button that adds the port to the host's policy layer.
+* **Closing ports:** with `firewall.manage` (§5l) the same `allowPublicPorts` list becomes ufw allow rules, so what the
+  inventory flags as unexpected is what the managed firewall blocks.
 * **Alerts:** `exposure.detected` when SSH becomes `Public` (High with password logins on, Medium for key-only), once
   per transition. `network.allowPublicSsh: true` (a bastion) marks it accepted: listed, not counted, not alerted,
   applied by the server at once.
@@ -616,6 +625,25 @@ Policy: `logins: {monitor, alertOnNewSource, trustedSources}`.
   the ones that alerted. `GET /api/hosts/{id}/logins`.
 * **Why built:** fail2ban and CrowdSec look at *failed* logins; nothing bundled reports the successful ones, which
   are what matters after a key or password leaks. sshd's own messages and the journal do the work.
+
+## 5l. Firewall (ufw, opt-in)
+
+Code: `src/Alastor.Core/Firewall/`. Policy: `firewall: {manage, ssh, allow, defaultIncoming}`, plus `network.allowPublicPorts`.
+
+* With `firewall.manage: true` (Debian/Ubuntu; RHEL-family hosts use firewalld and are reported unavailable) the agent
+  installs ufw if needed and keeps a set of allow rules it owns, tagged `comment 'alastor'` and read back with
+  `ufw show added`: SSH on each of sshd's ports (`sshd -T`) from each `firewall.ssh` source (`any` by default,
+  `from CIDR`, `on tailscale0`), every `network.allowPublicPorts` entry, and `firewall.allow` (`5432/tcp from
+  10.0.0.0/8`, `9100/tcp on tailscale0`, ranges like `60000-61000/udp`; a union across layers). Rules without the tag
+  belong to someone else and are never touched. It then sets `ufw default deny|reject incoming` and enables ufw.
+* **Lockout guards.** Before anything changes, the plan is refused (state `Rejected`, a High `config.rejected` event)
+  when no rule would allow one of sshd's ports, or when SSH is limited to an interface that isn't up. Policy validation
+  refuses an empty `firewall.ssh` and warns when SSH is only reachable over an interface. Each new rule is checked with
+  `ufw --dry-run` first; a failing step undoes the steps before it, in reverse. Turning `firewall.manage` off leaves
+  every rule in place (removing the SSH rule from an active firewall could cut access); uninstalling the agent removes
+  its rules except SSH ones while ufw is active.
+* **Why ufw:** it's the firewall front end Debian and Ubuntu ship, its rules survive reboots on their own, and its
+  comments give the agent a clean ownership marker without parsing raw iptables or nft rules.
 
 ## 6. Security model
 

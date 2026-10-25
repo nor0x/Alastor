@@ -71,6 +71,7 @@ public static partial class PolicyYaml
         if (canonical.Vulnerabilities?.Ignore is { } vi) canonical.Vulnerabilities.Ignore = vi.Order(StringComparer.OrdinalIgnoreCase).ToList();
         if (canonical.Blocklists?.Extra is { } extra) canonical.Blocklists.Extra = extra.Order(StringComparer.Ordinal).ToList();
         if (canonical.Network?.AllowPublicPorts is { } ports) canonical.Network.AllowPublicPorts = ports.Order(StringComparer.OrdinalIgnoreCase).ToList();
+        if (canonical.Firewall?.Allow is { } fa) canonical.Firewall.Allow = fa.Order(StringComparer.Ordinal).ToList();
         if (canonical.Integrity?.Exclude is { } ie) canonical.Integrity.Exclude = ie.Order(StringComparer.Ordinal).ToList();
         if (canonical.Malware?.RootkitIgnore is { } ri) canonical.Malware.RootkitIgnore = ri.Order(StringComparer.Ordinal).ToList();
         if (canonical.Logins?.TrustedSources is { } trusted) canonical.Logins.TrustedSources = trusted.Order(StringComparer.Ordinal).ToList();
@@ -121,6 +122,17 @@ public static partial class PolicyYaml
             foreach (var (path, i) in (list ?? []).Select((p, i) => (p, i)))
                 if (!path.StartsWith('/') || path.Contains("..", StringComparison.Ordinal) || path.Any(char.IsWhiteSpace))
                     Error($"integrity.{key}[{i}]", $"'{path}' must be an absolute path without spaces.");
+        if (doc.Firewall is { } fw)
+        {
+            foreach (var (rule, i) in (fw.Allow ?? []).Select((r, i) => (r, i)))
+                if (!Alastor.Core.Firewall.UfwRules.TryParse(rule, out _, out var err)) Error($"firewall.allow[{i}]", err!);
+            if (fw.Ssh is { Count: 0 }) Error("firewall.ssh", "SSH must stay reachable from somewhere: use [any], or list the sources (from CIDR, on tailscale0).");
+            foreach (var (src, i) in (fw.Ssh ?? []).Select((r, i) => (r, i)))
+                if (!Alastor.Core.Firewall.UfwRules.TryParseSshSource(src, 22, out _, out var err)) Error($"firewall.ssh[{i}]", err!);
+            if (fw.DefaultIncoming is not null and not ("deny" or "reject")) Error("firewall.defaultIncoming", "Use deny or reject.");
+            if (fw.Manage == true && (fw.Ssh ?? ["any"]).All(s => s.Contains(" on ", StringComparison.Ordinal) || s.StartsWith("on ", StringComparison.Ordinal)))
+                Warn("firewall.ssh", "SSH is only allowed on an interface (e.g. tailscale0). If that network goes down, the provider's console is the only way in.");
+        }
         foreach (var (entry, i) in (doc.Logins?.TrustedSources ?? []).Select((e, i) => (e, i)))
             if (!IpTarget.TryParse(entry, out _)) Error($"logins.trustedSources[{i}]", $"'{entry}' is not an IP address or CIDR.");
         foreach (var (spec, i) in (doc.Network?.AllowPublicPorts ?? []).Select((p, i) => (p, i)))

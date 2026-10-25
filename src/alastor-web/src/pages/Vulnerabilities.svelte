@@ -185,6 +185,7 @@
                 <td>
                   {#if h.total !== null}
                     <VulnBadge critical={h.critical} high={h.high} total={h.total} /> <span class="muted small">{h.total} total</span>
+                    {#if h.images}<div class="small muted">+ {h.images} image{h.images === 1 ? '' : 's'}{#if h.imageCritical} · <span class="bad-text">{h.imageCritical} critical</span>{/if}</div>{/if}
                     {@const other = h.total - (h.critical ?? 0) - (h.high ?? 0)}
                     <span class="sevbar" style:width="{(h.total / maxTotal) * 100}%" title="{h.critical ?? 0} critical · {h.high ?? 0} high · {other} other" aria-hidden="true">
                       {#if h.critical}<span style:flex-grow={h.critical} class="c"></span>{/if}

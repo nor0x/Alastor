@@ -902,6 +902,10 @@ namespace Alastor.Server.Data.Migrations.Postgres
                     b.Property<Guid>("HostId")
                         .HasColumnType("uuid");
 
+                    b.Property<string>("Image")
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
+
                     b.Property<string>("Installed")
                         .IsRequired()
                         .HasMaxLength(200)
@@ -1044,6 +1048,15 @@ namespace Alastor.Server.Data.Migrations.Postgres
                     b.Property<string>("Hostname")
                         .IsRequired()
                         .HasColumnType("text");
+
+                    b.Property<int?>("ImageVulnCritical")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("ImageVulnHigh")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("ImagesScanned")
+                        .HasColumnType("integer");
 
                     b.Property<int?>("IntegrityChanges")
                         .HasColumnType("integer");

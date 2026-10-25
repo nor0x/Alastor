@@ -35,6 +35,14 @@ public static class PolicyMerger
                 : (baseDoc.Malware?.RootkitIgnore ?? []).Concat(overlay.Malware?.RootkitIgnore ?? []).Distinct(StringComparer.Ordinal).ToList(),
         },
         Baseline = Merge(baseDoc.Baseline, overlay.Baseline),
+        Firewall = baseDoc.Firewall is null && overlay.Firewall is null ? null : new FirewallPolicy
+        {
+            Manage = overlay.Firewall?.Manage ?? baseDoc.Firewall?.Manage,
+            Ssh = (overlay.Firewall?.Ssh ?? baseDoc.Firewall?.Ssh)?.ToList(),
+            Allow = baseDoc.Firewall?.Allow is null && overlay.Firewall?.Allow is null ? null
+                : (baseDoc.Firewall?.Allow ?? []).Concat(overlay.Firewall?.Allow ?? []).Distinct(StringComparer.Ordinal).ToList(),
+            DefaultIncoming = overlay.Firewall?.DefaultIncoming ?? baseDoc.Firewall?.DefaultIncoming,
+        },
         Integrity = baseDoc.Integrity is null && overlay.Integrity is null ? null : new IntegrityPolicy
         {
             CheckSchedule = overlay.Integrity?.CheckSchedule ?? baseDoc.Integrity?.CheckSchedule,
@@ -69,6 +77,7 @@ public static class PolicyMerger
             ScanSchedule = o?.ScanSchedule ?? b?.ScanSchedule,
             Scanner = o?.Scanner ?? b?.Scanner,
             LanguagePackages = o?.LanguagePackages ?? b?.LanguagePackages,
+            ScanContainers = o?.ScanContainers ?? b?.ScanContainers,
             IgnorePackages = (o?.IgnorePackages ?? b?.IgnorePackages)?.ToList(),
             Ignore = ignore,
             AlertSeverity = o?.AlertSeverity ?? b?.AlertSeverity,

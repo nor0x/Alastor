@@ -145,6 +145,9 @@ public enum ChangeKind
     DeleteFile,
     Reload,
     StartService,
+
+    /// <summary>Run a tool's own command (a ufw rule change); <see cref="PlannedChange.Content"/> holds the arguments, one per line.</summary>
+    RunCommand,
 }
 
 public sealed record PlannedChange(ChangeKind Kind, string Target, string Description, string? Content = null);
