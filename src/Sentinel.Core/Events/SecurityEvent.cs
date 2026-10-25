@@ -125,9 +125,14 @@ public static class EventKinds
     /// <summary>The Lynis hardening index dropped by 5 points or more since the previous audit.</summary>
     public const string HardeningRegressed = "hardening.regressed";
 
+    // Network exposure
+    /// <summary>SSH became reachable from the internet (and the host doesn't set network.allowPublicSsh).</summary>
+    public const string ExposureDetected = "exposure.detected";
+    /// <summary>The host's Tailscale node key expires soon, after which it drops off the tailnet.</summary>
+    public const string TailscaleKeyExpiring = "tailscale.key-expiring";
+
     // Reserved for later deliverables.
     public const string VulnerabilityFound = "vuln.found";
     public const string HardeningFinding = "hardening.finding";
     public const string MalwareFound = "malware.found";
-    public const string ExposureDetected = "exposure.detected";
 }

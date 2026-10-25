@@ -62,6 +62,10 @@ public abstract class SentinelDbContext(DbContextOptions options) : DbContext(op
             e.HasIndex(h => h.Name);
             e.HasOne(h => h.Group).WithMany().HasForeignKey(h => h.GroupId).OnDelete(DeleteBehavior.SetNull);
             e.HasMany(h => h.Tools).WithOne().HasForeignKey(t => t.HostId).OnDelete(DeleteBehavior.Cascade);
+            e.Property(h => h.SshExposure).HasConversion<string>().HasMaxLength(24);
+            e.Property(h => h.ObservedAddress).HasMaxLength(64);
+            e.Property(h => h.TailscaleState).HasMaxLength(32);
+            e.Property(h => h.TailscaleIp).HasMaxLength(64);
         });
 
         m.Entity<HostToolStatus>().HasKey(t => new { t.HostId, t.ToolId });

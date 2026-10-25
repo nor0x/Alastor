@@ -12,7 +12,8 @@ timeline, bans and allowlist, policy editor (form and YAML views with live valid
 fail2ban config, version history and revert), security baseline (21 common hardening checks per host with
 one-click, reversible fixes applied by the agent, accepted risks, and host-specific commands for manual fixes), alert
 channels, blocklists, security updates, CVE scans (Trivy/Grype against a server-mirrored database, CISA KEV joined),
-Lynis hardening audits (index, remediation checklist grouped by category, accepted items, fleet ranking), threat feed, settings (groups, enrollment tokens, API keys, server
+Lynis hardening audits (index, remediation checklist grouped by category, accepted items, fleet ranking), SSH exposure
+warnings and Tailscale detection, threat feed, settings (groups, enrollment tokens, API keys, server
 configuration, audit log) and About/licenses. Live updates over SignalR, with polling when the hub is unreachable.
 See [docs/architecture.md](docs/architecture.md) for the event model, integration interface and API surface.
 

@@ -917,6 +917,13 @@ namespace Sentinel.Server.Data.Migrations.Postgres
                         .IsRequired()
                         .HasColumnType("text");
 
+                    b.Property<DateTime?>("NetworkCheckedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("ObservedAddress")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
                     b.Property<string>("OsId")
                         .IsRequired()
                         .HasColumnType("text");
@@ -951,9 +958,27 @@ namespace Sentinel.Server.Data.Migrations.Postgres
                     b.Property<int?>("SecurityUpdates")
                         .HasColumnType("integer");
 
+                    b.Property<string>("SshExposure")
+                        .HasMaxLength(24)
+                        .HasColumnType("character varying(24)");
+
+                    b.Property<bool>("SshExposureAccepted")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool?>("SshPasswordAuth")
+                        .HasColumnType("boolean");
+
                     b.Property<string>("Tags")
                         .IsRequired()
                         .HasColumnType("text");
+
+                    b.Property<string>("TailscaleIp")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("TailscaleState")
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
 
                     b.Property<DateTime?>("UpdatesCheckedAt")
                         .HasColumnType("timestamp with time zone");

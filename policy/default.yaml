@@ -65,6 +65,10 @@ hardening:
 malware:
   scanSchedule: "off"        # ClamAV is opt-in, e.g. "0 2 * * 6"
 
+network:
+  checkSchedule: every 1h    # is SSH reachable from the internet? is Tailscale up? (reads sockets, addresses, firewall)
+  allowPublicSsh: false      # true on hosts where public SSH is intended (bastion): shown as accepted, not alerted
+
 # ---- Security baseline ----
 
 baseline:

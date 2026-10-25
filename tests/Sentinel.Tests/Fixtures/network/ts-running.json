@@ -1,0 +1,132 @@
+{
+  "Version": "1.104.2-tc3430f0d2-g598b63867",
+  "TUN": false,
+  "BackendState": "Running",
+  "HaveNodeKey": true,
+  "AuthURL": "",
+  "TailscaleIPs": [
+    "100.64.0.1",
+    "fd7a:115c:a1e0::1"
+  ],
+  "Self": {
+    "ID": "1",
+    "NodeID": 1,
+    "PublicKey": "nodekey:08a0c3aa62788a013e88bd7f70fc75e79a4d4be5156b2f95527537be9eaf7b45",
+    "HostName": "web-01",
+    "DNSName": "web-01.tail.example.net.",
+    "OS": "linux",
+    "UserID": 1,
+    "TailscaleIPs": [
+      "100.64.0.1",
+      "fd7a:115c:a1e0::1"
+    ],
+    "AllowedIPs": [
+      "100.64.0.1/32",
+      "fd7a:115c:a1e0::1/128"
+    ],
+    "Addrs": [
+      "127.0.0.1:56234",
+      "172.16.2.2:56234"
+    ],
+    "CurAddr": "",
+    "Relay": "local",
+    "PeerRelay": "",
+    "RxBytes": 0,
+    "TxBytes": 0,
+    "Created": "2026-10-25T06:42:11.812537478Z",
+    "LastWrite": "0001-01-01T00:00:00Z",
+    "LastSeen": "0001-01-01T00:00:00Z",
+    "LastHandshake": "0001-01-01T00:00:00Z",
+    "Online": true,
+    "ExitNode": false,
+    "ExitNodeOption": false,
+    "Active": false,
+    "PeerAPIURL": [
+      "http://100.64.0.1:58436",
+      "http://[fd7a:115c:a1e0::1]:58436"
+    ],
+    "TaildropTarget": 0,
+    "NoFileSharingReason": "",
+    "Capabilities": [
+      "HTTPS://TAILSCALE.COM/s/DEPRECATED-NODE-CAPS#see-https://github.com/tailscale/tailscale/issues/11508",
+      "default-auto-update",
+      "https://tailscale.com/cap/file-sharing",
+      "https://tailscale.com/cap/is-admin",
+      "https://tailscale.com/cap/ssh"
+    ],
+    "CapMap": {
+      "default-auto-update": [
+        false
+      ],
+      "https://tailscale.com/cap/file-sharing": [],
+      "https://tailscale.com/cap/is-admin": [],
+      "https://tailscale.com/cap/ssh": []
+    },
+    "InNetworkMap": true,
+    "InMagicSock": false,
+    "InEngine": false
+  },
+  "Health": [
+    "Tailscale could not connect to the 'Local DERP' relay server. Your Internet connection might be down, or the server might be temporarily unavailable.",
+    "Tailscale SSH enabled, but access controls don't allow anyone to access this device. Update your tailnet's ACLs to allow access."
+  ],
+  "MagicDNSSuffix": "tail.example.net",
+  "CurrentTailnet": {
+    "Name": "127.0.0.1",
+    "StableID": "",
+    "MagicDNSSuffix": "tail.example.net",
+    "MagicDNSEnabled": true
+  },
+  "CertDomains": null,
+  "ExtraRecords": null,
+  "Peer": {
+    "nodekey:98dc0c0b556cbbb1c08fb7a5dd1c15717424a6377f7059e08064d74fefbf5d26": {
+      "ID": "2",
+      "NodeID": 2,
+      "PublicKey": "nodekey:98dc0c0b556cbbb1c08fb7a5dd1c15717424a6377f7059e08064d74fefbf5d26",
+      "HostName": "admin-laptop",
+      "DNSName": "admin-laptop.tail.example.net.",
+      "OS": "linux",
+      "UserID": 1,
+      "TailscaleIPs": [
+        "100.64.0.2",
+        "fd7a:115c:a1e0::2"
+      ],
+      "AllowedIPs": [
+        "100.64.0.2/32",
+        "fd7a:115c:a1e0::2/128"
+      ],
+      "Addrs": null,
+      "CurAddr": "",
+      "Relay": "local",
+      "PeerRelay": "",
+      "RxBytes": 0,
+      "TxBytes": 0,
+      "Created": "2026-10-25T06:42:34.949562416Z",
+      "LastWrite": "0001-01-01T00:00:00Z",
+      "LastSeen": "0001-01-01T00:00:00Z",
+      "LastHandshake": "0001-01-01T00:00:00Z",
+      "Online": true,
+      "ExitNode": false,
+      "ExitNodeOption": false,
+      "Active": false,
+      "PeerAPIURL": [
+        "http://100.64.0.2:46590",
+        "http://[fd7a:115c:a1e0::2]:46590"
+      ],
+      "TaildropTarget": 1,
+      "NoFileSharingReason": "",
+      "InNetworkMap": true,
+      "InMagicSock": true,
+      "InEngine": false
+    }
+  },
+  "User": {
+    "1": {
+      "ID": 1,
+      "LoginName": "fleet",
+      "DisplayName": "fleet"
+    }
+  },
+  "ClientVersion": null
+}
