@@ -2,19 +2,29 @@
 
 Free, self-hosted endpoint protection for Linux VPS fleets: one lightweight agent per server, one central
 server, one dashboard. SentinelVPS doesn't reinvent security engines. It **orchestrates** proven open-source
-tools (fail2ban, CrowdSec, Trivy, Lynis, unattended-upgrades, …): it installs or adopts them, owns their
+tools (fail2ban, Trivy, Lynis, unattended-upgrades, …; CrowdSec and ClamAV next): it installs or adopts them, owns their
 configuration declaratively, and turns their output into one normalized alert pipeline.
 
-**Status:** deliverables 1–3 backend complete (server API, SQLite/PostgreSQL migrations, agent with heartbeat,
-fail2ban integration end to end), threat feed (NVD CVEs, CISA KEV, security news), and the Svelte dashboard for
-all of it: overview, hosts and host detail (live metrics, capability matrix, bans, events, commands), event
-timeline, bans and allowlist, policy editor (form and YAML views with live validation, schedule preview, rendered
-fail2ban config, version history and revert), security baseline (21 common hardening checks per host with
-one-click, reversible fixes applied by the agent, accepted risks, and host-specific commands for manual fixes), alert
-channels, blocklists, security updates, CVE scans (Trivy/Grype against a server-mirrored database, CISA KEV joined),
-Lynis hardening audits (index, remediation checklist grouped by category, accepted items, fleet ranking), SSH exposure
-warnings and Tailscale detection, threat feed, settings (groups, enrollment tokens, API keys, server
-configuration, audit log) and About/licenses. Live updates over SignalR, with polling when the hub is unreachable.
+**Status:** deliverables 1–9 of 10 are done. The server (REST API, SignalR, SQLite or PostgreSQL), the agent and the
+Svelte dashboard cover:
+
+- **Hosts:** overview and host detail with live metrics, a capability matrix, events, bans and commands.
+- **Banning:** fail2ban, managed from policy, with bans and allowlist in the dashboard.
+- **Policy:** layered global → group → host, with form and YAML editors, live validation, schedule preview, version
+  history and revert.
+- **Security baseline:** 21 checks per host with one-click, reversible fixes.
+- **Alerts:** email, webhook and ntfy channels, with dedup and digests.
+- **Blocklists:** public IP blocklists, merged by the server.
+- **Security updates:** reported, installed now or on a schedule.
+- **CVE scans:** Trivy or Grype against a server-mirrored database, joined with CISA KEV.
+- **Lynis audits:** hardening index and a remediation checklist.
+- **SSH exposure:** warnings when SSH is reachable from the internet, and Tailscale detection.
+- **Threat feed:** NVD, CISA KEV and security news.
+- **Settings and About:** groups, enrollment tokens, API keys, audit log, and tool licenses.
+- **Installers:** one-line installers for the server and the agent.
+
+Next (deliverable 10): CrowdSec and ClamAV as opt-in integrations, and a Docker image with compose. Live updates
+use SignalR, with polling when the hub is unreachable.
 See [docs/architecture.md](docs/architecture.md) for the event model, integration interface and API surface.
 
 ## How it works
@@ -50,7 +60,7 @@ flowchart LR
 
 Agents only ever talk to your server. Everything that comes from the internet (threat intel, IP blocklists,
 vulnerability databases) is fetched once by the server and handed to agents, so hosts need no outbound access
-beyond it.
+beyond it, apart from their distribution's package mirrors for installs and updates.
 
 Every tool's output is normalized into one event stream that feeds the timeline, live dashboard and alerts:
 
@@ -88,7 +98,8 @@ sequenceDiagram
 ## Included tools
 
 SentinelVPS installs these from your distribution's repositories (or adopts an existing install) and never
-vendors binaries. `GET /api/about` and the dashboard's About page list the same set with licenses.
+vendors binaries. Trivy, Grype and Tailscale aren't packaged by most distributions, so the agent adopts them when
+you install them from their vendor's repository (Alpine's `trivy` package is the exception it installs itself). `GET /api/about` and the dashboard's About page list the same set with licenses.
 
 | Tool | Capability | What SentinelVPS does with it | License | Status |
 |---|---|---|---|---|
@@ -168,11 +179,13 @@ Agents need no token: they download the agent from your server. Binaries come fr
 ## Repository layout
 
 ```
-src/Sentinel.Core     domain: SecurityEvent, policy model, IToolIntegration, fail2ban integration, platform seams
+src/Sentinel.Core     domain: SecurityEvent, policy model, IToolIntegration, the tool integrations
+                      (fail2ban, baseline, blocklists, updates, vulnerabilities, Lynis, network), platform seams
 src/Sentinel.Server   ASP.NET Core minimal API + SignalR + EF Core; serves the embedded SPA; single-file publish
 src/Sentinel.Agent    supervisor daemon (Native AOT); enroll | run | status | uninstall
 src/sentinel-web      Svelte 5 + Vite dashboard; builds into Sentinel.Server/wwwroot
-tests/Sentinel.Tests  xUnit: parsers and normalization on real fail2ban fixtures, reconciliation, policy, API e2e
+tests/Sentinel.Tests  xUnit: parsers on captured tool output (Fixtures/, each folder documents its source),
+                      reconciliation, policy, API end to end
 policy/default.yaml   global default policy (embedded into the server)
 install/              install.sh (server) and agent-install.sh, also served by the server at /install/{server,agent}.sh
 docs/                 architecture
@@ -220,6 +233,7 @@ and starts streaming ban events.
 | `SENTINEL_SECURECOOKIES` | `true` | set `false` only for plain-HTTP local dev |
 | `SENTINEL_BLOCKLISTSENABLED` / `SENTINEL_BLOCKLISTREFRESHINTERVAL` | `true` / `4h` | public IP blocklists the server pulls and merges per host (*Bans → Blocklists*) |
 | `SENTINEL_VULNDBENABLED` / `SENTINEL_VULNDBREFRESHINTERVAL` | `true` / `12h` | mirror the Trivy/Grype databases for agents' CVE scans; `false` for air-gapped servers (place the files in `data/vulndb/`) |
+| `SENTINEL_TRIVYDBREPOSITORY` / `SENTINEL_GRYPEDBURL` | `ghcr.io/aquasecurity/trivy-db:2` / `https://grype.anchore.io/databases` | where the mirror pulls from (an internal registry or mirror) |
 | `SENTINEL_ALERTDEDUPWINDOW` / `SENTINEL_ALERTBURST` | `1h` / `1` | alert dedup per host and event; channels (email, webhook, ntfy) are set up under *Settings → Notifications* |
 | `SENTINEL_THREATFEEDENABLED` | `true` | fetch NVD, CISA KEV and security news RSS; `false` for air-gapped servers |
 | `SENTINEL_THREATFEEDINTERVAL` / `SENTINEL_THREATFEEDRETENTION` | `20m` / `30d` | |
