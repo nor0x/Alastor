@@ -70,7 +70,7 @@
         </div>
       {/if}
     </fieldset>
-    <p class="help">Manual bans go into fail2ban's <code>sentinel-manual</code> jail and are permanent until you unban, unless the policy sets <code>banning.manualBantime</code>.</p>
+    <p class="help">Manual bans go into fail2ban's <code>sentinel-manual</code> jail (or become a CrowdSec decision on hosts with <code>banning.engine: crowdsec</code>) and last until you unban, unless the policy sets <code>banning.manualBantime</code>. CrowdSec has no permanent bans, so there "permanent" means ten years.</p>
     {#if error}<div class="banner bad" role="alert"><p>{error}</p></div>{/if}
   </form>
   {#snippet footer()}

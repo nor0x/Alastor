@@ -93,7 +93,8 @@ public sealed partial class Fail2BanIntegration(
         {
             ManagedFileState.Drifted => ConfigState.Drifted,
             ManagedFileState.Foreign => ConfigState.Conflict,
-            ManagedFileState.Missing => ConfigState.Pending,
+            // Missing is also the converged state once another engine is chosen or banning is off.
+            ManagedFileState.Missing => Enum.TryParse<ConfigState>(state.Get(StateConfigState), out var applied) ? applied : ConfigState.Pending,
             _ => Enum.TryParse<ConfigState>(state.Get(StateConfigState), out var last) ? last : ConfigState.InSync,
         };
 
@@ -149,10 +150,11 @@ public sealed partial class Fail2BanIntegration(
         if (!IsWanted(request.Policy))
         {
             // Banning off, or another engine selected: remove only what we own.
-            foreach (var (path, inspect) in new[] { (_opt.JailFile, jailInspect), (_opt.ManualFilterFile, filterInspect) })
+            var why = request.Policy.Banning is not { Enabled: not false } ? "Banning disabled by policy" : $"Banning engine is {request.Policy.Banning.Engine}";
+            foreach (var (path, inspect, what) in new[] { (_opt.JailFile, jailInspect, "jail configuration"), (_opt.ManualFilterFile, filterInspect, "manual-ban filter") })
             {
                 if (inspect.State == ManagedFileState.Owned || (inspect.State == ManagedFileState.Drifted && request.Reclaim))
-                    changes.Add(new(ChangeKind.DeleteFile, path, "Banning disabled by policy: remove managed fail2ban config"));
+                    changes.Add(new(ChangeKind.DeleteFile, path, $"{why}: remove managed fail2ban {what}"));
                 else if (inspect.State is ManagedFileState.Drifted or ManagedFileState.Foreign)
                     warnings.Add(new(EventKinds.ConfigDrift, $"{path} is not (or no longer) owned by SentinelVPS. Left in place."));
             }

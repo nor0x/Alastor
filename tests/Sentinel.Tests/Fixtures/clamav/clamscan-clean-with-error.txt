@@ -1,0 +1,13 @@
+WARNING: /nonexistent/path: Can't access file
+
+----------- SCAN SUMMARY -----------
+Known viruses: 3628192
+Engine version: 1.5.4
+Scanned directories: 1
+Scanned files: 1
+Infected files: 0
+Data scanned: 0 B
+Data read: 3 B (ratio 0.00:1)
+Time: 24.627 sec (0 m 24 s)
+Start Date: 2026:10:25 13:12:35
+End Date:   2026:10:25 13:13:00

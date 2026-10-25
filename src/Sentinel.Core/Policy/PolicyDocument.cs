@@ -127,6 +127,15 @@ public sealed class MalwarePolicy
 {
     /// <summary>ClamAV scan of web roots and upload directories (opt-in, so off by default).</summary>
     public string? ScanSchedule { get; set; }
+
+    /// <summary>Directories to scan recursively. Missing ones are skipped. Replaces (doesn't merge with) a lower layer's list.</summary>
+    public List<string>? Paths { get; set; }
+
+    /// <summary>Paths or directory names left out of scans (clamscan <c>--exclude-dir</c>). Merged as a union across layers.</summary>
+    public List<string>? Exclude { get; set; }
+
+    /// <summary>Files larger than this are skipped (clamscan <c>--max-filesize</c>), e.g. <c>25M</c>.</summary>
+    public string? MaxFileSize { get; set; }
 }
 
 public sealed class BaselinePolicy
@@ -146,8 +155,14 @@ public sealed class BanningPolicy
 {
     public bool? Enabled { get; set; }
 
-    /// <summary><c>fail2ban</c> (default) or <c>crowdsec</c> (opt-in, deliverable 10).</summary>
+    /// <summary><c>fail2ban</c> (default) or <c>crowdsec</c> (opt-in).</summary>
     public string? Engine { get; set; }
+
+    /// <summary>
+    /// CrowdSec only: register with CrowdSec's Central API, which shares attack signals with crowdsec.net and pulls its
+    /// community blocklist. Off by default, because agents otherwise talk only to the SentinelVPS server.
+    /// </summary>
+    public bool? CrowdsecCentralApi { get; set; }
 
     /// <summary>IPs/CIDRs never banned. Merged as a union across layers, plus the server's global allowlist.</summary>
     public List<string>? Allowlist { get; set; }

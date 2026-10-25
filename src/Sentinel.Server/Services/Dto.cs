@@ -40,7 +40,8 @@ public sealed record HostSummaryDto(
     int? HardeningWarnings,
     Sentinel.Core.Network.SshExposureLevel? SshExposure,
     bool SshExposureAccepted,
-    string? TailscaleState);
+    string? TailscaleState,
+    int? MalwareFindings);
 
 public sealed record ToolStatusDto(
     string ToolId,

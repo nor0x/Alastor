@@ -1,0 +1,9 @@
+2026/10/25 13:02:56 version: v1.4.6-10.1-debian
+2026/10/25 13:02:56 Codename: alphaga
+2026/10/25 13:02:56 BuildDate: 2025-10-27_19:01:56
+2026/10/25 13:02:56 GoVersion: 1.25.0
+2026/10/25 13:02:56 Platform: linux
+2026/10/25 13:02:56 Constraint_parser: >= 1.0, <= 2.0
+2026/10/25 13:02:56 Constraint_scenario: >= 1.0, < 3.0
+2026/10/25 13:02:56 Constraint_api: v1
+2026/10/25 13:02:56 Constraint_acquis: >= 1.0, < 2.0

@@ -1,0 +1,16 @@
+/srv/www/sub/eicar.com: Eicar-Test-Signature FOUND
+/srv/www/sub/eicar.zip: Eicar-Test-Signature FOUND
+/srv/www/with space/eicar copy.txt: Eicar-Test-Signature FOUND
+
+----------- SCAN SUMMARY -----------
+Known viruses: 3628192
+Engine version: 1.5.4
+Scanned directories: 3
+Scanned files: 3
+Infected files: 3
+Total errors: 1
+Data scanned: 204 B
+Data read: 386 B (ratio 0.53:1)
+Time: 25.006 sec (0 m 25 s)
+Start Date: 2026:10:25 13:10:47
+End Date:   2026:10:25 13:11:12

@@ -62,7 +62,7 @@
     try {
       const entry = await api<AllowlistEntry>('/api/allowlist', { method: 'POST', body: JSON.stringify({ target: allowTarget.trim(), note: allowNote.trim() || null }) });
       allowlist = [...allowlist, entry].sort((a, b) => a.target.localeCompare(b.target));
-      toast(`${entry.target} allowlisted. Agents add it to fail2ban's ignoreip and lift any existing bans for it.`);
+      toast(`${entry.target} allowlisted. Agents add it to fail2ban's ignoreip or CrowdSec's whitelist and lift any existing bans for it.`);
       allowTarget = '';
       allowNote = '';
     } catch (err) {
@@ -73,7 +73,7 @@
   }
 
   async function removeAllow(a: AllowlistEntry) {
-    if (!(await confirm(`Remove ${a.target} from the allowlist?`, 'fail2ban will be able to ban it again on every host.', { confirmLabel: 'Remove', danger: true }))) return;
+    if (!(await confirm(`Remove ${a.target} from the allowlist?`, 'fail2ban or CrowdSec will be able to ban it again on every host.', { confirmLabel: 'Remove', danger: true }))) return;
     try {
       await api(`/api/allowlist/${a.id}`, { method: 'DELETE' });
       allowlist = allowlist.filter((x) => x.id !== a.id);
@@ -87,7 +87,7 @@
 <div class="page-head">
   <div>
     <h1>Bans</h1>
-    <p class="sub">Current bans reported by fail2ban on each host, plus the fleet-wide allowlist.</p>
+    <p class="sub">Current bans reported by fail2ban or CrowdSec on each host, plus the fleet-wide allowlist.</p>
   </div>
   {#if canWrite()}<div class="actions"><button class="btn solid-danger" onclick={() => (banOpen = true)}>+ Ban IP or CIDR</button></div>{/if}
 </div>
@@ -121,7 +121,7 @@
       {:else if bans.length}
         <BanTable {bans} />
       {:else}
-        <div class="empty">{q || hostId || kind ? 'No bans match these filters.' : 'No active bans. When fail2ban bans an address, it appears here within seconds.'}</div>
+        <div class="empty">{q || hostId || kind ? 'No bans match these filters.' : 'No active bans. When fail2ban or CrowdSec bans an address, it appears here within seconds.'}</div>
       {/if}
     </div>
   </section>

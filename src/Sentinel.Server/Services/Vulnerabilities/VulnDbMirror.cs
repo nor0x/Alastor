@@ -54,7 +54,9 @@ public sealed record VulnDbStatusDto(string Scanner, bool Available, bool Downlo
 public sealed class VulnDbMirror(IHttpClientFactory httpFactory, IOptions<SentinelOptions> options, TimeProvider time, ILogger<VulnDbMirror> logger)
 {
     public const string HttpClientName = "vulndb";
-    public static readonly IReadOnlyList<string> Scanners = [VulnerabilityIntegration.Trivy, VulnerabilityIntegration.Grype];
+    public static readonly IReadOnlyList<string> Scanners = [VulnerabilityIntegration.Trivy, VulnerabilityIntegration.Grype, .. Sentinel.Core.Malware.ClamAvIntegration.Databases];
+
+    public static bool IsClamAv(string scanner) => scanner.StartsWith("clamav-", StringComparison.Ordinal);
 
     /// <summary>A database nobody asked for in this long stops being refreshed.</summary>
     public static readonly TimeSpan DemandWindow = TimeSpan.FromDays(7);
@@ -67,10 +69,20 @@ public sealed class VulnDbMirror(IHttpClientFactory httpFactory, IOptions<Sentin
     public ChannelReader<string> Requests => _requests.Reader;
 
     private string Dir(string scanner) => Path.Combine(options.Value.DataDir, "vulndb", scanner);
-    public string FilePath(string scanner) => Path.Combine(Dir(scanner), scanner == VulnerabilityIntegration.Trivy ? "db.tar.gz" : "db.tar.zst");
+    public string FilePath(string scanner) => IsClamAv(scanner)
+        ? Path.Combine(ClamAvDir, scanner["clamav-".Length..] + ".cvd")
+        : Path.Combine(Dir(scanner), scanner == VulnerabilityIntegration.Trivy ? "db.tar.gz" : "db.tar.zst");
+
+    /// <summary>freshclam's database directory: all three ClamAV files live here, named as freshclam names them.</summary>
+    private string ClamAvDir => Path.Combine(options.Value.DataDir, "vulndb", "clamav");
     private string MetaPath(string scanner) => Path.Combine(Dir(scanner), "meta.json");
 
-    public string Source(string scanner) => scanner == VulnerabilityIntegration.Trivy ? options.Value.TrivyDbRepository : $"{options.Value.GrypeDbUrl.TrimEnd('/')}/v6/latest.json";
+    public string Source(string scanner) => scanner switch
+    {
+        VulnerabilityIntegration.Trivy => options.Value.TrivyDbRepository,
+        VulnerabilityIntegration.Grype => $"{options.Value.GrypeDbUrl.TrimEnd('/')}/v6/latest.json",
+        _ => $"freshclam from {options.Value.ClamAvMirror}",
+    };
 
     public VulnDbState State(string scanner) => _states.GetOrAdd(scanner, Load);
 
@@ -90,7 +102,16 @@ public sealed class VulnDbMirror(IHttpClientFactory httpFactory, IOptions<Sentin
         {
             using var f = File.OpenRead(FilePath(scanner));
             var info = new FileInfo(FilePath(scanner));
-            var state = new VulnDbState { Etag = Convert.ToHexStringLower(SHA256.HashData(f)), BuiltAt = info.LastWriteTimeUtc, FetchedAt = info.LastWriteTimeUtc, Size = info.Length };
+            var built = info.LastWriteTimeUtc;
+            if (IsClamAv(scanner))
+            {
+                // ClamAV files carry their build time in the header.
+                var header = new byte[512];
+                f.ReadAtLeast(header, 512, throwOnEndOfStream: false);
+                built = Sentinel.Core.Malware.ClamScanParser.ParseHeader(Path.GetFileName(FilePath(scanner)), header)?.BuiltAt ?? built;
+                f.Position = 0;
+            }
+            var state = new VulnDbState { Etag = Convert.ToHexStringLower(SHA256.HashData(f)), BuiltAt = built, FetchedAt = info.LastWriteTimeUtc, Size = info.Length };
             Save(scanner, state);
             return state;
         }
@@ -113,7 +134,7 @@ public sealed class VulnDbMirror(IHttpClientFactory httpFactory, IOptions<Sentin
         // Placed by hand while the server runs (air-gapped): pick it up without a restart.
         if (s.Etag is null && File.Exists(FilePath(scanner)))
         {
-            File.Delete(MetaPath(scanner));
+            if (File.Exists(MetaPath(scanner))) File.Delete(MetaPath(scanner));
             s = _states[scanner] = Load(scanner) with { LastRequestedAt = s.LastRequestedAt };
         }
         var now = time.GetUtcNow().UtcDateTime;
@@ -153,6 +174,14 @@ public sealed class VulnDbMirror(IHttpClientFactory httpFactory, IOptions<Sentin
             var now = time.GetUtcNow().UtcDateTime;
             try
             {
+                if (IsClamAv(scanner))
+                {
+                    var clam = await RefreshClamAvAsync(scanner, ct);
+                    Save(scanner, s = clam.Etag == s.Etag
+                        ? s with { LastCheckedAt = now, LastError = null, NextAttemptAt = null }
+                        : s with { Etag = clam.Etag, BuiltAt = clam.Built, FetchedAt = now, Size = clam.Size, LastCheckedAt = now, LastError = null, NextAttemptAt = null });
+                    return s;
+                }
                 var http = httpFactory.CreateClient(HttpClientName);
                 var (digest, built, download) = scanner == VulnerabilityIntegration.Trivy ? await ResolveTrivyAsync(http, ct) : await ResolveGrypeAsync(http, ct);
                 if (digest == s.Etag && File.Exists(FilePath(scanner)))
@@ -179,6 +208,93 @@ public sealed class VulnDbMirror(IHttpClientFactory httpFactory, IOptions<Sentin
         finally
         {
             gate.Release();
+        }
+    }
+
+    private static readonly SemaphoreSlim FreshclamGate = new(1, 1);
+    private DateTime _freshclamRanAt = DateTime.MinValue;
+
+    /// <summary>
+    /// ClamAV's CDN serves only its own update tools, so the server runs freshclam (from the distro's clamav-freshclam
+    /// package) into its data directory: the supported way to run a private mirror. One run refreshes all three files,
+    /// so the three databases share it. freshclam verifies each file's signature; ETag is the file's sha256.
+    /// </summary>
+    private async Task<(string Etag, DateTime? Built, long Size)> RefreshClamAvAsync(string scanner, CancellationToken ct)
+    {
+        await FreshclamGate.WaitAsync(ct);
+        try
+        {
+            if (time.GetUtcNow().UtcDateTime - _freshclamRanAt > TimeSpan.FromMinutes(10)) await RunFreshclamAsync(ct);
+        }
+        finally
+        {
+            FreshclamGate.Release();
+        }
+        var path = FilePath(scanner);
+        if (!File.Exists(path)) throw new IOException($"freshclam finished but {Path.GetFileName(path)} is missing.");
+        await using var f = File.OpenRead(path);
+        var header = new byte[512];
+        await f.ReadAtLeastAsync(header, 512, throwOnEndOfStream: false, ct);
+        var db = Sentinel.Core.Malware.ClamScanParser.ParseHeader(Path.GetFileName(path), header)
+            ?? throw new InvalidDataException($"{Path.GetFileName(path)} isn't a ClamAV database.");
+        f.Position = 0;
+        return (Convert.ToHexStringLower(await SHA256.HashDataAsync(f, ct)), db.BuiltAt, f.Length);
+    }
+
+    private async Task RunFreshclamAsync(CancellationToken ct)
+    {
+        Directory.CreateDirectory(ClamAvDir);
+        var conf = Path.Combine(ClamAvDir, "freshclam.conf");
+        // ScriptedUpdates off keeps whole .cvd files (no .cld from incremental diffs), which is what agents download.
+        // TestDatabases off: loading every signature takes ~1 GB of RAM; freshclam still checks each file's signature.
+        await File.WriteAllLinesAsync(conf,
+        [
+            "# Written by SentinelVPS for its signature mirror. Regenerated on every run.",
+            $"DatabaseDirectory {ClamAvDir}",
+            $"DatabaseOwner {Environment.UserName}",
+            $"DatabaseMirror {options.Value.ClamAvMirror}",
+            "DNSDatabaseInfo current.cvd.clamav.net",
+            "ScriptedUpdates no",
+            "TestDatabases no",
+            "Bytecode yes",
+            "Foreground yes",
+            "LogTime no",
+        ], ct);
+        var psi = new System.Diagnostics.ProcessStartInfo(options.Value.FreshclamPath, ["--config-file=" + conf, "--stdout", "--no-warnings"])
+        {
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+        };
+        System.Diagnostics.Process proc;
+        try
+        {
+            proc = System.Diagnostics.Process.Start(psi) ?? throw new IOException("freshclam didn't start.");
+        }
+        catch (System.ComponentModel.Win32Exception)
+        {
+            throw new IOException($"freshclam isn't installed on the server ({options.Value.FreshclamPath}). Install the clamav-freshclam package, " +
+                                  $"or place main.cvd, daily.cvd and bytecode.cvd in {Path.GetRelativePath(options.Value.DataDir, ClamAvDir)} in the data directory.");
+        }
+        using (proc)
+        {
+            using var timeout = CancellationTokenSource.CreateLinkedTokenSource(ct);
+            timeout.CancelAfter(TimeSpan.FromMinutes(30));
+            var stdout = proc.StandardOutput.ReadToEndAsync(timeout.Token);
+            var stderr = proc.StandardError.ReadToEndAsync(timeout.Token);
+            try
+            {
+                await proc.WaitForExitAsync(timeout.Token);
+            }
+            catch (OperationCanceledException)
+            {
+                proc.Kill(entireProcessTree: true);
+                throw;
+            }
+            var lines = (await stdout + "\n" + await stderr).Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+            if (proc.ExitCode != 0)
+                throw new IOException($"freshclam failed (exit {proc.ExitCode}): {string.Join(" ", lines.TakeLast(3))}");
+            _freshclamRanAt = time.GetUtcNow().UtcDateTime;
+            logger.LogInformation("freshclam: {Output}", string.Join(" | ", lines.Where(l => l.Contains("updated") || l.Contains("up-to-date") || l.Contains("up to date"))));
         }
     }
 

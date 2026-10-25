@@ -7,6 +7,7 @@ public interface IServiceManager
     Task<bool> EnableAndStartAsync(string unit, CancellationToken ct);
     Task<bool> RestartAsync(string unit, CancellationToken ct);
     Task<bool> ReloadAsync(string unit, CancellationToken ct);
+    Task<bool> DisableAndStopAsync(string unit, CancellationToken ct);
 }
 
 public static class ServiceManagers
@@ -28,6 +29,9 @@ public sealed class SystemdServiceManager(ICommandRunner runner) : IServiceManag
 
     public async Task<bool> ReloadAsync(string unit, CancellationToken ct) =>
         (await runner.RunAsync("systemctl", ["reload", unit], null, ct)).Success;
+
+    public async Task<bool> DisableAndStopAsync(string unit, CancellationToken ct) =>
+        (await runner.RunAsync("systemctl", ["disable", "--now", unit], null, ct)).Success;
 }
 
 public sealed class OpenRcServiceManager(ICommandRunner runner) : IServiceManager
@@ -46,4 +50,10 @@ public sealed class OpenRcServiceManager(ICommandRunner runner) : IServiceManage
 
     public async Task<bool> ReloadAsync(string unit, CancellationToken ct) =>
         (await runner.RunAsync("rc-service", [unit, "reload"], null, ct)).Success;
+
+    public async Task<bool> DisableAndStopAsync(string unit, CancellationToken ct)
+    {
+        await runner.RunAsync("rc-update", ["del", unit, "default"], null, ct);
+        return (await runner.RunAsync("rc-service", [unit, "stop"], null, ct)).Success;
+    }
 }

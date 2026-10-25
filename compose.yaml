@@ -1,0 +1,42 @@
+# SentinelVPS server with Docker Compose.
+#
+#   SENTINEL_ADMINPASSWORD='a long passphrase' SENTINEL_PUBLICURL=https://sentinel.example.com docker compose up -d
+#
+# Put a TLS-terminating reverse proxy (Caddy, Traefik, nginx) in front of port 8080: agents refuse plain HTTP
+# unless enrolled with --insecure. For PostgreSQL instead of the built-in SQLite, start with --profile postgres
+# and set SENTINEL_DATABASEPROVIDER=postgres (see below).
+
+services:
+  sentinel:
+    build: .
+    image: sentinelvps:latest
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    volumes:
+      - sentinel-data:/data
+    environment:
+      SENTINEL_ADMINPASSWORD: ${SENTINEL_ADMINPASSWORD:?set SENTINEL_ADMINPASSWORD for the first admin login}
+      SENTINEL_PUBLICURL: ${SENTINEL_PUBLICURL:-http://localhost:8080}
+      # Behind a plain-HTTP setup (local testing only), the session cookie must not be Secure:
+      SENTINEL_SECURECOOKIES: ${SENTINEL_SECURECOOKIES:-true}
+      # PostgreSQL (with --profile postgres):
+      SENTINEL_DATABASEPROVIDER: ${SENTINEL_DATABASEPROVIDER:-sqlite}
+      SENTINEL_CONNECTIONSTRING: ${SENTINEL_CONNECTIONSTRING:-}
+
+  postgres:
+    profiles: [postgres]
+    image: postgres:17
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: sentinel
+      POSTGRES_USER: sentinel
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change-me}
+    volumes:
+      - sentinel-postgres:/var/lib/postgresql/data
+    # Then: SENTINEL_DATABASEPROVIDER=postgres
+    #       SENTINEL_CONNECTIONSTRING="Host=postgres;Database=sentinel;Username=sentinel;Password=change-me"
+
+volumes:
+  sentinel-data:
+  sentinel-postgres:

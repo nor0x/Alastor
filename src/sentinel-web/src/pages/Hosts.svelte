@@ -143,6 +143,7 @@
                 <span class="dot" class:ok={h.isOnline} class:bad={!h.isOnline} title={h.isOnline ? 'Online' : 'Offline'}></span>
                 <div>
                   <a href="/hosts/{h.id}" class="name">{h.name}</a>
+                  {#if h.malwareFindings}<a href="/hosts/{h.id}?tab=malware" class="pill bad" title="Infected files found by ClamAV">malware: {h.malwareFindings}</a>{/if}
                   <div class="muted small">{h.osPrettyName} · {h.architecture}{h.isOnline ? '' : ' · offline'}</div>
                 </div>
               </div>

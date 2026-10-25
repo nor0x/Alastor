@@ -83,6 +83,7 @@ public sealed record AgentReport(string JobId, DateTime StartedAtUtc, DateTime F
     public Sentinel.Core.Vulnerabilities.VulnScanReport? Vulnerabilities { get; init; }
     public Sentinel.Core.Hardening.HardeningReport? Hardening { get; init; }
     public Sentinel.Core.Network.NetworkReport? Network { get; init; }
+    public Sentinel.Core.Malware.MalwareReport? Malware { get; init; }
 }
 
 public static class AgentCommandTypes
