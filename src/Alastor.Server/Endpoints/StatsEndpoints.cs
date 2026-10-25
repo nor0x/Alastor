@@ -34,6 +34,7 @@ public static class StatsEndpoints
         int? HostsNeedingUpdates,
         int RebootRequired,
         int? PublicSsh,
+        int? HostsWithPublicServices,
         int? MalwareFindings);
 
     public sealed record MatrixRow(Guid HostId, string Name, bool Online, IReadOnlyDictionary<string, PostureMatrix.Cell> Cells);
@@ -141,6 +142,7 @@ public static class StatsEndpoints
             CountWhere(s, x => x.SecurityUpdates is null ? null : x.SecurityUpdates > 0),
             s.Count(x => x.RebootRequired),
             CountWhere(s, x => x.PublicSsh),
+            CountWhere(s, x => x.PublicServices is null ? null : x.PublicServices > 0),
             Sum(s.Select(x => x.MalwareFindings)));
     }
 }

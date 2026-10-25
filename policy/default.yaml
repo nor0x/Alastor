@@ -72,6 +72,7 @@ malware:
 network:
   checkSchedule: every 1h    # is SSH reachable from the internet? is Tailscale up? (reads sockets, addresses, firewall)
   allowPublicSsh: false      # true on hosts where public SSH is intended (bastion): shown as accepted, not alerted
+  allowPublicPorts: [80/tcp, 443/tcp]  # services meant to face the internet; other public ports are flagged. Merged across layers
 
 # ---- Security baseline ----
 

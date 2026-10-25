@@ -39,7 +39,7 @@ export const fieldSections: FieldSection[] = [
       { path: ['blocklists', 'refreshSchedule'], label: 'Blocklist refresh', kind: 'schedule', help: 'How often agents ask the server for a newer blocklist (a cheap conditional request).', placeholderDefault: 'every 1h' },
       { path: ['baseline', 'checkSchedule'], label: 'Security baseline checks', kind: 'schedule', help: 'Also runs on agent start, after policy changes, and on "Re-check now".', placeholderDefault: 'every 1h' },
       { path: ['hardening', 'auditSchedule'], label: 'Hardening audit (Lynis)', kind: 'schedule', help: 'Produces the hardening index and checklist.', placeholderDefault: '0 5 * * 0' },
-      { path: ['network', 'checkSchedule'], label: 'SSH exposure & Tailscale check', kind: 'schedule', help: 'Reads listening sockets, addresses and the firewall; takes under a second.', placeholderDefault: 'every 1h' },
+      { path: ['network', 'checkSchedule'], label: 'SSH exposure & Tailscale check', kind: 'schedule', help: 'Reads listening services, addresses and the firewall; flags public ports outside network.allowPublicPorts.', placeholderDefault: 'every 1h' },
       { path: ['malware', 'scanSchedule'], label: 'Malware scan (ClamAV)', kind: 'schedule', help: 'Opt-in. Scans web roots and upload directories.', placeholderDefault: 'off' },
       { path: ['agent', 'scheduleSpread'], label: 'Per-host spread', kind: 'duration', help: 'Hosts start scheduled jobs at a stable offset up to this long, so the fleet doesn\'t scan in the same minute (0–12h).', placeholderDefault: '30m' },
     ],

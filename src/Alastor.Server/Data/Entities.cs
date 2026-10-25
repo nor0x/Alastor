@@ -133,6 +133,12 @@ public sealed class ManagedHost
     public string? TailscaleIp { get; set; }
     public DateTime? NetworkCheckedAt { get; set; }
 
+    /// <summary>
+    /// Services reachable from the internet that aren't SSH and aren't in <c>network.allowPublicPorts</c>, as
+    /// "6379/tcp redis-server" (the owner may be missing). Null until an agent reports its services.
+    /// </summary>
+    public List<string>? PublicServices { get; set; }
+
     // Latest ClamAV scan.
     public int? MalwareFindings { get; set; }
     public DateTime? MalwareScannedAt { get; set; }
@@ -265,6 +271,9 @@ public sealed class HostPostureSnapshot
 
     /// <summary>SSH reachable from the internet and not accepted. Null until a network check ran.</summary>
     public bool? PublicSsh { get; set; }
+
+    /// <summary>Unexpected public services (see <see cref="ManagedHost.PublicServices"/>).</summary>
+    public int? PublicServices { get; set; }
 
     public int? MalwareFindings { get; set; }
 }

@@ -111,6 +111,9 @@ public static partial class PolicyYaml
         CheckSchedule("baseline.checkSchedule", doc.Baseline?.CheckSchedule);
         CheckSchedule("blocklists.refreshSchedule", doc.Blocklists?.RefreshSchedule);
         CheckSchedule("network.checkSchedule", doc.Network?.CheckSchedule);
+        foreach (var (spec, i) in (doc.Network?.AllowPublicPorts ?? []).Select((p, i) => (p, i)))
+            if (!Alastor.Core.Network.ServiceExposureAssessor.TryParsePortSpec(spec, out _, out _, out _))
+                Error($"network.allowPublicPorts[{i}]", $"'{spec}' is not a port: use 443, 443/tcp, 51820/udp or a range like 60000-61000/udp.");
         if (doc.Blocklists is { } bl)
         {
             foreach (var (id, i) in (bl.Lists ?? []).Select((id, i) => (id, i)))

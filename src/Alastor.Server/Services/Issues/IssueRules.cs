@@ -28,6 +28,7 @@ public static class IssueRules
         ["tool.problem"] = "Tool problem",
         ["ssh.public"] = "SSH reachable from the internet",
         ["ssh.password-public"] = "Password SSH logins on a public host",
+        ["service.public"] = "Unexpected public service",
         ["cve.exploited"] = "Known-exploited CVE",
         ["cve.critical"] = "Critical CVEs",
         ["malware.found"] = "Malware found",
@@ -56,6 +57,14 @@ public static class IssueRules
             if (h.SshPasswordAuth == true && !facts.FailingChecks.Contains("ssh-password-auth"))
                 open.Add(new("ssh.password-public", "", Severity.High, "Password SSH logins are allowed on a public host",
                     "Turn on the ssh-password-auth baseline fix so only keys work.", "baseline"));
+        }
+
+        foreach (var entry in h.PublicServices ?? [])
+        {
+            var parts = entry.Split(' ', 2);
+            open.Add(new("service.public", parts[0], Severity.Medium,
+                parts.Length == 2 ? $"{parts[1]} on {parts[0]} is reachable from the internet" : $"Port {parts[0]} is reachable from the internet",
+                $"Bind it to localhost or a private address, or firewall it. If it's meant to be public, add {parts[0]} to network.allowPublicPorts.", "network"));
         }
 
         foreach (var cve in facts.ExploitedCves.Order(StringComparer.Ordinal))

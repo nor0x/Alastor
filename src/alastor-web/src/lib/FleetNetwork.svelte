@@ -52,7 +52,7 @@
   <section class="card">
     <div class="table-wrap">
       <table class="table">
-        <thead><tr><th>Host</th><th>SSH</th><th class="hide-sm">Passwords</th><th class="hide-sm">Host firewall</th><th>Tailscale</th><th class="hide-sm">Checked</th></tr></thead>
+        <thead><tr><th>Host</th><th>SSH</th><th>Other public</th><th class="hide-sm">Passwords</th><th class="hide-sm">Host firewall</th><th>Tailscale</th><th class="hide-sm">Checked</th></tr></thead>
         <tbody>
           {#each sorted as r (r.hostId)}
             {@const look = exposureLook(r.exposure, r.accepted)}
@@ -63,6 +63,11 @@
                 {#if r.error}<div class="small bad-text" title={r.error}>last check failed</div>{/if}
               </td>
               <td class="nowrap"><span class="pill {look.tone}">{look.label}</span>{#if r.ports.length && r.ports[0] !== 22} <span class="muted small">:{r.ports.join(',')}</span>{/if}</td>
+              <td class="small">
+                {#if r.publicServices === null}<span class="muted">—</span>
+                {:else if r.publicServices.length}<a href="/hosts/{r.hostId}?tab=network"><span class="pill bad" title={r.publicServices.join(', ')}>{r.publicServices.length} unexpected</span></a>
+                {:else}<span class="muted">{r.publicTotal ? `${r.publicTotal} allowed` : 'none'}</span>{/if}
+              </td>
               <td class="hide-sm">{#if r.passwordAuth === null}<span class="muted">—</span>{:else if r.passwordAuth}<span class="bad-text">allowed</span>{:else}<span class="muted">off</span>{/if}</td>
               <td class="hide-sm small">{#if r.firewall}{r.firewallTool ?? ''} <span class="muted">{firewallLabels[r.firewall]}</span>{:else}<span class="muted">—</span>{/if}</td>
               <td class="nowrap small">

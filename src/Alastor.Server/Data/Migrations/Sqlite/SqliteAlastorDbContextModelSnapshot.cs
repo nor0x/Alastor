@@ -688,6 +688,9 @@ namespace Alastor.Server.Data.Migrations.Sqlite
                     b.Property<bool>("Online")
                         .HasColumnType("INTEGER");
 
+                    b.Property<int?>("PublicServices")
+                        .HasColumnType("INTEGER");
+
                     b.Property<bool?>("PublicSsh")
                         .HasColumnType("INTEGER");
 
@@ -1055,6 +1058,9 @@ namespace Alastor.Server.Data.Migrations.Sqlite
                         .HasColumnType("INTEGER");
 
                     b.Property<string>("PolicyReportJson")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("PublicServices")
                         .HasColumnType("TEXT");
 
                     b.Property<bool>("RebootRequired")

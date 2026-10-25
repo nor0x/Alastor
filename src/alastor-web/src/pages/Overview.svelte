@@ -134,6 +134,14 @@
       <span class="foot muted">{data.hostsWithPublicSsh === null ? 'not checked yet' : `host${data.hostsWithPublicSsh === 1 ? '' : 's'} reachable from the internet`}</span>
       {#if data.hostsWithPublicSsh !== null}<Sparkline values={spark((p) => p.publicSsh)} label="Hosts with public SSH, last 14 days" />{/if}
     </a>
+    {#if data.hostsWithPublicServices !== null}
+      <a class="tile" href="/issues?rule=service.public">
+        <span class="label">Unexpected public services</span>
+        <span class="big">{data.hostsWithPublicServices}</span>
+        <span class="foot muted">host{data.hostsWithPublicServices === 1 ? '' : 's'} with ports open to the internet beyond <code>allowPublicPorts</code></span>
+        <Sparkline values={spark((p) => p.hostsWithPublicServices)} label="Hosts with unexpected public services, last 14 days" />
+      </a>
+    {/if}
     {#if data.hostsWithMalware !== null}
       <a class="tile" href="/hosts">
         <span class="label">Malware</span>

@@ -39,15 +39,7 @@ public static class PostureMatrix
             : new(score >= 80 ? Ok : Warn, $"{score}"),
         ["hardening"] = h.HardeningIndex is not { } idx ? new(Unknown, "not audited")
             : new(idx >= 75 ? Ok : idx >= 60 ? Warn : Bad, $"{idx}"),
-        ["network"] = h.NetworkCheckedAt is null ? new(Unknown, "not checked")
-            : h.SshExposureAccepted ? new(Ok, "accepted")
-            : h.SshExposure switch
-            {
-                SshExposureLevel.Public => new(Bad, "public SSH"),
-                SshExposureLevel.PossiblyPublic => new(Warn, "SSH maybe public"),
-                SshExposureLevel.Unknown => new(Unknown, "unknown"),
-                _ => new(Ok, "not public"),
-            },
+        ["network"] = Exposure(h),
         ["updates"] = Updates(h),
         ["vulnerabilities"] = h.VulnScannedAt is null ? new(Unknown, "not scanned")
             : x.Kev > 0 ? new(Bad, $"{x.Kev} exploited")
@@ -58,6 +50,18 @@ public static class PostureMatrix
             : h.MalwareFindings > 0 ? new(Bad, $"{h.MalwareFindings} found")
             : new(Ok, "clean"),
     };
+
+    private static Cell Exposure(ManagedHost h)
+    {
+        if (h.NetworkCheckedAt is null) return new(Unknown, "not checked");
+        var ports = h.PublicServices?.Count ?? 0;
+        var more = ports == 0 ? "" : $" + {ports} port{(ports == 1 ? "" : "s")}";
+        if (!h.SshExposureAccepted && h.SshExposure == SshExposureLevel.Public) return new(Bad, "public SSH" + more);
+        if (ports > 0) return new(Warn, ports == 1 ? $"{h.PublicServices![0].Split(' ')[0]} public" : $"{ports} public ports");
+        if (!h.SshExposureAccepted && h.SshExposure == SshExposureLevel.PossiblyPublic) return new(Warn, "SSH maybe public");
+        if (h.SshExposure == SshExposureLevel.Unknown) return new(Unknown, "unknown");
+        return new(Ok, h.SshExposureAccepted ? "accepted" : "not public");
+    }
 
     private static Cell Agent(ManagedHost h)
     {

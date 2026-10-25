@@ -23,7 +23,9 @@ Svelte dashboard cover:
 - **Security updates:** reported, installed now or on a schedule.
 - **CVE scans:** Trivy or Grype against a server-mirrored database, joined with CISA KEV.
 - **Lynis audits:** hardening index and a remediation checklist.
-- **SSH exposure:** warnings when SSH is reachable from the internet, and Tailscale detection.
+- **Exposure:** warnings when SSH is reachable from the internet, an inventory of every listening service (owner,
+  systemd unit, `systemd-analyze security` score, firewall verdict) with alerts for public ports outside
+  `network.allowPublicPorts`, and Tailscale detection.
 - **Malware scans:** ClamAV (opt-in) over web roots and upload directories, with signatures mirrored by the server.
 - **Threat feed:** NVD, CISA KEV and security news.
 - **Settings and About:** groups, enrollment tokens, API keys, audit log, and tool licenses.
@@ -54,7 +56,7 @@ flowchart LR
         sup --> scan[Trivy / Grype]
         sup --> lynis[Lynis]
         sup --> clam[ClamAV]
-        sup --> net[SSH exposure<br/>Tailscale · ufw / nft]
+        sup --> net[SSH & service exposure<br/>ss · systemd-analyze<br/>Tailscale · ufw / nft]
         sup --> base[Baseline checks<br/>sshd · sysctl · ufw …]
     end
 
@@ -115,6 +117,7 @@ you install them from their vendor's repository (Alpine's `trivy` package is the
 | [unattended-upgrades](https://wiki.debian.org/UnattendedUpgrades), dnf, apk | Updates | counts pending security updates, installs them on schedule or on demand, flags required reboots | GPL-2.0 | ✅ |
 | [Trivy](https://github.com/aquasecurity/trivy) or [Grype](https://github.com/anchore/grype) | Vulnerabilities | offline CVE scans of OS and language packages against a server-mirrored database | Apache-2.0 | ✅ |
 | [Lynis](https://cisofy.com/lynis/) | Hardening | scheduled audits; hardening index, warnings and suggestions as a checklist | GPL-3.0 | ✅ |
+| Exposure inventory (built in) | Network | every listening service from `ss -tulpn` (iproute2), its systemd unit and `systemd-analyze security` score, judged against ufw/nft; flags public ports outside `network.allowPublicPorts` | MIT | ✅ |
 | Security baseline (built in) | Hardening | 21 checks via `sshd -T`, `sysctl`, `ufw status`, `nft -j`, … with reversible one-click fixes | MIT | ✅ |
 | [Caddy](https://caddyserver.com/) | Server TLS | optional, set up by `install.sh --domain` for automatic HTTPS | Apache-2.0 | ✅ |
 | [CrowdSec](https://github.com/crowdsecurity/crowdsec) + firewall bouncer | Banning | `banning.engine: crowdsec`: installs both from distro repos, owns a parser whitelist for the allowlist, bans and events via `cscli … -o json`; Central API off by default | MIT | ✅ opt-in |

@@ -2,6 +2,7 @@ using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Alastor.Core.Contracts;
 using Alastor.Core.Network;
+using Alastor.Core.Policy;
 using Alastor.Server.Data;
 
 namespace Alastor.Server.Services.Network;
@@ -10,6 +11,7 @@ namespace Alastor.Server.Services.Network;
 /// Stores each host's latest network check and re-assesses SSH exposure with two things only the server knows: the
 /// address the agent's requests arrive from (a public address on a host with only private ones means 1:1 NAT, so SSH
 /// may still be reachable) and the host's effective <c>network.allowPublicSsh</c>, so accepting takes effect at once.
+/// Listening services are summarized against <c>network.allowPublicPorts</c> the same way.
 /// </summary>
 public sealed class NetworkService(AlastorDbContext db, PolicyService policies, TimeProvider time)
 {
@@ -36,7 +38,7 @@ public sealed class NetworkService(AlastorDbContext db, PolicyService policies, 
         var host = await db.Hosts.FirstAsync(h => h.Id == hostId, ct);
         if (report.Success && report.Network is { } n)
         {
-            Summarize(host, n, await AcceptedAsync(hostId, ct));
+            Summarize(host, n, await NetworkPolicyAsync(hostId, ct));
             host.NetworkCheckedAt = report.FinishedAtUtc;
         }
         await db.SaveChangesAsync(ct);
@@ -63,17 +65,25 @@ public sealed class NetworkService(AlastorDbContext db, PolicyService policies, 
         {
             if (Read(row) is not { } report) continue;
             var host = await db.Hosts.FirstAsync(h => h.Id == row.HostId, ct);
-            Summarize(host, report, await AcceptedAsync(host.Id, ct));
+            Summarize(host, report, await NetworkPolicyAsync(host.Id, ct));
         }
         await db.SaveChangesAsync(ct);
     }
 
-    public async Task<bool> AcceptedAsync(Guid hostId, CancellationToken ct) =>
-        (await policies.GetEffectiveAsync(hostId, ct)).Document.Network?.AllowPublicSsh == true;
+    private async Task<NetworkPolicy?> NetworkPolicyAsync(Guid hostId, CancellationToken ct) =>
+        (await policies.GetEffectiveAsync(hostId, ct)).Document.Network;
 
-    private static void Summarize(ManagedHost host, NetworkReport report, bool accepted)
+    /// <summary>"6379/tcp redis-server" per unexpected public service, for the host row and issues.</summary>
+    public static List<string>? UnexpectedPublicServices(NetworkReport report, NetworkPolicy? policy) =>
+        report.Services is null ? null
+            : ServiceExposureAssessor.Unexpected(report.Services, report.Ssh?.Ports ?? [22], policy?.AllowPublicPorts)
+                .Select(s => s.Process is null ? s.Key : $"{s.Key} {s.Process}").Take(50).ToList();
+
+    private static void Summarize(ManagedHost host, NetworkReport report, NetworkPolicy? policy)
     {
+        var accepted = policy?.AllowPublicSsh == true;
         var exposure = Assess(host, report, accepted);
+        host.PublicServices = UnexpectedPublicServices(report, policy);
         host.SshExposure = exposure.Level;
         host.SshExposureAccepted = accepted && exposure.Level is SshExposureLevel.Public or SshExposureLevel.PossiblyPublic;
         host.SshPasswordAuth = report.Ssh?.PasswordAuthentication;

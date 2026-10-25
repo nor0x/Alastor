@@ -439,10 +439,10 @@ Policy: `hardening: {auditSchedule, ignore}`.
   their own tabs; DEB-0880's `jail.local` advice doesn't apply to the jail.d drop-in), the row says so and links
   there. The Baseline page's *Lynis audit* view ranks findings across the fleet.
 
-## 5f. SSH exposure and Tailscale
+## 5f. SSH exposure, listening services and Tailscale
 
 Code: `src/Alastor.Core/Network/`, `src/Alastor.Server/Services/Network/`, `src/Alastor.Server/Endpoints/NetworkEndpoints.cs`.
-Policy: `network: {checkSchedule, allowPublicSsh}`.
+Policy: `network: {checkSchedule, allowPublicSsh, allowPublicPorts}`.
 
 * **Tailscale is detected, never installed.** It isn't in most distributions' repositories, and joining a tailnet
   needs the admin's login, so the agent only adopts it: `tailscale status --json` (ipnstate.Status) gives the backend
@@ -461,15 +461,26 @@ Policy: `network: {checkSchedule, allowPublicSsh}`.
   The server records the address each agent's requests come from; a wildcard-bound sshd on a host with only private
   addresses, seen from a public address, is `PossiblyPublic`. Provider firewalls and security groups are invisible to
   both, and the dashboard says so instead of claiming the port is reachable.
+* **Listening services** (the exposure inventory), in the same check: every TCP and UDP listener from `ss -tulpnH`
+  with its owning process (falling back to `/proc/net/{tcp,udp}{,6}` without owners), the process's systemd unit from
+  `/proc/<pid>/cgroup`, and the unit's `systemd-analyze security --json=short` score (systemd 250+; 0 is sandboxed, 10
+  unprotected). Each service is judged like SSH: bound addresses first (wildcards expand to the host's addresses),
+  then the same ufw/nft snapshot for that port and protocol, giving `Public`, `Restricted` (public address, firewall
+  limits it), `Private`, `Tailnet` or `Local`. A public service that isn't sshd and isn't in `network.allowPublicPorts`
+  (`443`, `443/tcp`, `51820/udp`, `60000-61000/udp`; union across layers; the default policy allows 80/tcp and 443/tcp)
+  is *unexpected*: the agent raises `exposure.service` (Medium) once per port, the server lists it on the host row
+  (`PublicServices`), and it becomes a `service.public` issue until the port closes or is allowed. The host's
+  *Network* tab lists the services with an *Allow* button that adds the port to the host's policy layer.
 * **Alerts:** `exposure.detected` when SSH becomes `Public` (High with password logins on, Medium for key-only), once
   per transition. `network.allowPublicSsh: true` (a bastion) marks it accepted: listed, not counted, not alerted,
   applied by the server at once.
 * **Dashboard:** a host's *Network* tab shows the level, the reasons, copy-paste ufw commands that close the port (to
   the tailnet when Tailscale is up, else to an admin address), Tailscale details, and a hint when the ban allowlist
-  doesn't cover the tailnet (100.64.0.0/10). The Baseline page's *SSH exposure* view and an overview tile cover the
-  fleet.
-* **Why built:** no bundled tool answers "can the internet reach this host's SSH?". Lynis and the baseline check
-  sshd's *settings*; this combines sockets, addresses, firewall and the server's view of the host.
+  doesn't cover the tailnet (100.64.0.0/10). The Baseline page's *Exposure* view and overview tiles cover the
+  fleet, with each host's unexpected public services.
+* **Why built:** no bundled tool answers "can the internet reach this host's SSH?" or "which of its services face the
+  internet?". Lynis and the baseline check sshd's *settings*; this combines sockets, addresses, firewall and the
+  server's view of the host. `ss`, the kernel's socket tables and `systemd-analyze` do the reading.
 
 ## 5g. CrowdSec (opt-in banning engine)
 
