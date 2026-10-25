@@ -20,6 +20,8 @@ public static class PolicyMerger
         Hardening = baseDoc.Hardening is null && overlay.Hardening is null ? null : new HardeningPolicy
         {
             AuditSchedule = overlay.Hardening?.AuditSchedule ?? baseDoc.Hardening?.AuditSchedule,
+            Ignore = baseDoc.Hardening?.Ignore is null && overlay.Hardening?.Ignore is null ? null
+                : (baseDoc.Hardening?.Ignore ?? []).Concat(overlay.Hardening?.Ignore ?? []).Distinct(StringComparer.OrdinalIgnoreCase).ToList(),
         },
         Malware = baseDoc.Malware is null && overlay.Malware is null ? null : new MalwarePolicy
         {

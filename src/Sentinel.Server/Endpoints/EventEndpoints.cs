@@ -87,8 +87,7 @@ public static class EventEndpoints
                 hosts.Any(h => h.PendingUpdates is not null) ? hosts.Count(h => (h.SecurityUpdates ?? h.PendingUpdates ?? 0) > 0) : null,
                 // Hosts with an open (not accepted) High or Critical CVE; null until some host has scanned.
                 hosts.Any(h => h.VulnScannedAt is not null) ? hosts.Count(h => (h.VulnCritical ?? 0) + (h.VulnHigh ?? 0) > 0) : null,
-                // Filled in by the Lynis integration (deliverable 8).
-                null,
+                hosts.Any(h => h.HardeningIndex is not null) ? Math.Round(hosts.Where(h => h.HardeningIndex is not null).Average(h => h.HardeningIndex!.Value), 0) : null,
                 scored.Count == 0 ? null : Math.Round(scored.Average(h => h.BaselineScore!.Value), 0),
                 hostsFailingHigh,
                 recent.Select(Dto.Event).ToList(),

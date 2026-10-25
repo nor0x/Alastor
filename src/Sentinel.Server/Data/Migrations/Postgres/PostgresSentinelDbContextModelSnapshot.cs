@@ -529,6 +529,55 @@ namespace Sentinel.Server.Data.Migrations.Postgres
                     b.ToTable("Groups");
                 });
 
+            modelBuilder.Entity("Sentinel.Server.Data.HostHardeningItem", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<bool>("Accepted")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Details")
+                        .HasMaxLength(512)
+                        .HasColumnType("character varying(512)");
+
+                    b.Property<DateTime>("FirstSeenAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("HostId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.Property<string>("Solution")
+                        .HasMaxLength(512)
+                        .HasColumnType("character varying(512)");
+
+                    b.Property<string>("TestId")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.Property<string>("Text")
+                        .IsRequired()
+                        .HasMaxLength(512)
+                        .HasColumnType("character varying(512)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("HostId");
+
+                    b.HasIndex("TestId");
+
+                    b.ToTable("HardeningItems");
+                });
+
             modelBuilder.Entity("Sentinel.Server.Data.HostMetricSample", b =>
                 {
                     b.Property<long>("Id")
@@ -812,6 +861,18 @@ namespace Sentinel.Server.Data.Migrations.Postgres
 
                     b.Property<Guid?>("GroupId")
                         .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("HardeningAuditedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("HardeningIndex")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("HardeningSuggestions")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("HardeningWarnings")
+                        .HasColumnType("integer");
 
                     b.Property<int>("HeartbeatIntervalSeconds")
                         .HasColumnType("integer");
@@ -1203,6 +1264,15 @@ namespace Sentinel.Server.Data.Migrations.Postgres
                 });
 
             modelBuilder.Entity("Sentinel.Server.Data.HostCommand", b =>
+                {
+                    b.HasOne("Sentinel.Server.Data.ManagedHost", null)
+                        .WithMany()
+                        .HasForeignKey("HostId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Sentinel.Server.Data.HostHardeningItem", b =>
                 {
                     b.HasOne("Sentinel.Server.Data.ManagedHost", null)
                         .WithMany()

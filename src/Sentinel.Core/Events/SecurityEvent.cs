@@ -119,6 +119,12 @@ public static class EventKinds
     /// <summary>Raised by the server: a host has a CVE that is in CISA's Known Exploited Vulnerabilities catalog.</summary>
     public const string VulnerabilitiesExploited = "vulnerabilities.exploited";
 
+    // Hardening (Lynis)
+    /// <summary>A Lynis audit reported warnings it didn't report last time.</summary>
+    public const string HardeningWarning = "hardening.warning";
+    /// <summary>The Lynis hardening index dropped by 5 points or more since the previous audit.</summary>
+    public const string HardeningRegressed = "hardening.regressed";
+
     // Reserved for later deliverables.
     public const string VulnerabilityFound = "vuln.found";
     public const string HardeningFinding = "hardening.finding";

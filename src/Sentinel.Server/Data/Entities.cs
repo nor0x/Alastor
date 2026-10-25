@@ -115,6 +115,29 @@ public sealed class ManagedHost
     public int? VulnFixable { get; set; }
 
     public DateTime? VulnScannedAt { get; set; }
+
+    // Latest Lynis audit, denormalized for list views (accepted items excluded from the counts).
+    public int? HardeningIndex { get; set; }
+    public int? HardeningWarnings { get; set; }
+    public int? HardeningSuggestions { get; set; }
+    public DateTime? HardeningAuditedAt { get; set; }
+}
+
+/// <summary>One Lynis warning or suggestion on one host, from the latest audit. Replaced as a set per audit.</summary>
+public sealed class HostHardeningItem
+{
+    public long Id { get; set; }
+    public Guid HostId { get; set; }
+    public required string TestId { get; set; }
+    public Sentinel.Core.Hardening.LynisItemKind Kind { get; set; }
+    public required string Text { get; set; }
+    public string? Details { get; set; }
+    public string? Solution { get; set; }
+
+    /// <summary>The test id is in the host's effective <c>hardening.ignore</c>. Refreshed when policy changes.</summary>
+    public bool Accepted { get; set; }
+
+    public DateTime FirstSeenAt { get; set; }
 }
 
 /// <summary>One CVE in one installed package on one host, from the latest successful scan. Replaced as a set per scan.</summary>

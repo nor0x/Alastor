@@ -1,5 +1,6 @@
 using Sentinel.Core.Baseline;
 using Sentinel.Core.Blocklists;
+using Sentinel.Core.Hardening;
 using Sentinel.Core.Updates;
 using Sentinel.Core.Vulnerabilities;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -72,6 +73,7 @@ builder.Services.AddSingleton<IToolIntegration>(sp => platform.CreateFail2Ban(sp
 builder.Services.AddSingleton<IToolIntegration>(sp => platform.CreateBaseline(sp.GetRequiredService<ILogger<BaselineIntegration>>()));
 builder.Services.AddSingleton<IToolIntegration>(sp => platform.CreateBlocklist(sp.GetRequiredService<ILogger<BlocklistIntegration>>()));
 builder.Services.AddSingleton<IToolIntegration>(sp => platform.CreateUpdates(sp.GetRequiredService<ILogger<UpdatesIntegration>>()));
+builder.Services.AddSingleton<IToolIntegration>(sp => platform.CreateHardening(sp.GetRequiredService<ILogger<HardeningIntegration>>()));
 builder.Services.AddSingleton<IToolIntegration>(sp => platform.CreateVulnerabilities(sp.GetRequiredService<ServerClient>(), sp.GetRequiredService<ILogger<VulnerabilityIntegration>>()));
 builder.Services.AddSingleton<Supervisor>();
 builder.Services.AddHostedService(sp => sp.GetRequiredService<Supervisor>());
@@ -147,6 +149,7 @@ async Task<int> UninstallAsync()
         platform.CreateBaseline(NullLogger<BaselineIntegration>.Instance),
         platform.CreateBlocklist(NullLogger<BlocklistIntegration>.Instance),
         platform.CreateVulnerabilities(null, NullLogger<VulnerabilityIntegration>.Instance),
+        platform.CreateHardening(NullLogger<HardeningIntegration>.Instance),
     ];
     foreach (var t in tools)
     {
@@ -170,6 +173,9 @@ internal sealed record PlatformServices(OsInfo Os, ICommandRunner Runner, IFileS
 
     public UpdatesIntegration CreateUpdates(ILogger<UpdatesIntegration> logger) =>
         new(Runner, Fs, PackageManagers.For(Os.Family, Runner), State, Os, logger, TimeProvider.System);
+
+    public HardeningIntegration CreateHardening(ILogger<HardeningIntegration> logger) =>
+        new(Runner, Fs, PackageManagers.For(Os.Family, Runner), State, StateDir, logger, TimeProvider.System);
 
     public VulnerabilityIntegration CreateVulnerabilities(IVulnDbSource? dbSource, ILogger<VulnerabilityIntegration> logger) =>
         new(Runner, PackageManagers.For(Os.Family, Runner), State, Os, StateDir, dbSource ?? NoVulnDb.Instance, logger, TimeProvider.System);

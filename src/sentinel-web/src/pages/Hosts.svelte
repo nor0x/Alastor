@@ -10,6 +10,7 @@
   import Meter from '../lib/ui/Meter.svelte';
   import UpdatesBadge from '../lib/ui/UpdatesBadge.svelte';
   import VulnBadge from '../lib/ui/VulnBadge.svelte';
+  import { indexTone } from '../lib/hardening';
   import Time from '../lib/ui/Time.svelte';
 
   type Filter = '' | 'online' | 'offline' | 'problems' | 'pending' | 'baseline' | 'updates' | 'reboot' | 'cves';
@@ -126,6 +127,7 @@
           <th>Tools</th>
           <th>Policy</th>
           <th class="num hide-sm" title="Security baseline score">Baseline</th>
+          <th class="num hide-sm" title="Lynis hardening index">Lynis</th>
           <th class="hide-sm">Updates</th>
           <th class="hide-sm">CVEs</th>
           <th class="hide-sm">Last seen</th>
@@ -163,6 +165,10 @@
             </td>
             <td class="num hide-sm">
               {#if h.baselineScore !== null}<a href="/hosts/{h.id}?tab=baseline" title="{h.baselineFailing} failing check{h.baselineFailing === 1 ? '' : 's'}"><span class="pill {scoreTone(h.baselineScore)}">{h.baselineScore}</span></a>
+              {:else}<span class="muted">—</span>{/if}
+            </td>
+            <td class="num hide-sm">
+              {#if h.hardeningIndex !== null}<a href="/hosts/{h.id}?tab=hardening" title="{h.hardeningWarnings ?? 0} warning{h.hardeningWarnings === 1 ? '' : 's'}"><span class="pill {indexTone(h.hardeningIndex)}">{h.hardeningIndex}</span></a>
               {:else}<span class="muted">—</span>{/if}
             </td>
             <td class="hide-sm nowrap">

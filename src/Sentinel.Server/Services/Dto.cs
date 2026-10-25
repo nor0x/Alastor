@@ -35,7 +35,9 @@ public sealed record HostSummaryDto(
     int? VulnCritical,
     int? VulnHigh,
     int? VulnTotal,
-    int? VulnFixable);
+    int? VulnFixable,
+    int? HardeningIndex,
+    int? HardeningWarnings);
 
 public sealed record ToolStatusDto(
     string ToolId,
