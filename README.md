@@ -140,10 +140,10 @@ One command on the machine that runs the dashboard (a VPS, or any Linux box at h
 
 ```bash
 # VPS with a domain pointing at it: HTTPS through Caddy, and protect this server too
-curl -fsSL https://raw.githubusercontent.com/nor0x/DefBox/main/install/install.sh | sudo bash -s -- --domain alastor.example.com --with-agent
+curl -fsSL https://raw.githubusercontent.com/nor0x/Alastor/main/install/install.sh | sudo bash -s -- --domain alastor.example.com --with-agent
 
 # local machine or LAN, plain HTTP on :8080
-curl -fsSL https://raw.githubusercontent.com/nor0x/DefBox/main/install/install.sh | sudo bash
+curl -fsSL https://raw.githubusercontent.com/nor0x/Alastor/main/install/install.sh | sudo bash
 ```
 
 It prints the dashboard URL and a generated admin password. To add a server, open **Settings → Enrollment → New
@@ -170,7 +170,7 @@ systemd and glibc (Debian, Ubuntu, RHEL/Alma/Rocky, Fedora).
 
 ```bash
 export GITHUB_TOKEN=$(gh auth token)   # or a fine-grained PAT with Contents: read
-curl -fsSL -H "Authorization: Bearer $GITHUB_TOKEN" https://raw.githubusercontent.com/nor0x/DefBox/main/install/install.sh \
+curl -fsSL -H "Authorization: Bearer $GITHUB_TOKEN" https://raw.githubusercontent.com/nor0x/Alastor/main/install/install.sh \
   | sudo GITHUB_TOKEN="$GITHUB_TOKEN" bash
 ```
 
@@ -187,7 +187,7 @@ image's architecture) and `freshclam` for the ClamAV mirror. Agents still run on
 with the command from **Settings → Enrollment**.
 
 ```bash
-git clone https://github.com/nor0x/DefBox && cd DefBox
+git clone https://github.com/nor0x/Alastor && cd Alastor
 ALASTOR_ADMINPASSWORD='a long passphrase' ALASTOR_PUBLICURL=https://alastor.example.com docker compose up -d
 ```
 
@@ -200,13 +200,13 @@ local try without TLS, also set `ALASTOR_SECURECOOKIES=false` and enroll agents 
 ## Repository layout
 
 ```
-src/Alastor.Core     domain: SecurityEvent, policy model, IToolIntegration, the tool integrations
+src/Alastor.Core      domain: SecurityEvent, policy model, IToolIntegration, the tool integrations
                       (fail2ban, CrowdSec, baseline, blocklists, updates, vulnerabilities, Lynis, network, ClamAV),
                       platform seams
-src/Alastor.Server   ASP.NET Core minimal API + SignalR + EF Core; serves the embedded SPA; single-file publish
-src/Alastor.Agent    supervisor daemon (Native AOT); enroll | run | status | uninstall
-src/alastor-web      Svelte 5 + Vite dashboard; builds into Alastor.Server/wwwroot
-tests/Alastor.Tests  xUnit: parsers on captured tool output (Fixtures/, each folder documents its source),
+src/Alastor.Server    ASP.NET Core minimal API + SignalR + EF Core; serves the embedded SPA; single-file publish
+src/Alastor.Agent     supervisor daemon (Native AOT); enroll | run | status | uninstall
+src/alastor-web       Svelte 5 + Vite dashboard; builds into Alastor.Server/wwwroot
+tests/Alastor.Tests   xUnit: parsers on captured tool output (Fixtures/, each folder documents its source),
                       reconciliation, policy, API end to end
 policy/default.yaml   global default policy (embedded into the server)
 install/              install.sh (server) and agent-install.sh, also served by the server at /install/{server,agent}.sh

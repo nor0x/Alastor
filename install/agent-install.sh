@@ -23,7 +23,7 @@ set -euo pipefail
 
 # Everything runs from main(), so a download cut off midway through `curl | bash` executes nothing.
 main() {
-  REPO="${ALASTOR_REPO:-nor0x/DefBox}"
+  REPO="${ALASTOR_REPO:-nor0x/Alastor}"
   BIN=/usr/local/bin/alastor-agent
   UNIT=/etc/systemd/system/alastor-agent.service
   CONFIG=/etc/alastor-agent/agent.json
