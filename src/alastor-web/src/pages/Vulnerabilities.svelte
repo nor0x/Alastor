@@ -1,5 +1,7 @@
 <script lang="ts">
-  import { api, errorText, severities, vulnUrl, type FleetVulnerabilities, type Severity as Sev, type VulnDbStatus } from '../lib/api';
+  import { api, errorText, severities, vulnUrl, type FleetVulnerabilities, type PosturePoint, type Severity as Sev, type VulnDbStatus } from '../lib/api';
+  import { counts, trend } from '../lib/stats';
+  import MetricChart from '../lib/ui/MetricChart.svelte';
   import { bytes } from '../lib/format';
   import { refreshOn } from '../lib/live.svelte';
   import { route } from '../lib/router.svelte';
@@ -18,6 +20,12 @@
   let fixable = $state(params.get('fixable') === '1');
   let kev = $state(params.get('kev') === '1');
   let refreshing = $state('');
+  let posture = $state<PosturePoint[]>([]);
+  const loadPosture = async () => (posture = await api<PosturePoint[]>('/api/stats/posture?days=90').catch(() => posture));
+  $effect(() => {
+    loadPosture();
+    return refreshOn(['hostUpdated'], loadPosture, 120_000);
+  });
 
   const query = $derived.by(() => {
     const p = new URLSearchParams();
@@ -60,6 +68,8 @@
   const hostsSorted = $derived(
     (data?.hosts ?? []).slice().sort((a, b) => b.kev - a.kev || (b.critical ?? -1) - (a.critical ?? -1) || (b.high ?? -1) - (a.high ?? -1) || a.name.localeCompare(b.name)),
   );
+  // Width scale for the per-host severity bars: the host with the most findings fills the track.
+  const maxTotal = $derived(Math.max(1, ...(data?.hosts ?? []).map((h) => h.total ?? 0)));
   const noScanner = $derived(data?.hosts.filter((h) => h.availability === 'Disabled' && !h.scannedAt) ?? []);
 
   async function refreshDb(db: VulnDbStatus) {
@@ -95,6 +105,18 @@
   <div class="banner info">
     <p>No host has a scanner yet. Install <strong>Trivy</strong> (or Grype) from its vendor's repository on each host; the agent adopts it and scans against a database this server mirrors. Open a host's <strong>CVEs</strong> tab for the exact commands.</p>
   </div>
+{/if}
+
+{#if scanned.length && posture.some((p) => p.vulnCritical !== null)}
+  <section class="card trend">
+    <header><h2>Fleet trend</h2><span class="hint">open findings across scanned hosts · 90 days</span></header>
+    <div class="card-body trends">
+      <MetricChart title="Critical" points={trend(posture, (p) => p.vulnCritical)} daily height={96} format={counts} />
+      <MetricChart title="High" points={trend(posture, (p) => p.vulnHigh)} daily height={96} format={counts} />
+      <MetricChart title="Exploited (KEV)" points={trend(posture, (p) => p.vulnKev)} daily height={96} format={counts} />
+      <MetricChart title="Hosts with critical or high" points={trend(posture, (p) => p.hostsWithHighCves)} daily height={96} format={counts} />
+    </div>
+  </section>
 {/if}
 
 {#if view === 'cves'}
@@ -161,7 +183,14 @@
                   {#if h.error}<div class="small bad-text" title={h.error}>last scan failed</div>{/if}
                 </td>
                 <td>
-                  {#if h.total !== null}<VulnBadge critical={h.critical} high={h.high} total={h.total} /> <span class="muted small">{h.total} total</span>
+                  {#if h.total !== null}
+                    <VulnBadge critical={h.critical} high={h.high} total={h.total} /> <span class="muted small">{h.total} total</span>
+                    {@const other = h.total - (h.critical ?? 0) - (h.high ?? 0)}
+                    <span class="sevbar" style:width="{(h.total / maxTotal) * 100}%" title="{h.critical ?? 0} critical · {h.high ?? 0} high · {other} other" aria-hidden="true">
+                      {#if h.critical}<span style:flex-grow={h.critical} class="c"></span>{/if}
+                      {#if h.high}<span style:flex-grow={h.high} class="h"></span>{/if}
+                      {#if other > 0}<span style:flex-grow={other} class="o"></span>{/if}
+                    </span>
                   {:else if h.availability === 'Disabled'}<span class="muted small">no scanner installed</span>
                   {:else}<span class="muted">—</span>{/if}
                 </td>
@@ -209,6 +238,14 @@
 {/if}
 
 <style>
+  .trend { margin-bottom: 16px; }
+  .trends { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px 20px; }
+  .sevbar { display: flex; gap: 2px; height: 6px; margin-top: 5px; min-width: 6px; max-width: 220px; }
+  .sevbar span { min-width: 3px; }
+  .sevbar span:last-child { border-radius: 0 3px 3px 0; }
+  .sevbar .c { background: var(--chart-sev-critical); }
+  .sevbar .h { background: var(--chart-sev-high); }
+  .sevbar .o { background: var(--chart-sev-info); }
   .check { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--muted); white-space: nowrap; }
   .vuln { min-width: 220px; max-width: 460px; }
   .vuln .pill { margin-left: 6px; }

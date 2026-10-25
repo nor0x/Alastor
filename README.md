@@ -9,6 +9,8 @@ configuration declaratively, and turns their output into one normalized alert pi
 Svelte dashboard cover:
 
 - **Hosts:** overview and host detail with live metrics, a capability matrix, events, bans and commands.
+- **Charts:** events per day by severity, ban activity per hour, a host × area posture matrix, and 30/90/365-day trends
+  of baseline score, CVEs, exploited CVEs and pending updates from daily posture snapshots.
 - **Banning:** fail2ban, or CrowdSec with its firewall bouncer (opt-in), managed from policy, with bans and allowlist
   in the dashboard.
 - **Policy:** layered global → group → host, with form and YAML editors, live validation, schedule preview, version

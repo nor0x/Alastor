@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { api, type IssueList as IssueListDto, type Overview } from '../lib/api';
+  import { api, type EventStats, type IssueList as IssueListDto, type Overview, type PosturePoint, type PostureMatrix as Matrix } from '../lib/api';
   import { refreshOn } from '../lib/live.svelte';
   import { fleet, hostNames } from '../lib/fleet.svelte';
   import { number } from '../lib/format';
@@ -7,9 +7,20 @@
   import Meter from '../lib/ui/Meter.svelte';
   import IssueList from '../lib/IssueList.svelte';
   import { refreshIssues } from '../lib/issues.svelte';
+  import { counts, eventBuckets, trend } from '../lib/stats';
+  import { severitySeries, utcOffsetMinutes } from '../lib/ui/chart';
+  import BarList from '../lib/ui/BarList.svelte';
+  import MetricChart from '../lib/ui/MetricChart.svelte';
+  import PostureMatrix from '../lib/ui/PostureMatrix.svelte';
+  import Sparkline from '../lib/ui/Sparkline.svelte';
+  import StackedBars from '../lib/ui/StackedBars.svelte';
 
   let data = $state<Overview | null>(null);
   let openIssues = $state<IssueListDto | null>(null);
+  let events = $state<EventStats | null>(null);
+  let posture = $state<PosturePoint[]>([]);
+  let matrix = $state<Matrix | null>(null);
+  let trendDays = $state(30);
   let error = $state('');
 
   async function load() {
@@ -23,15 +34,32 @@
 
   const loadIssues = async () => (openIssues = await api<IssueListDto>('/api/issues?state=unacknowledged').catch(() => openIssues));
 
+  const loadEvents = async () => (events = await api<EventStats>(`/api/stats/events?days=14&utcOffsetMinutes=${utcOffsetMinutes()}`).catch(() => events));
+  const loadPosture = async () => (posture = await api<PosturePoint[]>(`/api/stats/posture?days=${trendDays}`).catch(() => posture));
+  const loadMatrix = async () => (matrix = await api<Matrix>('/api/stats/matrix').catch(() => matrix));
+
   $effect(() => {
     load();
     loadIssues();
+    loadEvents();
+    loadMatrix();
     const offs = [
       refreshOn(['hostUpdated', 'eventsCreated', 'bansChanged', 'policyChanged'], load),
       refreshOn(['issuesChanged'], loadIssues),
+      refreshOn(['eventsCreated'], loadEvents, 60_000),
+      refreshOn(['hostUpdated', 'baselineUpdated', 'policyChanged', 'issuesChanged'], () => { loadMatrix(); loadPosture(); }, 60_000),
     ];
     return () => offs.forEach((o) => o());
   });
+
+  $effect(() => {
+    void trendDays;
+    loadPosture();
+  });
+
+  // Tile sparklines: the last two weeks of the fleet trend.
+  const recent = $derived(posture.slice(-14));
+  const spark = (pick: (p: PosturePoint) => number | null) => recent.map(pick);
 </script>
 
 <div class="page-head">
@@ -86,21 +114,25 @@
       {#if data.averageBaselineScore === null}<span class="foot muted">no host checked yet</span>
       {:else if data.hostsFailingBaselineHigh > 0}<span class="foot warn">{data.hostsFailingBaselineHigh} host{data.hostsFailingBaselineHigh > 1 ? 's' : ''} failing high-severity checks</span>
       {:else}<span class="foot muted">no high-severity failures</span>{/if}
+      {#if data.averageBaselineScore !== null}<Sparkline values={spark((p) => p.baselineScore)} label="Average baseline score, last 14 days" />{/if}
     </a>
     <a class="tile" href="/hosts?filter=updates">
       <span class="label">Pending security updates</span>
       <span class="big">{data.hostsWithPendingSecurityUpdates ?? '—'}</span>
       <span class="foot muted">{data.hostsWithPendingSecurityUpdates === null ? 'not checked yet' : `host${data.hostsWithPendingSecurityUpdates === 1 ? '' : 's'} need updates`}</span>
+      {#if data.hostsWithPendingSecurityUpdates !== null}<Sparkline values={spark((p) => p.hostsNeedingUpdates)} label="Hosts needing security updates, last 14 days" />{/if}
     </a>
     <a class="tile" href="/vulnerabilities">
       <span class="label">Critical &amp; high CVEs</span>
       <span class="big">{data.hostsWithHighCves ?? '—'}</span>
       <span class="foot muted">{data.hostsWithHighCves === null ? 'not scanned yet' : `host${data.hostsWithHighCves === 1 ? '' : 's'} affected`}</span>
+      {#if data.hostsWithHighCves !== null}<Sparkline values={spark((p) => p.hostsWithHighCves)} label="Hosts with critical or high CVEs, last 14 days" />{/if}
     </a>
     <a class="tile" href="/baseline?view=exposure">
       <span class="label">Public SSH</span>
       <span class="big">{data.hostsWithPublicSsh ?? '—'}</span>
       <span class="foot muted">{data.hostsWithPublicSsh === null ? 'not checked yet' : `host${data.hostsWithPublicSsh === 1 ? '' : 's'} reachable from the internet`}</span>
+      {#if data.hostsWithPublicSsh !== null}<Sparkline values={spark((p) => p.publicSsh)} label="Hosts with public SSH, last 14 days" />{/if}
     </a>
     {#if data.hostsWithMalware !== null}
       <a class="tile" href="/hosts">
@@ -113,8 +145,44 @@
       <span class="label">Hardening index</span>
       <span class="big">{data.averageHardeningIndex?.toFixed(0) ?? '—'}</span>
       <span class="foot muted">{data.averageHardeningIndex === null ? 'not audited yet' : 'Lynis average across hosts'}</span>
+      {#if data.averageHardeningIndex !== null}<Sparkline values={spark((p) => p.hardeningIndex)} label="Average hardening index, last 14 days" />{/if}
     </a>
   </section>
+
+  {#if data.hostsTotal > 0}
+    <div class="grid-2 viz">
+      <section class="card">
+        <header><h2>Events per day</h2><a class="hint" href="/events">Timeline →</a></header>
+        <div class="card-body">
+          {#if events}<StackedBars title="Last 14 days, by severity" series={severitySeries} buckets={eventBuckets(events)} empty="No events in the last 14 days." />
+          {:else}<div class="skeleton-block" style="height:150px"></div>{/if}
+        </div>
+      </section>
+      <section class="card">
+        <header>
+          <h2>Posture trend</h2>
+          <div class="seg" role="group" aria-label="Trend range">
+            {#each [[30, '30d'], [90, '90d'], [365, '1y']] as [d, label] (d)}
+              <button class:on={trendDays === d} aria-pressed={trendDays === d} onclick={() => (trendDays = d as number)}>{label}</button>
+            {/each}
+          </div>
+        </header>
+        <div class="card-body trends">
+          <MetricChart title="Baseline score (avg)" points={trend(posture, (p) => p.baselineScore)} max={100} daily height={96} format={counts} />
+          <MetricChart title="Hosts with critical/high CVEs" points={trend(posture, (p) => p.hostsWithHighCves)} daily height={96} format={counts} />
+          <MetricChart title="Hosts needing security updates" points={trend(posture, (p) => p.hostsNeedingUpdates)} daily height={96} format={counts} />
+          <MetricChart title="Exploited CVEs (KEV)" points={trend(posture, (p) => p.vulnKev)} daily height={96} format={counts} />
+        </div>
+      </section>
+    </div>
+
+    {#if matrix && matrix.rows.length}
+      <section class="card matrix-card">
+        <header><h2>Posture by host</h2><span class="hint">click a cell for details</span></header>
+        <PostureMatrix {matrix} />
+      </section>
+    {/if}
+  {/if}
 
   <div class="grid-2">
     <section class="card">
@@ -145,18 +213,7 @@
       <section class="card">
         <header><h2>Top offenders · 24h</h2><span class="hint">ban and auth-failure events</span></header>
         {#if data.topOffenders.length}
-          <table class="table">
-            <thead><tr><th>IP</th><th class="num">Events</th><th class="num">Hosts</th></tr></thead>
-            <tbody>
-              {#each data.topOffenders as o (o.target)}
-                <tr>
-                  <td class="mono"><a href="/events?ip={encodeURIComponent(o.target)}">{o.target}</a></td>
-                  <td class="num">{number.format(o.events)}</td>
-                  <td class="num">{o.hosts}</td>
-                </tr>
-              {/each}
-            </tbody>
-          </table>
+          <BarList label="Events per offending IP" items={data.topOffenders.map((o) => ({ key: o.target, label: o.target, value: o.events, href: `/events?ip=${encodeURIComponent(o.target)}`, note: o.hosts > 1 ? `${o.hosts} hosts` : undefined }))} />
         {:else}
           <div class="empty">No offenders in the last 24 hours.</div>
         {/if}
@@ -203,5 +260,11 @@
   .foot { font-size: 12px; display: inline-flex; align-items: center; gap: 6px; }
   .foot.bad { color: var(--bad); }
   .foot.warn { color: var(--warn); }
+  .viz { margin-bottom: 16px; }
+  .trends { display: grid; grid-template-columns: 1fr 1fr; gap: 16px 20px; }
+  .matrix-card { margin-bottom: 16px; }
+  .matrix-card :global(.table-wrap) { padding: 4px 8px 8px; }
+  .tile :global(.spark) { margin-top: 6px; }
+  @media (max-width: 640px) { .trends { grid-template-columns: 1fr; } }
   .more { padding: 8px 16px; border-top: 1px solid var(--border); font-size: 12px; }
 </style>

@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { api, errorText, type Ban, type Command, type EventPage, type HostDetail, type IssueList as IssueListDto, type MetricPoint, type SecurityEvent, type ToolStatus } from '../lib/api';
+  import { api, errorText, type Ban, type BanHour, type Command, type EventPage, type EventStats, type HostDetail, type IssueList as IssueListDto, type PosturePoint, type MetricPoint, type SecurityEvent, type ToolStatus } from '../lib/api';
   import { fleet, refreshFleet } from '../lib/fleet.svelte';
   import { on, refreshOn } from '../lib/live.svelte';
   import { navigate, route } from '../lib/router.svelte';
@@ -23,6 +23,9 @@
   import EventList from '../lib/ui/EventList.svelte';
   import IssueList from '../lib/IssueList.svelte';
   import { refreshIssues } from '../lib/issues.svelte';
+  import { banBuckets, banSeries, counts, eventBuckets, trend } from '../lib/stats';
+  import { severitySeries, utcOffsetMinutes } from '../lib/ui/chart';
+  import StackedBars from '../lib/ui/StackedBars.svelte';
   import MetricChart from '../lib/ui/MetricChart.svelte';
   import Modal from '../lib/ui/Modal.svelte';
   import Time from '../lib/ui/Time.svelte';
@@ -42,6 +45,9 @@
   let eventsNext = $state<string | null>(null);
   let bans = $state<Ban[]>([]);
   let hostIssues = $state<IssueListDto | null>(null);
+  let eventStats = $state<EventStats | null>(null);
+  let banHours = $state<BanHour[]>([]);
+  let posture = $state<PosturePoint[]>([]);
   let commands = $state<Command[]>([]);
   let effective = $state<{ revision: string; yaml: string; layers: { layerId: string; scope: string; targetId: string | null; version: number }[] } | null>(null);
   let banOpen = $state(false);
@@ -58,6 +64,16 @@
   }
   const loadMetrics = async () => (metrics = await api<MetricPoint[]>(`/api/hosts/${id}/metrics?hours=${hours}`).catch(() => metrics));
   const loadIssues = async () => (hostIssues = await api<IssueListDto>(`/api/issues?hostId=${id}`).catch(() => hostIssues));
+  async function loadStats() {
+    const [e, b, p] = await Promise.all([
+      api<EventStats>(`/api/stats/events?hostId=${id}&days=14&utcOffsetMinutes=${utcOffsetMinutes()}`).catch(() => eventStats),
+      api<BanHour[]>(`/api/stats/bans?hostId=${id}&hours=24`).catch(() => banHours),
+      api<PosturePoint[]>(`/api/stats/posture?hostId=${id}&days=90`).catch(() => posture),
+    ]);
+    eventStats = e;
+    banHours = b;
+    posture = p;
+  }
   const loadBans = async () => (bans = await api<Ban[]>(`/api/bans?hostId=${id}`).catch(() => bans));
   const loadCommands = async () => (commands = await api<Command[]>(`/api/hosts/${id}/commands`).catch(() => commands));
   const loadEffective = async () => (effective = await api<typeof effective>(`/api/hosts/${id}/effective-policy`).catch(() => effective));
@@ -79,6 +95,7 @@
     loadMetrics();
     loadBans();
     loadIssues();
+    loadStats();
     loadEvents();
     loadCommands();
     loadEffective();
@@ -93,6 +110,7 @@
     const offs = [
       refreshOn(['policyChanged'], () => { loadHost(); loadEffective(); }),
       refreshOn(['issuesChanged'], loadIssues),
+      refreshOn(['eventsCreated', 'baselineUpdated'], loadStats, 60_000),
       on('hostUpdated', (h: { id: string }) => {
         if (h.id !== id) return;
         loadHost();
@@ -293,6 +311,20 @@
           <MetricChart title="Memory · {bytes(host.memoryUsedBytes)} of {bytes(host.memoryTotalBytes)}" points={series('memory')} max={100} />
           <MetricChart title="Disk · {bytes(host.diskUsedBytes)} of {bytes(host.diskTotalBytes)}" points={series('disk')} max={100} />
           <MetricChart title="Load (1 min)" points={series('load1')} unit="" />
+        </div>
+      </section>
+
+      <section class="card">
+        <header><h2>Security posture</h2><span class="hint">events and bans on this host · 90-day trends</span></header>
+        <div class="card-body posture-bars">
+          {#if eventStats}<StackedBars title="Events per day · 14 days" series={severitySeries} buckets={eventBuckets(eventStats)} height={140} empty="No events in the last 14 days." />{/if}
+          <StackedBars title="Bans per hour · 24 hours" series={banSeries} buckets={banBuckets(banHours)} height={140} empty="No bans or auth failures in the last 24 hours." />
+        </div>
+        <div class="card-body posture">
+          <MetricChart title="Baseline score" points={trend(posture, (p) => p.baselineScore)} max={100} daily height={96} format={counts} />
+          <MetricChart title="Critical + high CVEs" points={trend(posture, (p) => (p.vulnCritical === null ? null : p.vulnCritical + (p.vulnHigh ?? 0)))} daily height={96} format={counts} />
+          <MetricChart title="Pending security updates" points={trend(posture, (p) => p.securityUpdates)} daily height={96} format={counts} />
+          <MetricChart title="Hardening index" points={trend(posture, (p) => p.hardeningIndex)} max={100} daily height={96} format={counts} />
         </div>
       </section>
 
@@ -517,6 +549,8 @@
 {/if}
 
 <style>
+  .posture-bars { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 18px 28px; }
+  .posture { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 18px 24px; border-top: 1px solid var(--border); }
   .title { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
   .title .pill { font-size: 12px; font-weight: 400; }
   .tag { margin-left: 4px; }
