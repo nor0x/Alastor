@@ -1,6 +1,8 @@
 # Push a tag like v0.2.0 to build the server and agent for x64 and arm64 and publish a GitHub release.
 # install/install.sh and install/agent-install.sh download these assets by name:
 #   alastor-server-linux-{x64,arm64}  alastor-agent-linux-{x64,arm64}  SHA256SUMS  install.sh  agent-install.sh
+# Release notes are written by DiffLog from the commits since the previous tag when the OPENAI_API_KEY repository
+# secret is set; without it (or when generation fails) GitHub's generated notes are used instead.
 name: Release
 
 on:
@@ -53,11 +55,40 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     steps:
+      # DiffLog reads the commits since the previous tag, so the shallow clone checkout does by default isn't enough.
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          fetch-tags: true
       - uses: actions/download-artifact@v4
         with:
           path: dist
           merge-multiple: true
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+      - name: Install DiffLog
+        run: dotnet tool install -g DiffLog
+      # Prose isn't worth a failed release: without the OPENAI_API_KEY secret, or when the API fails, no
+      # release-notes.md is left behind and the release falls back to GitHub's generated list of pull requests.
+      - name: Generate release notes
+        continue-on-error: true
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: |
+          if [ -z "$OPENAI_API_KEY" ]; then
+            echo "::notice::No OPENAI_API_KEY secret configured: using GitHub's generated notes."
+            exit 0
+          fi
+          PROMPT="Write release notes in English for Alastor, a self-hosted security dashboard for Linux servers (a server with a web dashboard plus an agent on each host), based on this git history. The readers are technical: system administrators and self-hosters who run Alastor and decide whether and how to upgrade. Group the changes under these headings, leaving out empty ones: 'Upgrade notes' (first, only when something needs action: breaking changes, renamed or removed settings, new required configuration, migrations, agent and server versions that must match), 'New', 'Improved', 'Fixed', 'Security'. Name new or changed configuration (ALASTOR_* environment variables, policy keys), CLI commands, API endpoints and supported tools exactly, in backticks. Describe each change by what it does for the operator, one line each where possible. Leave out refactoring, tests, CI, formatting and documentation-only changes, commit hashes and author names. No introduction, no summary at the end, no thanks, no marketing language."
+          # HEAD is the tag being released, so the previous release is the newest tag reachable from its parent.
+          PREV_TAG=$(git describe --tags --abbrev=0 "${GITHUB_REF_NAME}^" 2>/dev/null || echo "")
+          if [ -n "$PREV_TAG" ]; then
+            difflog generate --from "$PREV_TAG" --to HEAD --format Markdown -o release-notes.md --system-prompt "$PROMPT"
+            printf '\n\n**Full changelog**: https://github.com/%s/compare/%s...%s\n' "$GITHUB_REPOSITORY" "$PREV_TAG" "$GITHUB_REF_NAME" >> release-notes.md
+          else
+            difflog generate --to HEAD --format Markdown -o release-notes.md --system-prompt "$PROMPT"
+          fi
       - name: Create release
         env:
           GH_TOKEN: ${{ github.token }}
@@ -65,4 +96,5 @@ jobs:
           cp install/install.sh install/agent-install.sh dist/
           chmod 755 dist/*
           (cd dist && sha256sum alastor-* > SHA256SUMS)
-          gh release create "$GITHUB_REF_NAME" dist/* --title "Alastor $GITHUB_REF_NAME" --generate-notes
+          if [ -s release-notes.md ]; then notes=(--notes-file release-notes.md); else notes=(--generate-notes); fi
+          gh release create "$GITHUB_REF_NAME" dist/* --title "Alastor $GITHUB_REF_NAME" "${notes[@]}"
