@@ -31,6 +31,9 @@ public enum Capability
 
     /// <summary>File integrity: system binaries and configuration compared with a baseline (AIDE).</summary>
     Integrity,
+
+    /// <summary>Disk space: what uses it, and cleanups that free it.</summary>
+    Storage,
 }
 
 /// <summary>
@@ -131,6 +134,12 @@ public static class EventKinds
     public const string SoftwareUpgraded = "software.upgraded";
     public const string SoftwareRemoved = "software.removed";
     public const string SoftwareFailed = "software.failed";
+
+    // Storage
+    /// <summary>Raised by the server: the root filesystem passed 90% used.</summary>
+    public const string StorageLow = "storage.low";
+    public const string StorageCleaned = "storage.cleaned";
+    public const string StorageCleanupFailed = "storage.cleanup-failed";
 
     // Vulnerabilities
     /// <summary>A scan found new fixable vulnerabilities at or above <c>vulnerabilities.alertSeverity</c>.</summary>
