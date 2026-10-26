@@ -151,7 +151,7 @@
     {:else}
       <div class="table-wrap">
         <table class="table">
-          <thead><tr><th>Vulnerability</th><th>Severity</th><th class="num hide-sm">CVSS</th><th class="num">Hosts</th><th class="hide-sm">Packages</th></tr></thead>
+          <thead><tr><th>Vulnerability</th><th title="Severity rating reported by the vulnerability scanner">Severity</th><th class="num hide-sm" title="CVSS base score, 0–10">CVSS</th><th class="num" title="Hosts where an affected package is installed">Hosts</th><th class="hide-sm" title="Affected packages">Packages</th></tr></thead>
           <tbody>
             {#each data.cves as c (c.id)}
               <tr>
@@ -186,7 +186,7 @@
     {:else}
       <div class="table-wrap">
         <table class="table">
-          <thead><tr><th>Host</th><th>Open CVEs</th><th class="num">Exploited</th><th class="num hide-sm">Fixable</th><th class="hide-sm">Scanner</th><th class="hide-sm">Scanned</th></tr></thead>
+          <thead><tr><th>Host</th><th title="Known vulnerabilities in installed packages">Open CVEs</th><th class="num" title="In CISA's Known Exploited Vulnerabilities catalog">Exploited</th><th class="num hide-sm" title="CVEs with a fixed package version available">Fixable</th><th class="hide-sm" title="The tool that scanned this host">Scanner</th><th class="hide-sm" title="When the last scan finished">Scanned</th></tr></thead>
           <tbody>
             {#each hostsSorted as h (h.hostId)}
               <tr>

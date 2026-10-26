@@ -54,7 +54,7 @@
   <section class="card">
     <div class="table-wrap">
       <table class="table">
-        <thead><tr><th>Host</th><th>SSH</th><th>Other public</th><th class="hide-sm">Passwords</th><th class="hide-sm">Host firewall</th><th>Tailscale</th><th class="hide-sm">Checked</th></tr></thead>
+        <thead><tr><th>Host</th><th title="Can sshd be reached from the internet?">SSH</th><th title="Other services listening publicly, beyond network.allowPublicPorts">Other public</th><th class="hide-sm" title="Does sshd accept password logins?">Passwords</th><th class="hide-sm" title="The firewall on the host itself. Provider firewalls and security groups aren't visible to the agent">Host firewall</th><th title="Tailnet address; SSH means Tailscale SSH is on">Tailscale</th><th class="hide-sm" title="When the agent last checked">Checked</th></tr></thead>
         <tbody>
           {#each sorted as r (r.hostId)}
             {@const look = exposureLook(r.exposure, r.accepted)}

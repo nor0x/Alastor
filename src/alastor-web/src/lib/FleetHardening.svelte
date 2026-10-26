@@ -54,7 +54,7 @@
     <header><h2>Hosts</h2><span class="hint">lowest index first</span></header>
     <div class="table-wrap">
       <table class="table">
-        <thead><tr><th>Host</th><th>Index</th><th class="num">Warnings</th><th class="num hide-sm">Suggestions</th><th class="hide-sm">Audited</th></tr></thead>
+        <thead><tr><th>Host</th><th title="Lynis hardening index, 0–100; higher is better">Index</th><th class="num" title="Findings Lynis rates worth fixing first">Warnings</th><th class="num hide-sm" title="Optional hardening advice">Suggestions</th><th class="hide-sm" title="When Lynis last ran">Audited</th></tr></thead>
         <tbody>
           {#each hostsSorted as h (h.hostId)}
             <tr>
@@ -88,7 +88,7 @@
         <header><h2>{title}</h2><span class="hint">across the fleet, excluding accepted</span></header>
         <div class="table-wrap">
           <table class="table">
-            <thead><tr><th>Test</th><th>Finding</th><th class="num">Hosts</th></tr></thead>
+            <thead><tr><th title="Lynis test ID; links to its description on cisofy.com">Test</th><th>Finding</th><th class="num" title="Hosts with this finding, not counting those that accepted it">Hosts</th></tr></thead>
             <tbody>
               {#each list as i (i.testId)}
                 <tr>

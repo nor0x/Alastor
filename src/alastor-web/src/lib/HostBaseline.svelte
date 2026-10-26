@@ -1,7 +1,7 @@
 <script lang="ts">
   import { api, errorText, type Command } from './api';
   import {
-    categoryLabels, ignorePath, resetOnHost, scoreTone, setLayerKey, severityRank,
+    categoryLabels, ignorePath, resetOnHost, scoreTone, setLayerKey, severityHelp, severityRank,
     type BaselineCheck, type HostBaseline, type ScopeOption,
   } from './baseline';
   import { on, refreshOn } from './live.svelte';
@@ -113,7 +113,7 @@
         {#if c.enforced}<span class="pill info" title="The policy applies this fix on this host">fix applied</span>{/if}
         {#if c.accepted}<span class="pill muted">accepted risk</span>{/if}
         <span class="pill muted hide-sm">{categoryLabels[c.category]}</span>
-        <Severity value={c.severity} />
+        <Severity value={c.severity} title={severityHelp(c.severity)} />
       </span>
     </summary>
     <div class="body">

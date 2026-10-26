@@ -138,6 +138,8 @@ a.ledger-cell:focus-visible { outline-offset: -2px; }
 .table-wrap { overflow-x: auto; }
 .table { width: 100%; border-collapse: collapse; font-size: var(--text-md); }
 .table th { text-align: left; font-family: var(--font-display); font-weight: 500; font-size: var(--text-sm); color: var(--muted); padding: var(--space-xs) var(--space-sm); border-bottom: var(--rule-hair) solid var(--border-strong); white-space: nowrap; }
+/* A header with a tooltip says so: dotted underline and the help cursor. */
+th[title], .th[title] { text-decoration: underline dotted; text-underline-offset: 3px; cursor: help; }
 .table td { padding: var(--space-xs) var(--space-sm); height: 44px; border-bottom: var(--rule-hair) solid var(--border); vertical-align: middle; }
 .table th:first-child, .table td:first-child { padding-left: var(--space-md); }
 .table th:last-child, .table td:last-child { padding-right: var(--space-md); }
