@@ -27,6 +27,9 @@ public sealed class AideIntegration(
     public const string CheckJob = "integrity.check";
     public const string AcceptJob = "integrity.accept";
     public const int MaxChanges = 2000;
+
+    /// <summary>Folder under the state directory with the generated aide.conf and the baseline database.</summary>
+    public const string DbDirName = "aide";
     public static readonly IReadOnlyList<string> DefaultPaths =
         ["/bin", "/sbin", "/usr/bin", "/usr/sbin", "/usr/local/bin", "/usr/local/sbin", "/etc", "/root/.ssh", "/usr/lib/systemd/system"];
 
@@ -55,7 +58,7 @@ public sealed class AideIntegration(
 
     public bool IsWanted(PolicyDocument policy) => !ScheduleDefaults.For(policy, "integrity.checkSchedule").IsDisabled;
 
-    private string DbDir => Path.Combine(stateDir, "aide");
+    private string DbDir => Path.Combine(stateDir, DbDirName);
     private string ConfigPath => Path.Combine(DbDir, "aide.conf");
     private string DbPath => Path.Combine(DbDir, "aide.db");
 
