@@ -319,6 +319,7 @@ public sealed class BlocklistApiTests : IDisposable
             builder.UseSetting("AdminPassword", "test-password-123");
             builder.UseSetting("SecureCookies", "false");
             builder.UseSetting("ThreatFeedEnabled", "false");
+            builder.UseSetting("OsvEnabled", "false");
             builder.UseSetting("BlocklistsEnabled", "false"); // the test drives refreshes itself
             builder.UseSetting("AuthRateLimitPerMinute", "1000");
             builder.ConfigureTestServices(s => s.AddHttpClient(BlocklistService.HttpClientName).ConfigurePrimaryHttpMessageHandler(() => http));

@@ -1,0 +1,19 @@
+Dependencies resolved.
+================================================================================
+ Package                  Arch       Version                  Repository   Size
+================================================================================
+Removing:
+ nginx                    x86_64     2:1.20.1-16.el9_4.1      @appstream   49 k
+Removing dependent packages:
+ nginx-mod-http-perl-and-a-very-long-module-name
+                          x86_64     2:1.20.1-16.el9_4.1      @appstream   60 k
+Removing unused dependencies:
+ nginx-core               x86_64     2:1.20.1-16.el9_4.1      @appstream  1.6 M
+ nginx-filesystem         noarch     2:1.20.1-16.el9_4.1      @appstream  0  
+
+Transaction Summary
+================================================================================
+Remove  4 Packages
+
+Freed space: 1.7 M
+Operation aborted.

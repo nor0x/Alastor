@@ -77,6 +77,7 @@ builder.Services.AddSingleton<IToolIntegration>(sp => platform.CreateCrowdSec(sp
 builder.Services.AddSingleton<IToolIntegration>(sp => platform.CreateBaseline(sp.GetRequiredService<ILogger<BaselineIntegration>>()));
 builder.Services.AddSingleton<IToolIntegration>(sp => platform.CreateBlocklist(sp.GetRequiredService<ILogger<BlocklistIntegration>>()));
 builder.Services.AddSingleton<IToolIntegration>(sp => platform.CreateUpdates(sp.GetRequiredService<ILogger<UpdatesIntegration>>()));
+builder.Services.AddSingleton<IToolIntegration>(sp => platform.CreateSoftware(sp.GetRequiredService<ILogger<Alastor.Core.Software.SoftwareIntegration>>()));
 builder.Services.AddSingleton<IToolIntegration>(sp => platform.CreateHardening(sp.GetRequiredService<ILogger<HardeningIntegration>>()));
 builder.Services.AddSingleton<IToolIntegration>(sp => platform.CreateNetwork(sp.GetRequiredService<ILogger<NetworkIntegration>>()));
 builder.Services.AddSingleton<IToolIntegration>(sp => platform.CreateLogins(sp.GetRequiredService<ILogger<Alastor.Core.Access.LoginIntegration>>()));
@@ -187,6 +188,9 @@ internal sealed record PlatformServices(OsInfo Os, ICommandRunner Runner, IFileS
 
     public UpdatesIntegration CreateUpdates(ILogger<UpdatesIntegration> logger) =>
         new(Runner, Fs, PackageManagers.For(Os.Family, Runner), State, Os, logger, TimeProvider.System);
+
+    public Alastor.Core.Software.SoftwareIntegration CreateSoftware(ILogger<Alastor.Core.Software.SoftwareIntegration> logger) =>
+        new(Runner, Fs, State, Os, logger, TimeProvider.System);
 
     public HardeningIntegration CreateHardening(ILogger<HardeningIntegration> logger) =>
         new(Runner, Fs, PackageManagers.For(Os.Family, Runner), State, StateDir, logger, TimeProvider.System);

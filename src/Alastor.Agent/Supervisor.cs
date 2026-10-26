@@ -11,6 +11,8 @@ using Alastor.Core.Integrations;
 using Alastor.Core.Net;
 using Alastor.Core.Platform;
 using Alastor.Core.Policy;
+using Alastor.Core.Software;
+using System.Text.Json;
 
 namespace Alastor.Agent;
 
@@ -332,7 +334,7 @@ public sealed class Supervisor(
                 outcome = new CommandOutcome(false, ex.Message);
             }
             logger.LogInformation("Command {Type} {Payload}: {Result}", cmd.Type, string.Join(",", cmd.Payload.Values), outcome.Message);
-            await server.ReportCommandAsync(cmd.Id, new AgentCommandResult(outcome.Success, outcome.Message), ct);
+            await server.ReportCommandAsync(cmd.Id, new AgentCommandResult(outcome.Success, outcome.Message) { Detail = outcome.Detail }, ct);
         }
         if (bansTouched) await PushBanSnapshotsAsync(force: true, ct);
     }
@@ -367,9 +369,59 @@ public sealed class Supervisor(
             case AgentCommandTypes.BaselineCheck:
                 await RunBaselineIfDueAsync(force: true, ct);
                 return new(true, "Baseline checks ran");
+            case AgentCommandTypes.PackagePlan or AgentCommandTypes.PackageAction:
+                return await PackageCommandAsync(cmd, ct);
             default:
                 return new(false, $"Unknown command '{cmd.Type}' (agent {AgentInfo.Version})");
         }
+    }
+
+    /// <summary>
+    /// A dry run answers inline (it takes seconds). An upgrade or uninstall can take minutes, so like a job it runs off the
+    /// heartbeat loop and its outcome follows as a software report; afterwards the update check and CVE scan run again.
+    /// </summary>
+    private async Task<CommandOutcome> PackageCommandAsync(AgentCommand cmd, CancellationToken ct)
+    {
+        var software = _tools.OfType<SoftwareIntegration>().FirstOrDefault();
+        if (software is null) return new(false, $"This agent has no software inventory (agent {AgentInfo.Version})");
+        var op = cmd.Payload.GetValueOrDefault("op") ?? "";
+        var package = cmd.Payload.GetValueOrDefault("package") ?? "";
+        if (!PackageOps.IsValid(op) || !PackageOps.IsValidName(package)) return new(false, "Invalid operation or package name");
+        if (cmd.Type == AgentCommandTypes.PackagePlan)
+        {
+            var plan = await software.PreviewAsync(op, package, ct);
+            var message = !plan.Success ? plan.Error ?? "Dry run failed"
+                : plan.Blocked.Count > 0 ? $"Blocked: would remove protected {string.Join(", ", plan.Blocked)}"
+                : plan.Changes.Count == 0 ? "Nothing to do"
+                : $"Would change {plan.Changes.Count} package{(plan.Changes.Count == 1 ? "" : "s")}";
+            return new(plan.Success, message) { Detail = JsonSerializer.Serialize(plan, AgentJsonContext.Default.PackagePlan) };
+        }
+        if (!_runningJobs.TryAdd(SoftwareIntegration.ActionJob, true)) return new(false, "Another package upgrade or uninstall is still running");
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                AgentReport report;
+                try { report = await software.RunActionAsync(op, package, ct); }
+                catch (Exception ex) when (ex is not OperationCanceledException)
+                {
+                    logger.LogError(ex, "Package {Op} {Package} failed", op, package);
+                    var now = time.GetUtcNow().UtcDateTime;
+                    report = new AgentReport(SoftwareIntegration.ActionJob, now, now, false, ex.Message);
+                }
+                _pendingReports.Enqueue(report);
+                _jobRequests.Writer.TryWrite(""); // deliver now
+                if (report.Success)
+                    foreach (var job in AllJobs().Where(j => j.Id is Alastor.Core.Updates.UpdatesIntegration.CheckJob or Alastor.Core.Vulnerabilities.VulnerabilityIntegration.ScanJob))
+                        _jobRequests.Writer.TryWrite(job.Id);
+                Wake("report");
+            }
+            finally
+            {
+                _runningJobs.TryRemove(SoftwareIntegration.ActionJob, out _);
+            }
+        }, ct);
+        return new(true, $"{(op == PackageOps.Upgrade ? "Upgrading" : "Uninstalling")} {package} started; the result follows as a report");
     }
 
     private IBanProvider? ActiveBanProvider() =>

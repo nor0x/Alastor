@@ -1,0 +1,15 @@
+NOTE: This is only a simulation!
+      apt-get needs root privileges for real execution.
+      Keep also in mind that locking is deactivated,
+      so don't depend on the relevance to the real current situation!
+Reading package lists...
+Building dependency tree...
+Reading state information...
+The following package was automatically installed and is no longer required:
+  libcurl4t64
+Use 'apt autoremove' to remove it.
+The following packages will be REMOVED:
+  curl ubuntu-wsl
+0 upgraded, 0 newly installed, 2 to remove and 240 not upgraded.
+Remv ubuntu-wsl [1.539.1]
+Remv curl [8.5.0-2ubuntu10.6]

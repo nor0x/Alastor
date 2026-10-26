@@ -12,6 +12,7 @@
   import BanTable from '../lib/BanTable.svelte';
   import HostBaseline from '../lib/HostBaseline.svelte';
   import HostUpdates from '../lib/HostUpdates.svelte';
+  import HostSoftware from '../lib/HostSoftware.svelte';
   import HostVulnerabilities from '../lib/HostVulnerabilities.svelte';
   import HostHardening from '../lib/HostHardening.svelte';
   import HostNetwork from '../lib/HostNetwork.svelte';
@@ -35,8 +36,8 @@
 
   let { id }: { id: string } = $props();
 
-  type Tab = 'overview' | 'baseline' | 'hardening' | 'network' | 'updates' | 'vulnerabilities' | 'malware' | 'integrity' | 'events' | 'bans' | 'policy' | 'commands';
-  const tabs: [Tab, string][] = [['overview', 'Overview'], ['baseline', 'Baseline'], ['hardening', 'Hardening'], ['network', 'Network'], ['updates', 'Updates'], ['vulnerabilities', 'CVEs'], ['malware', 'Malware'], ['integrity', 'Integrity'], ['events', 'Events'], ['bans', 'Bans'], ['policy', 'Policy'], ['commands', 'Commands']];
+  type Tab = 'overview' | 'baseline' | 'hardening' | 'network' | 'updates' | 'software' | 'vulnerabilities' | 'malware' | 'integrity' | 'events' | 'bans' | 'policy' | 'commands';
+  const tabs: [Tab, string][] = [['overview', 'Overview'], ['baseline', 'Baseline'], ['hardening', 'Hardening'], ['network', 'Network'], ['updates', 'Updates'], ['software', 'Software'], ['vulnerabilities', 'CVEs'], ['malware', 'Malware'], ['integrity', 'Integrity'], ['events', 'Events'], ['bans', 'Bans'], ['policy', 'Policy'], ['commands', 'Commands']];
   const tab = $derived((new URLSearchParams(route.search).get('tab') as Tab) || 'overview');
 
   let host = $state<HostDetail | null>(null);
@@ -437,6 +438,8 @@
     <HostIntegrity hostId={id} isOnline={s.isOnline} />
   {:else if tab === 'updates'}
     <HostUpdates hostId={id} isOnline={s.isOnline} />
+  {:else if tab === 'software'}
+    <HostSoftware hostId={id} hostName={s.name} isOnline={s.isOnline} />
   {:else if tab === 'vulnerabilities'}
     <HostVulnerabilities hostId={id} isOnline={s.isOnline} osId={host.osId} />
   {:else if tab === 'malware'}

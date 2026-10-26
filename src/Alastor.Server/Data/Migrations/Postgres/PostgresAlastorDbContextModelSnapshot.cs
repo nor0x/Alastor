@@ -486,6 +486,9 @@ namespace Alastor.Server.Data.Migrations.Postgres
                         .IsRequired()
                         .HasColumnType("text");
 
+                    b.Property<string>("ResultDetail")
+                        .HasColumnType("text");
+
                     b.Property<string>("ResultMessage")
                         .HasColumnType("text");
 
@@ -716,6 +719,53 @@ namespace Alastor.Server.Data.Migrations.Postgres
                     b.HasIndex("HostId", "At");
 
                     b.ToTable("MetricSamples");
+                });
+
+            modelBuilder.Entity("Alastor.Server.Data.HostPackage", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<string>("Arch")
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.Property<Guid>("HostId")
+                        .HasColumnType("uuid");
+
+                    b.Property<bool>("Manual")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<bool>("Protected")
+                        .HasColumnType("boolean");
+
+                    b.Property<long?>("SizeKb")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("Source")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("Version")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("HostId");
+
+                    b.HasIndex("Name");
+
+                    b.ToTable("Packages");
                 });
 
             modelBuilder.Entity("Alastor.Server.Data.HostPostureSnapshot", b =>
@@ -1128,6 +1178,12 @@ namespace Alastor.Server.Data.Migrations.Postgres
                         .IsRequired()
                         .HasColumnType("text");
 
+                    b.Property<int?>("PackagesManual")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("PackagesTotal")
+                        .HasColumnType("integer");
+
                     b.Property<int?>("PendingUpdates")
                         .HasColumnType("integer");
 
@@ -1165,6 +1221,9 @@ namespace Alastor.Server.Data.Migrations.Postgres
 
                     b.Property<string>("ServicesNeedingRestart")
                         .HasColumnType("text");
+
+                    b.Property<DateTime?>("SoftwareCollectedAt")
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("SshExposure")
                         .HasMaxLength(24)
@@ -1318,6 +1377,70 @@ namespace Alastor.Server.Data.Migrations.Postgres
                     b.HasIndex("ChannelId");
 
                     b.ToTable("NotificationDeliveries");
+                });
+
+            modelBuilder.Entity("Alastor.Server.Data.OsvPackageResult", b =>
+                {
+                    b.Property<string>("Ecosystem")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("Package")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("Version")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<DateTime>("CheckedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("VulnIds")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.HasKey("Ecosystem", "Package", "Version");
+
+                    b.HasIndex("CheckedAt");
+
+                    b.ToTable("OsvPackages");
+                });
+
+            modelBuilder.Entity("Alastor.Server.Data.OsvVulnerability", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)");
+
+                    b.Property<string>("Aliases")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<double?>("Cvss")
+                        .HasColumnType("double precision");
+
+                    b.Property<DateTime>("FetchedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Fixed")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime?>("Modified")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("Severity")
+                        .HasMaxLength(32)
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Summary")
+                        .HasMaxLength(512)
+                        .HasColumnType("character varying(512)");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("OsvVulnerabilities");
                 });
 
             modelBuilder.Entity("Alastor.Server.Data.PolicyLayer", b =>
@@ -1533,6 +1656,15 @@ namespace Alastor.Server.Data.Migrations.Postgres
                 });
 
             modelBuilder.Entity("Alastor.Server.Data.HostMetricSample", b =>
+                {
+                    b.HasOne("Alastor.Server.Data.ManagedHost", null)
+                        .WithMany()
+                        .HasForeignKey("HostId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Alastor.Server.Data.HostPackage", b =>
                 {
                     b.HasOne("Alastor.Server.Data.ManagedHost", null)
                         .WithMany()

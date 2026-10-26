@@ -127,6 +127,11 @@ public static class EventKinds
     /// <summary>Services still run code from libraries or binaries an update replaced (needrestart, needs-restarting).</summary>
     public const string RestartRequired = "updates.restart-required";
 
+    // Software (single-package upgrades and uninstalls from the dashboard)
+    public const string SoftwareUpgraded = "software.upgraded";
+    public const string SoftwareRemoved = "software.removed";
+    public const string SoftwareFailed = "software.failed";
+
     // Vulnerabilities
     /// <summary>A scan found new fixable vulnerabilities at or above <c>vulnerabilities.alertSeverity</c>.</summary>
     public const string VulnerabilitiesFound = "vulnerabilities.found";

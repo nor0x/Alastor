@@ -1,0 +1,1 @@
+nginx\nbash\nopenssh-server\n

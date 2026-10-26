@@ -184,6 +184,27 @@ public sealed class BlocklistWorker(IServiceScopeFactory scopes, TimeProvider ti
     }
 }
 
+/// <summary>Every 15 minutes, looks up package versions on OSV.dev that are new to the fleet or older than a day.</summary>
+public sealed class OsvWorker(IServiceScopeFactory scopes, TimeProvider time, ILogger<OsvWorker> logger) : BackgroundService
+{
+    private static readonly TimeSpan CheckInterval = TimeSpan.FromMinutes(15);
+
+    protected override async Task ExecuteAsync(CancellationToken ct)
+    {
+        await Task.Yield();
+        using var timer = new PeriodicTimer(CheckInterval, time);
+        do
+        {
+            try
+            {
+                await using var scope = scopes.CreateAsyncScope();
+                await scope.ServiceProvider.GetRequiredService<Alastor.Server.Services.Osv.OsvService>().RunDueAsync(ct);
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException) { logger.LogError(ex, "OSV.dev lookup failed"); }
+        } while (await timer.WaitForNextTickAsync(ct));
+    }
+}
+
 /// <summary>Keeps the scanner databases agents use up to date, and fetches one right away when an agent first asks for it.</summary>
 public sealed class VulnDbWorker(Alastor.Server.Services.Vulnerabilities.VulnDbMirror mirror, ILogger<VulnDbWorker> logger) : BackgroundService
 {
