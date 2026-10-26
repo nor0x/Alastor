@@ -26,7 +26,7 @@
 
 <div class="wrap">
   <form onsubmit={submit}>
-    <BrandSpell size={24} placement="inline">
+    <BrandSpell size={36} placement="inline">
       {#snippet label()}<h1>Alastor</h1>{/snippet}
     </BrandSpell>
     <label>Username <input class="field" bind:value={username} autocomplete="username" required /></label>
