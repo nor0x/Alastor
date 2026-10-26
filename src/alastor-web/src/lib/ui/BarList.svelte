@@ -25,12 +25,13 @@
 </ul>
 
 <style>
-  .bars { list-style: none; margin: 0; padding: 6px 16px 10px; display: flex; flex-direction: column; gap: 6px; }
-  li { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(60px, 2fr) auto; align-items: center; gap: 10px; font-size: 13px; }
+  .bars { list-style: none; margin: 0; padding: var(--space-xs) var(--space-md) var(--space-sm); display: flex; flex-direction: column; }
+  li { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(60px, 2fr) auto; align-items: center; gap: var(--space-sm); min-height: 36px; font-size: var(--text-md); }
+  li + li { border-top: var(--rule-hair) solid var(--border); }
   .name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .name a { font-family: var(--mono); font-size: 12.5px; }
-  .note { margin-left: 6px; color: var(--muted); font-size: 11.5px; }
-  .track { height: 8px; }
-  .fill { display: block; height: 100%; min-width: 2px; border-radius: 0 4px 4px 0; background: var(--info); opacity: 0.85; }
-  .num { min-width: 36px; text-align: right; font-variant-numeric: tabular-nums; color: var(--text-strong); }
+  .name a { font-family: var(--mono); font-size: var(--text-code); }
+  .note { margin-left: var(--space-xs); color: var(--muted); font-size: var(--text-xs); }
+  .track { height: 10px; background: var(--color-paper-3); border-radius: 2px; }
+  .fill { display: block; height: 100%; min-width: 2px; border-radius: 2px; background: var(--color-accent); }
+  .num { min-width: 36px; text-align: right; font-family: var(--font-display); font-weight: 600; font-variant-numeric: tabular-nums; color: var(--text-strong); }
 </style>

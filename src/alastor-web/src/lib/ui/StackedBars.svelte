@@ -140,33 +140,36 @@
 
 <style>
   .chart { margin: 0; min-width: 0; }
-  figcaption { display: flex; justify-content: space-between; align-items: baseline; gap: 8px 16px; flex-wrap: wrap; margin-bottom: 6px; }
-  .title { color: var(--muted); font-size: 12px; }
-  .value { color: var(--text-strong); font-size: 18px; font-weight: 600; }
-  .legend { display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: 12px; color: var(--muted); }
-  .item { display: inline-flex; align-items: center; gap: 5px; }
+  figcaption { display: flex; justify-content: space-between; align-items: flex-start; gap: var(--space-xs) var(--space-md); flex-wrap: wrap; margin-bottom: var(--space-xs); }
+  .title { font-family: var(--font-display); font-weight: 500; font-size: var(--text-sm); color: var(--muted); }
+  .value { font-family: var(--font-display); color: var(--text-strong); font-size: var(--text-figure-s); font-weight: 600; line-height: 1; letter-spacing: var(--tracking-display); font-variant-numeric: tabular-nums; }
+  .legend { display: flex; flex-wrap: wrap; gap: var(--space-2xs) var(--space-sm); font-size: var(--text-xs); color: var(--muted); }
+  .item { display: inline-flex; align-items: center; gap: var(--space-2xs); }
   .swatch { width: 10px; height: 10px; border-radius: 2px; }
-  .n { color: var(--text); font-variant-numeric: tabular-nums; }
+  .n { color: var(--text-strong); font-weight: 500; font-variant-numeric: tabular-nums; }
   .plot { position: relative; }
   svg { display: block; touch-action: pan-y; }
   svg:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; border-radius: 4px; }
   .grid { stroke: var(--border); stroke-width: 1; }
-  .axis { fill: var(--muted); font-size: 10px; font-variant-numeric: tabular-nums; }
-  .col { transition: opacity 0.1s; }
-  .col.dim { opacity: 0.45; }
+  .axis { fill: var(--muted); font-family: var(--font-body); font-size: 10px; font-variant-numeric: tabular-nums; }
+  .col { transition: opacity var(--dur-micro) var(--ease-out); }
+  .col.dim { opacity: 0.4; }
   .hit { fill: transparent; }
   .tip {
-    position: absolute; top: -6px; transform: translate(-50%, -100%); pointer-events: none; z-index: 2;
-    display: flex; flex-direction: column; gap: 1px; padding: 6px 10px; border-radius: 6px;
-    background: var(--surface-2); border: 1px solid var(--border-strong); font-size: 11.5px; white-space: nowrap; color: var(--muted);
+    position: absolute; top: calc(-1 * var(--space-xs)); transform: translate(-50%, -100%); pointer-events: none; z-index: var(--z-tooltip);
+    display: flex; flex-direction: column; gap: var(--space-3xs); padding: var(--space-xs) var(--space-sm); border-radius: 4px;
+    background: var(--color-graphite); font-size: var(--text-xs); white-space: nowrap; color: var(--color-graphite-muted);
   }
-  .when { margin-bottom: 2px; }
-  .row { display: flex; align-items: center; gap: 6px; }
-  .row strong { color: var(--text-strong); font-variant-numeric: tabular-nums; }
-  .key { width: 10px; height: 2px; border-radius: 1px; }
-  .tot { margin-top: 2px; padding-top: 2px; border-top: 1px solid var(--border); }
-  .nodata { display: grid; place-items: center; color: var(--muted); font-size: 12px; border: 1px dashed var(--border); border-radius: 6px; }
-  .tableview { margin-top: 6px; font-size: 12px; }
-  .tableview summary { color: var(--muted); cursor: pointer; width: fit-content; }
-  .tableview .table-wrap { max-height: 240px; overflow: auto; margin-top: 6px; }
+  .when { margin-bottom: var(--space-3xs); font-family: var(--font-display); font-weight: 500; }
+  .row { display: flex; align-items: center; gap: var(--space-xs); }
+  .row strong { color: var(--color-graphite-ink); font-family: var(--font-display); font-weight: 600; font-variant-numeric: tabular-nums; }
+  /* A ring of graphite-ink keeps the darkest fills visible on the graphite tooltip. */
+  .key { width: 8px; height: 8px; border-radius: 2px; box-shadow: 0 0 0 1px color-mix(in oklab, var(--color-graphite-ink) 35%, transparent); }
+  .tot { margin-top: var(--space-3xs); padding-top: var(--space-2xs); border-top: var(--rule-hair) solid var(--color-graphite-2); }
+  .nodata { display: grid; place-items: center; padding: 0 var(--space-md); text-align: center; color: var(--muted); font-size: var(--text-sm); border: var(--rule-hair) dashed var(--border-strong); border-radius: var(--radius-input); }
+  .tableview { margin-top: var(--space-xs); font-size: var(--text-sm); }
+  .tableview summary { width: fit-content; color: var(--muted); font-family: var(--font-display); font-weight: 500; cursor: pointer; }
+  .tableview summary:hover { color: var(--text-strong); }
+  .tableview .table-wrap { max-height: 240px; overflow: auto; margin-top: var(--space-xs); border: var(--rule-hair) solid var(--border); border-radius: var(--radius-input); }
+  .tableview .table td { height: 32px; }
 </style>

@@ -67,7 +67,7 @@
           {#if i.resolvedAt}<span>resolved <Time iso={i.resolvedAt} /></span>
           {:else}<span>open since <Time iso={i.firstSeenAt} /></span>{/if}
           {#if i.occurrences > 1}<span title="Times this condition has opened">· {i.occurrences}×</span>{/if}
-          {#if !compact}<span class="rule">· {i.ruleLabel}</span>{/if}
+          {#if !compact}<span>· {i.ruleLabel}</span>{/if}
         </span>
         {#if i.acknowledgedAt && !i.resolvedAt}
           <span class="ack">Acknowledged by {i.acknowledgedBy} <Time iso={i.acknowledgedAt} />{#if i.ackNote}: “{i.ackNote}”{/if}</span>
@@ -100,19 +100,20 @@
 
 <style>
   .issues { list-style: none; margin: 0; padding: 0; }
-  li { display: grid; grid-template-columns: 84px 1fr auto; gap: 12px; align-items: start; padding: 10px 16px; border-bottom: 1px solid var(--border); }
+  li { display: grid; grid-template-columns: 96px minmax(0, 1fr) auto; gap: var(--space-sm); align-items: start; padding: var(--space-sm) var(--space-md); border-bottom: var(--rule-hair) solid var(--border); }
   li:last-child { border-bottom: 0; }
-  .compact li { padding: 8px 16px; }
+  .compact li { padding: var(--space-xs) var(--space-md); }
   li.acked .title, li.resolved .title { color: var(--muted); }
-  .sevcol { padding-top: 1px; }
-  .main { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
-  .title { color: var(--text-strong); overflow-wrap: anywhere; }
-  .detail { margin: 0; color: var(--muted); font-size: 12.5px; }
-  .meta { display: flex; flex-wrap: wrap; gap: 4px; color: var(--muted); font-size: 12px; }
-  .rule { font-style: italic; }
-  .ack { color: var(--muted); font-size: 12px; }
-  .act { padding-top: 1px; }
+  .sevcol { padding-top: var(--space-3xs); }
+  .main { display: flex; flex-direction: column; gap: var(--space-3xs); min-width: 0; }
+  .title { color: var(--text-strong); font-family: var(--font-display); font-weight: 500; overflow-wrap: anywhere; }
+  .title:hover { color: var(--link); }
+  .detail { color: var(--color-ink-2); font-size: var(--text-sm); }
+  .meta { display: flex; flex-wrap: wrap; gap: 0 var(--space-2xs); color: var(--muted); font-size: var(--text-sm); }
+  .meta a { color: var(--color-ink-2); }
+  .ack { color: var(--muted); font-size: var(--text-sm); }
+  .act { padding-top: var(--space-3xs); }
   @media (max-width: 640px) {
-    li { grid-template-columns: 1fr; gap: 4px; }
+    li { grid-template-columns: minmax(0, 1fr); gap: var(--space-2xs); }
   }
 </style>

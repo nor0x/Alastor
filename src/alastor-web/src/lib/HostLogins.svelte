@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { untrack } from 'svelte';
   import { api, type HostLogins } from './api';
   import { on, refreshOn } from './live.svelte';
   import { number } from './format';
@@ -13,7 +14,8 @@
 
   $effect(() => {
     void hostId;
-    load();
+    // load() reads `data` before its first await; untracked, so a response doesn't re-run this effect.
+    untrack(load);
     const offs = [
       on('eventsCreated', (list: { hostId: string | null; kind: string }[]) => {
         if (list.some((e) => e.hostId === hostId && e.kind.startsWith('auth.login'))) load();
@@ -36,7 +38,7 @@
     </span>
   </header>
   {#if !data}
-    <div class="skeleton-block" style="height:80px"></div>
+    <div class="skeleton-block" style:height="80px"></div>
   {:else if data.sources.length === 0}
     <div class="empty">No logins reported yet. The agent reads sshd's messages from the journal (or auth.log); the first logins it sees are learned without alerts.</div>
   {:else}
@@ -47,8 +49,8 @@
           {#each data.sources as s (s.user + s.address)}
             <tr>
               <td><strong class:root={s.user === 'root'}>{s.user}</strong></td>
-              <td class="mono small">
-                <a href="/events?ip={encodeURIComponent(s.address)}">{s.address}</a>
+              <td class="nowrap">
+                <a class="mono" href="/events?ip={encodeURIComponent(s.address)}">{s.address}</a>
                 {#if s.alerted && isNew(s.firstSeenAt)}<span class="pill bad" title="Raised a new-source alert">new</span>
                 {:else if isNew(s.firstSeenAt)}<span class="pill info">new</span>{/if}
               </td>
@@ -66,5 +68,5 @@
 
 <style>
   .root { color: var(--warn); }
-  td .pill { margin-left: 6px; }
+  td .pill { margin-left: var(--space-xs); }
 </style>

@@ -1,4 +1,5 @@
 <script lang="ts">
+  import Icon from '../lib/ui/Icon.svelte';
   import { untrack } from 'svelte';
   import { api, errorText, severities, type IssueList as IssueListDto } from '../lib/api';
   import { fleet } from '../lib/fleet.svelte';
@@ -84,15 +85,23 @@
 </div>
 
 {#if s}
-  <section class="summary" aria-label="Unacknowledged issues by severity">
-    {#each severities.slice(0, 4) as sev (sev)}
-      {@const n = s.unacknowledgedBySeverity[sev] ?? 0}
-      <button class="chip sev-chip-{sev.toLowerCase()}" class:zero={n === 0} aria-pressed={filters.minSeverity === sev && filters.state === 'unacknowledged'}
-        onclick={() => set({ state: 'unacknowledged', minSeverity: sev })}>
-        <span class="n">{number.format(n)}</span><span class="l">{sev}</span>
-      </button>
-    {/each}
-    <span class="totals muted">{number.format(s.open)} open · {number.format(s.acknowledged)} acknowledged</span>
+  <section class="card summary" aria-label="Unacknowledged issues by severity">
+    <div class="ledger">
+      {#each severities.slice(0, 4) as sev (sev)}
+        {@const n = s.unacknowledgedBySeverity[sev] ?? 0}
+        <button class="ledger-cell" aria-pressed={filters.minSeverity === sev && filters.state === 'unacknowledged'}
+          onclick={() => set({ state: 'unacknowledged', minSeverity: sev })}>
+          <span class="sev sev-{sev.toLowerCase()}">{sev}</span>
+          <span class="figure-value" class:zero={n === 0}>{number.format(n)}</span>
+          <span class="figure-foot">unacknowledged</span>
+        </button>
+      {/each}
+      <div class="totals">
+        <span class="figure-label">All open</span>
+        <span class="figure-value">{number.format(s.open)}</span>
+        <span class="figure-foot">{number.format(s.acknowledged)} acknowledged</span>
+      </div>
+    </div>
   </section>
 {/if}
 
@@ -117,7 +126,7 @@
   {#if keys.some((k) => filters[k])}<button class="btn ghost" onclick={() => (filters = { state: '', hostId: '', minSeverity: '', rule: '' })}>Clear</button>{/if}
 </div>
 
-{#if error}<div class="banner bad" role="alert"><p>Couldn't load issues: {error}</p><button class="btn small" onclick={load}>Retry</button></div>{/if}
+{#if error}<div class="banner bad" role="alert"><Icon name="error" /><p>Couldn't load issues: {error}</p><button class="btn small" onclick={load}>Retry</button></div>{/if}
 
 <section class="card" class:dim={loading && !!data}>
   {#if data?.items.length}
@@ -131,22 +140,16 @@
 
 <style>
   .filterbar .seg { max-width: 100%; overflow-x: auto; }
-  .summary { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 12px; }
-  .chip {
-    display: inline-flex; align-items: baseline; gap: 6px; padding: 6px 12px; cursor: pointer;
-    border: 1px solid var(--border); border-left: 3px solid var(--c); border-radius: var(--radius); background: var(--surface);
-  }
-  .chip:hover { border-color: var(--border-strong); border-left-color: var(--c); }
-  .chip[aria-pressed='true'] { background: var(--surface-2); }
-  .chip.zero { --c: var(--border-strong) !important; }
-  .chip.zero .n { color: var(--muted); }
-  .n { font-size: 18px; font-weight: 600; color: var(--text-strong); font-variant-numeric: tabular-nums; }
-  .l { color: var(--muted); font-size: 12px; }
-  .sev-chip-critical { --c: var(--sev-critical); }
-  .sev-chip-high { --c: var(--sev-high); }
-  .sev-chip-medium { --c: var(--sev-medium); }
-  .sev-chip-low { --c: var(--sev-low); }
-  .totals { font-size: 12px; margin-left: 4px; }
-  .dim { opacity: 0.6; transition: opacity 0.15s; }
-  .banner { margin-bottom: 8px; justify-content: space-between; align-items: center; }
+  .summary { margin-bottom: var(--space-md); overflow: hidden; }
+  .summary .ledger { grid-template-columns: repeat(auto-fit, minmax(min(100%, 150px), 1fr)); }
+  button.ledger-cell { align-items: flex-start; border: 0; border-radius: 0; background: none; text-align: left; font: inherit; cursor: pointer; }
+  button.ledger-cell:hover { background: var(--color-paper-2); }
+  button.ledger-cell:active { background: var(--color-paper-3); }
+  button.ledger-cell:focus-visible { outline-offset: -2px; }
+  button.ledger-cell[aria-pressed='true'] { background: var(--color-accent-wash); box-shadow: 1px 0 0 var(--border), 0 1px 0 var(--border), inset 0 -2px 0 var(--color-accent); }
+  .figure-value.zero { color: var(--muted); }
+  .totals { background: var(--color-paper-2); }
+  .dim { opacity: 0.6; transition: opacity var(--dur-short) var(--ease-out); }
+  .banner { margin-bottom: var(--space-xs); align-items: center; }
+  .banner p { flex: 1; }
 </style>
