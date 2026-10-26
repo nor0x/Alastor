@@ -6,6 +6,7 @@
   import { route } from '../lib/router.svelte';
   import { number } from '../lib/format';
   import EventList from '../lib/ui/EventList.svelte';
+  import Icon from '../lib/ui/Icon.svelte';
 
   interface Filters { hostId: string; minSeverity: string; capability: string; ip: string; q: string; range: string }
   const keys: (keyof Filters)[] = ['hostId', 'minSeverity', 'capability', 'ip', 'q', 'range'];
@@ -129,7 +130,7 @@
 </div>
 
 {#if pending > 0}
-  <button class="new" onclick={() => load()}>{number.format(pending)} new event{pending === 1 ? '' : 's'} · Show</button>
+  <button class="new" onclick={() => load()}><Icon name="info" /><span class="new-n">{number.format(pending)} new event{pending === 1 ? '' : 's'}</span><span class="new-go">Show</span></button>
 {/if}
 {#if error}<div class="banner bad" role="alert"><p>Couldn't load events: {error}</p><button class="btn small" onclick={() => load()}>Retry</button></div>{/if}
 
@@ -147,8 +148,20 @@
 <style>
   .ip { display: contents; }
   .ip input { width: 150px; }
-  .new { display: block; width: 100%; margin: 0 0 8px; padding: 8px; border: 1px solid var(--focus); border-radius: var(--radius); background: var(--info-bg); color: var(--link); cursor: pointer; font-weight: 500; }
-  .more { padding: 12px; text-align: center; border-top: 1px solid var(--border); }
-  .dim { opacity: 0.6; transition: opacity 0.15s; }
-  .banner { margin-bottom: 8px; justify-content: space-between; align-items: center; }
+  .new {
+    display: flex; align-items: center; gap: var(--space-xs); width: 100%; min-height: 40px; margin: 0 0 var(--space-xs); padding: 0 var(--space-md);
+    border: var(--rule-hair) solid color-mix(in oklab, var(--color-accent) 40%, var(--border)); border-radius: var(--radius-input);
+    background: var(--color-accent-wash); color: var(--color-accent-deep); cursor: pointer;
+    font-family: var(--font-display); font-weight: 500; font-size: var(--text-md); text-align: left;
+    transition: background-color var(--dur-micro) var(--ease-out);
+  }
+  .new:hover { background: color-mix(in oklab, var(--color-accent-wash) 70%, var(--color-accent) 12%); }
+  .new-n { flex: 1; color: var(--text-strong); font-variant-numeric: tabular-nums; }
+  .new-go { text-decoration: underline; text-decoration-color: var(--color-accent); }
+  .dim { opacity: 0.6; transition: opacity var(--dur-short) var(--ease-out); }
+  .banner { margin-bottom: var(--space-xs); justify-content: space-between; align-items: center; }
+  @media (max-width: 640px) {
+    .ip input { width: auto; flex: 1 1 140px; }
+    .filterbar select { flex: 1 1 140px; }
+  }
 </style>

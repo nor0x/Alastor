@@ -89,7 +89,7 @@
     <h1>Bans</h1>
     <p class="sub">Current bans reported by fail2ban or CrowdSec on each host, plus the fleet-wide allowlist.</p>
   </div>
-  {#if canWrite()}<div class="actions"><button class="btn solid-danger" onclick={() => (banOpen = true)}>+ Ban IP or CIDR</button></div>{/if}
+  {#if canWrite()}<div class="actions"><button class="btn solid-danger" onclick={() => (banOpen = true)}>Ban IP or CIDR</button></div>{/if}
 </div>
 
 <nav class="tabs" aria-label="Bans sections"><a href="/bans" class="on" aria-current="page">Bans &amp; allowlist</a><a href="/blocklists">Blocklists</a></nav>
@@ -134,17 +134,17 @@
         <ul class="allow">
           {#each allowlist as a (a.id)}
             <li>
-              <div>
-                <span class="mono">{a.target}</span>
+              <div class="who">
+                <span class="mono target">{a.target}</span>
                 {#if a.note}<div class="muted small">{a.note}</div>{/if}
-                <div class="muted small">{a.createdBy} · <Time iso={a.createdAt} /></div>
+                <div class="meta muted small"><span>{a.createdBy}</span><span><Time iso={a.createdAt} /></span></div>
               </div>
               {#if canWrite()}<button class="btn small danger" onclick={() => removeAllow(a)} aria-label="Remove {a.target}">Remove</button>{/if}
             </li>
           {/each}
         </ul>
       {:else}
-        <p class="empty empty-dashed small">Empty. Loopback is always ignored.</p>
+        <p class="empty well small">Empty. Loopback is always ignored.</p>
       {/if}
       {#if canWrite()}
         <form class="form add" onsubmit={addAllow}>
@@ -161,11 +161,19 @@
 <BanDialog bind:open={banOpen} hostIds={hostId ? [hostId] : []} />
 
 <style>
-  .layout { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 16px; align-items: start; }
-  .intro { margin: 0 0 12px; }
-  .allow { list-style: none; margin: 0 0 12px; padding: 0; }
-  .allow li { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; padding: 8px 0; border-bottom: 1px solid var(--border); }
-  .add { gap: 8px; }
+  .layout { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: var(--space-md); align-items: start; }
+  .main { min-width: 0; }
+  .main h2 { min-width: 0; overflow-wrap: break-word; }
+  .intro { margin: 0 0 var(--space-sm); }
+  .allow { list-style: none; margin: 0 0 var(--space-md); padding: 0; border-top: var(--rule-hair) solid var(--border); }
+  .allow li { display: flex; justify-content: space-between; align-items: flex-start; gap: var(--space-xs); padding: var(--space-xs) 0; border-bottom: var(--rule-hair) solid var(--border); }
+  .who { display: flex; flex-direction: column; gap: var(--space-3xs); min-width: 0; }
+  .target { color: var(--text-strong); overflow-wrap: anywhere; }
+  .meta { display: flex; flex-wrap: wrap; gap: 0 var(--space-xs); }
+  .meta > span + span { padding-left: var(--space-xs); border-left: var(--rule-hair) solid var(--color-rule-2); }
+  .well { margin: 0 0 var(--space-md); padding: var(--space-md); border-radius: var(--radius-input); background: var(--color-paper-2); }
+  .add { gap: var(--space-xs); }
+  .add .btn { align-self: flex-start; }
   .err { color: var(--bad); margin: 0; }
   @media (max-width: 900px) { .layout { grid-template-columns: 1fr; } }
 </style>

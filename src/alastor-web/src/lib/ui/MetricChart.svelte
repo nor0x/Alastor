@@ -3,8 +3,10 @@
 
   // One series per chart (small multiples): CPU, memory, disk and load each get their own y-scale,
   // so there is never a second axis. A single series needs no legend; the title names it.
-  let { title, points, unit = '%', max }: {
+  let { title, detail, points, unit = '%', max }: {
     title: string;
+    /** A quieter second line under the title, e.g. "2.9 GB of 4.0 GB". */
+    detail?: string;
     points: { at: string; value: number }[];
     unit?: string;
     /** Fixed y maximum (100 for percentages); otherwise derived from the data. */
@@ -77,7 +79,7 @@
 
 <figure class="chart">
   <figcaption>
-    <span class="title">{title}</span>
+    <span class="title">{title}{#if detail}<span class="detail">{detail}</span>{/if}</span>
     {#if latest !== null}<span class="value">{fmt(latest)}</span>{/if}
   </figcaption>
   <div class="plot" bind:clientWidth={width}>
@@ -112,22 +114,23 @@
 
 <style>
   .chart { margin: 0; min-width: 0; }
-  figcaption { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 4px; }
-  .title { color: var(--muted); font-size: 12px; }
-  .value { color: var(--text-strong); font-size: 18px; font-weight: 600; font-variant-numeric: tabular-nums; }
+  figcaption { display: flex; justify-content: space-between; align-items: flex-start; gap: var(--space-xs); margin-bottom: var(--space-xs); }
+  .title { display: flex; flex-direction: column; gap: var(--space-3xs); font-family: var(--font-display); font-weight: 500; font-size: var(--text-sm); color: var(--muted); }
+  .detail { font-family: var(--font-body); font-weight: 400; font-size: var(--text-xs); }
+  .value { font-family: var(--font-display); color: var(--text-strong); font-size: var(--text-figure-s); font-weight: 600; line-height: 1; letter-spacing: var(--tracking-display); font-variant-numeric: tabular-nums; }
   .plot { position: relative; }
   svg { display: block; touch-action: none; }
   .grid { stroke: var(--border); stroke-width: 1; }
-  .axis { fill: var(--muted); font-size: 10px; font-variant-numeric: tabular-nums; }
-  .line { fill: none; stroke: var(--info); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
-  .area { fill: var(--info); opacity: 0.12; }
-  .cross { stroke: var(--muted); stroke-width: 1; stroke-dasharray: 2 3; }
-  .marker { fill: var(--info); stroke: var(--surface); stroke-width: 2; }
+  .axis { fill: var(--muted); font-family: var(--font-body); font-size: 10px; font-variant-numeric: tabular-nums; }
+  .line { fill: none; stroke: var(--color-accent); stroke-width: 1.5; stroke-linejoin: round; stroke-linecap: round; }
+  .area { fill: var(--color-accent-wash); }
+  .cross { stroke: var(--color-ink-2); stroke-width: 1; stroke-dasharray: 2 3; }
+  .marker { fill: var(--color-accent); stroke: var(--color-key-face); stroke-width: 2; }
   .tip {
-    position: absolute; top: -6px; transform: translate(-50%, -100%); pointer-events: none;
-    display: flex; flex-direction: column; align-items: center; padding: 4px 8px; border-radius: 6px;
-    background: var(--surface-2); border: 1px solid var(--border-strong); font-size: 11px; white-space: nowrap; color: var(--muted);
+    position: absolute; top: calc(-1 * var(--space-xs)); transform: translate(-50%, -100%); pointer-events: none; z-index: var(--z-tooltip);
+    display: flex; flex-direction: column; align-items: center; padding: var(--space-2xs) var(--space-xs); border-radius: 4px;
+    background: var(--color-graphite); font-size: var(--text-xs); white-space: nowrap; color: var(--color-graphite-muted);
   }
-  .tip strong { color: var(--text-strong); font-size: 13px; }
-  .nodata { display: grid; place-items: center; color: var(--muted); font-size: 12px; border: 1px dashed var(--border); border-radius: 6px; }
+  .tip strong { color: var(--color-graphite-ink); font-family: var(--font-display); font-weight: 600; font-size: var(--text-md); }
+  .nodata { display: grid; place-items: center; color: var(--muted); font-size: var(--text-sm); border: var(--rule-hair) dashed var(--border-strong); border-radius: var(--radius-input); }
 </style>

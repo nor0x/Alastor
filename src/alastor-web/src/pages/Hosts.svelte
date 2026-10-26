@@ -72,7 +72,7 @@
 <div class="page-head">
   <div>
     <h1>Hosts</h1>
-    <p class="sub">{fleet.hosts.length} enrolled · {fleet.hosts.filter((h) => h.isOnline).length} online</p>
+    <p class="sub">{fleet.hosts.length} enrolled, {fleet.hosts.filter((h) => h.isOnline).length} online</p>
   </div>
   {#if canWrite()}
     <div class="actions"><a class="btn primary" href="/settings/enrollment">+ Add host</a></div>
@@ -104,7 +104,7 @@
 
 {#if fleet.error}<div class="banner bad" role="alert"><p>{fleet.error}</p></div>{/if}
 
-<div class="card table-wrap">
+<div class="card table-wrap hosts-table">
   {#if !fleet.loaded}
     <div class="skeleton-block"></div>
   {:else if shown.length === 0}
@@ -120,7 +120,7 @@
       <thead>
         <tr>
           <th>Host</th>
-          <th class="hide-sm">Group · tags</th>
+          <th class="hide-sm">Group, tags</th>
           <th>CPU</th>
           <th class="hide-sm">Memory</th>
           <th class="hide-sm">Disk</th>
@@ -144,48 +144,50 @@
                 <div>
                   <a href="/hosts/{h.id}" class="name">{h.name}</a>
                   {#if h.malwareFindings}<a href="/hosts/{h.id}?tab=malware" class="pill bad" title="Infected files found by ClamAV">malware: {h.malwareFindings}</a>{/if}
-                  <div class="muted small">{h.osPrettyName} · {h.architecture}{h.isOnline ? '' : ' · offline'}</div>
+                  <div class="sysline muted small"><span>{h.osPrettyName}</span><span>{h.architecture}</span>{#if !h.isOnline}<span>offline</span>{/if}</div>
                 </div>
               </div>
             </td>
             <td class="hide-sm">
-              {#if h.groupName}<span class="pill info">{h.groupName}</span>{/if}
-              {#each h.tags as t (t)}<span class="pill muted tag">{t}</span>{/each}
-              {#if !h.groupName && !h.tags.length}<span class="muted">—</span>{/if}
+              <div class="tagcell">
+              {#if h.groupName}<span class="pill tag group">{h.groupName}</span>{/if}
+              {#each h.tags as t (t)}<span class="pill tag">{t}</span>{/each}
+              {#if !h.groupName && !h.tags.length}<span class="nil" aria-label="none"></span>{/if}
+              </div>
             </td>
             <td><Meter value={h.cpuPercent} /></td>
             <td class="hide-sm"><Meter value={h.memoryPercent} /></td>
             <td class="hide-sm"><Meter value={h.diskPercent} warn={85} /></td>
             <td class="num">{#if h.activeBans}<a href="/bans?host={h.id}">{h.activeBans}</a>{:else}<span class="muted">0</span>{/if}</td>
             <td>
-              {#if h.toolsWithProblems > 0}<span class="pill warn">⚠ {h.toolsWithProblems} problem{h.toolsWithProblems > 1 ? 's' : ''}</span>
-              {:else}<span class="pill ok">✓ {h.toolsRunning} running</span>{/if}
+              {#if h.toolsWithProblems > 0}<span class="pill warn">{h.toolsWithProblems} problem{h.toolsWithProblems > 1 ? 's' : ''}</span>
+              {:else}<span class="pill ok">{h.toolsRunning} running</span>{/if}
             </td>
             <td>
-              {#if h.policySync === 'in-sync'}<span class="pill ok">✓ in sync</span>
-              {:else if h.policySync === 'failed'}<span class="pill bad">✕ failed</span>
-              {:else}<span class="pill info">… pending</span>{/if}
+              {#if h.policySync === 'in-sync'}<span class="pill ok">in sync</span>
+              {:else if h.policySync === 'failed'}<span class="pill bad">failed</span>
+              {:else}<span class="pill info">pending</span>{/if}
             </td>
             <td class="num hide-sm">
               {#if h.baselineScore !== null}<a href="/hosts/{h.id}?tab=baseline" title="{h.baselineFailing} failing check{h.baselineFailing === 1 ? '' : 's'}"><span class="pill {scoreTone(h.baselineScore)}">{h.baselineScore}</span></a>
-              {:else}<span class="muted">—</span>{/if}
+              {:else}<span class="nil" aria-label="none"></span>{/if}
             </td>
             <td class="num hide-sm">
               {#if h.hardeningIndex !== null}<a href="/hosts/{h.id}?tab=hardening" title="{h.hardeningWarnings ?? 0} warning{h.hardeningWarnings === 1 ? '' : 's'}"><span class="pill {indexTone(h.hardeningIndex)}">{h.hardeningIndex}</span></a>
-              {:else}<span class="muted">—</span>{/if}
+              {:else}<span class="nil" aria-label="none"></span>{/if}
             </td>
             <td class="hide-sm nowrap">
               {#if h.sshExposure !== null}<a href="/hosts/{h.id}?tab=network"><span class="pill {exposureLook(h.sshExposure, h.sshExposureAccepted).tone}">{exposureLook(h.sshExposure, h.sshExposureAccepted).label}</span></a>
-              {:else}<span class="muted">—</span>{/if}
+              {:else}<span class="nil" aria-label="none"></span>{/if}
             </td>
             <td class="hide-sm nowrap">
               {#if h.pendingUpdates !== null}<a href="/hosts/{h.id}?tab=updates"><UpdatesBadge pending={h.pendingUpdates} security={h.securityUpdates} /></a>
-                {#if h.rebootRequired}<span class="pill warn" title="Reboot required">↻</span>{/if}
-              {:else}<span class="muted">—</span>{/if}
+                {#if h.rebootRequired}<span class="pill warn" title="Reboot required">reboot</span>{/if}
+              {:else}<span class="nil" aria-label="none"></span>{/if}
             </td>
             <td class="hide-sm nowrap">
               {#if h.vulnTotal !== null}<a href="/hosts/{h.id}?tab=vulnerabilities"><VulnBadge critical={h.vulnCritical} high={h.vulnHigh} total={h.vulnTotal} /></a>
-              {:else}<span class="muted">—</span>{/if}
+              {:else}<span class="nil" aria-label="none"></span>{/if}
             </td>
             <td class="hide-sm nowrap"><Time iso={h.lastSeenAt} /></td>
           </tr>
@@ -196,7 +198,12 @@
 </div>
 
 <style>
-  .host { display: flex; align-items: center; gap: 10px; }
-  .name { font-weight: 600; }
-  .tag { margin-left: 4px; }
+  .host { display: flex; align-items: flex-start; gap: var(--space-sm); min-width: 200px; }
+  .host .dot { margin-top: var(--space-xs); }
+  .name { white-space: nowrap; font-family: var(--font-display); font-weight: 600; font-size: var(--text-lg); color: var(--text-strong); margin-right: var(--space-2xs); }
+  .sysline { display: flex; flex-wrap: wrap; }
+  .sysline span + span { margin-left: var(--space-xs); padding-left: var(--space-xs); box-shadow: inset 1px 0 0 var(--border-strong); }
+  .sysline { flex-wrap: nowrap; white-space: nowrap; }
+  .tagcell { display: flex; flex-wrap: wrap; gap: var(--space-2xs); max-width: 200px; }
+  td :global(.pill) + :global(.pill) { margin-left: 0; }
 </style>

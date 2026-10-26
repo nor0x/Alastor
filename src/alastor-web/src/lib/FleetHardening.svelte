@@ -2,6 +2,7 @@
   import { api, errorText, lynisUrl, type FleetHardening } from './api';
   import { indexTone, lynisNotes } from './hardening';
   import { refreshOn } from './live.svelte';
+  import Icon from './ui/Icon.svelte';
   import Time from './ui/Time.svelte';
 
   let data = $state<FleetHardening | null>(null);
@@ -33,18 +34,20 @@
   <div class="skeleton-block"></div>
 {:else}
   <section class="summary card" aria-label="Lynis summary">
-    <div class="stat">
-      <span class="label">Average hardening index</span>
-      <span class="big {indexTone(data.averageIndex)}">{data.averageIndex ?? '—'}<span class="of">/ 100</span></span>
+    <div class="ledger strip">
+      <div class="stat">
+        <span class="figure-label">Average hardening index</span>
+        <span class="figure-value {indexTone(data.averageIndex)}">{#if data.averageIndex !== null}{data.averageIndex}{:else}<span class="nil" aria-label="none"></span>{/if}<span class="figure-of">/ 100</span></span>
+      </div>
+      <div class="stat">
+        <span class="figure-label">Hosts audited</span>
+        <span class="figure-value">{audited.length}<span class="figure-of">/ {data.hosts.length}</span></span>
+      </div>
+      <p class="muted small explain">
+        <a href="https://cisofy.com/lynis/" target="_blank" rel="noreferrer">Lynis</a> runs a few hundred tests and scores the host. A fresh install
+        usually scores 55 to 65. Treat the checklist as advice: accept what doesn't apply on each host's <strong>Hardening</strong> tab.
+      </p>
     </div>
-    <div class="stat">
-      <span class="label">Hosts audited</span>
-      <span class="big">{audited.length}<span class="of">/ {data.hosts.length}</span></span>
-    </div>
-    <p class="muted small explain">
-      <a href="https://cisofy.com/lynis/" target="_blank" rel="noreferrer">Lynis</a> runs a few hundred tests and scores the host. A fresh install
-      usually scores 55 to 65. Treat the checklist as advice: accept what doesn't apply on each host's <strong>Hardening</strong> tab.
-    </p>
   </section>
 
   <section class="card">
@@ -57,20 +60,20 @@
             <tr>
               <td>
                 <a href="/hosts/{h.hostId}?tab=hardening" class="name">{h.name}</a>
-                {#if h.groupName}<span class="pill info">{h.groupName}</span>{/if}
+                {#if h.groupName}<span class="pill tag">{h.groupName}</span>{/if}
                 {#if h.error}<div class="small bad-text" title={h.error}>last audit failed</div>{/if}
               </td>
               <td>
                 {#if h.hardeningIndex !== null}
                   <span class="index">
-                    <span class="track"><span class="fill {indexTone(h.hardeningIndex)}" style:width="{h.hardeningIndex}%"></span></span>
+                    <span class="gauge {indexTone(h.hardeningIndex)}" style:--v={h.hardeningIndex}></span>
                     <strong>{h.hardeningIndex}</strong>
                   </span>
                 {:else if h.availability === 'Unavailable'}<span class="muted small">Lynis unavailable</span>
-                {:else}<span class="muted">—</span>{/if}
+                {:else}<span class="nil" aria-label="none"></span>{/if}
               </td>
-              <td class="num">{#if h.warnings}<span class="pill bad">{h.warnings}</span>{:else}<span class="muted">{h.warnings ?? '—'}</span>{/if}</td>
-              <td class="num hide-sm">{h.suggestions ?? '—'}</td>
+              <td class="num">{#if h.warnings}<span class="pill bad">{h.warnings}</span>{:else if h.warnings !== null}<span class="muted">{h.warnings}</span>{:else}<span class="nil" aria-label="none"></span>{/if}</td>
+              <td class="num hide-sm">{#if h.suggestions !== null}{h.suggestions}{:else}<span class="nil" aria-label="none"></span>{/if}</td>
               <td class="hide-sm nowrap">{#if h.auditedAt}<Time iso={h.auditedAt} />{:else}<span class="muted">never</span>{/if}</td>
             </tr>
           {/each}
@@ -92,8 +95,8 @@
                   <td class="nowrap"><a class="mono" href={lynisUrl(i.testId)} target="_blank" rel="noreferrer">{i.testId}</a><div class="muted small">{i.category}</div></td>
                   <td class="finding">
                     {i.text}
-                    {#if i.solution}<div class="muted small">→ {i.solution}</div>{/if}
-                    {#if lynisNotes[i.testId]}<div class="small note">{lynisNotes[i.testId].text}</div>{/if}
+                    {#if i.solution}<div class="muted small solution">{i.solution}</div>{/if}
+                    {#if lynisNotes[i.testId]}<div class="small note"><Icon name="info" />{lynisNotes[i.testId].text}</div>{/if}
                   </td>
                   <td class="num hosts">
                     <strong>{i.hostCount}</strong>
@@ -113,29 +116,27 @@
 {/if}
 
 <style>
-  .summary { display: flex; flex-wrap: wrap; align-items: center; gap: 16px 40px; padding: 16px; margin-bottom: 16px; }
-  .stat { display: flex; flex-direction: column; gap: 4px; }
-  .label { font-size: 12px; color: var(--muted); }
-  .big { font-size: 30px; font-weight: 600; line-height: 1; font-variant-numeric: tabular-nums; color: var(--text-strong); }
-  .big.ok { color: var(--ok); }
-  .big.warn { color: var(--warn); }
-  .big.bad { color: var(--bad); }
-  .of { font-size: 14px; font-weight: 400; color: var(--muted); margin-left: 4px; }
-  .explain { flex: 1; min-width: 240px; margin: 0; }
-  .card + .card { margin-top: 16px; }
-  .name { font-weight: 600; margin-right: 6px; }
+  .summary { margin-bottom: var(--space-md); }
+  .strip { display: flex; flex-wrap: wrap; }
+  .strip > .stat { flex: 0 0 auto; min-width: 176px; }
+  .strip > .explain { display: block; flex: 1 1 320px; margin: 0; }
+  .card + .card { margin-top: var(--space-md); }
+  .name { font-weight: 500; margin-right: var(--space-xs); }
   .bad-text { color: var(--bad); }
-  .index { display: inline-flex; align-items: center; gap: 8px; font-variant-numeric: tabular-nums; }
-  .track { width: 72px; height: 6px; border-radius: 3px; background: var(--surface-2); overflow: hidden; }
-  .fill { display: block; height: 100%; border-radius: 3px; background: var(--muted); }
-  .fill.ok { background: var(--ok); }
-  .fill.warn { background: var(--warn); }
-  .fill.bad { background: var(--bad); }
+  .index { display: inline-flex; align-items: center; gap: var(--space-xs); font-variant-numeric: tabular-nums; }
+  .index .gauge { width: 72px; }
+  .index strong { font-family: var(--font-display); font-weight: 600; }
   .finding { min-width: 240px; max-width: 560px; }
-  .note { margin-top: 3px; color: var(--info); }
+  .solution { margin-top: var(--space-3xs); }
+  .note { display: flex; gap: var(--space-2xs); align-items: flex-start; margin-top: var(--space-2xs); color: var(--color-ink-2); }
+  .note :global(.icon) { margin-top: var(--space-3xs); color: var(--color-accent); }
+  .host-list a:focus-visible, .name:focus-visible { outline-offset: 1px; }
   .hosts { white-space: nowrap; }
-  .host-list { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 0 6px; max-width: 220px; margin-left: auto; white-space: normal; }
+  .hosts strong { font-family: var(--font-display); font-weight: 600; }
+  .host-list { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 0 var(--space-xs); max-width: 220px; margin-left: auto; white-space: normal; }
   @media (max-width: 640px) {
-    .finding { min-width: 0; }
+    .finding { min-width: 200px; }
+    .strip > .stat { flex: 1 1 50%; min-width: 0; }
+    .strip > .stat .figure-value { font-size: var(--text-figure-s); }
   }
 </style>
