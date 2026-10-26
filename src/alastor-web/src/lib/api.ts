@@ -44,6 +44,46 @@ export interface Me {
   username: string;
   role: string;
   readOnly: boolean;
+  twoFactor?: boolean;
+}
+
+/** /api/auth/login: a session, or a request for the second step when two-factor sign-in is on. */
+export interface LoginResult extends Partial<Me> {
+  twoFactorRequired: boolean;
+}
+
+export interface UserSession {
+  id: string;
+  createdAt: string;
+  lastSeenAt: string;
+  expiresAt: string;
+  address: string | null;
+  userAgent: string | null;
+  current: boolean;
+}
+
+export type CheckStatus = 'Pass' | 'Info' | 'Warn' | 'Fail';
+
+/** One line of the server's security self-check (/api/system/security). */
+export interface SelfCheck {
+  id: string;
+  title: string;
+  status: CheckStatus;
+  detail: string;
+  fix: string | null;
+}
+
+export interface ServerData {
+  provider: 'sqlite' | 'postgres';
+  databasePath: string | null;
+  databaseBytes: number;
+  freeBytesInDatabase: number | null;
+  lastCompactedAt: string | null;
+  diskFreeBytes: number | null;
+  tables: { table: string; rows: number; bytes: number | null }[];
+  folders: { path: string; description: string; bytes: number }[];
+  cleanups: { id: string; title: string; description: string; bytes: number; items: number }[];
+  retention: { key: string; value: string; description: string }[];
 }
 
 export interface FeedItem {
@@ -366,7 +406,7 @@ export interface AuditEntry {
 
 export interface About {
   product: string;
-  version: string;
+  version: string | null;
   license: string;
   repository: string | null;
   bundledTools: { id: string; name: string; capability: string; license: string; homepage: string; implemented: boolean; optIn: boolean; description: string }[];

@@ -721,16 +721,42 @@ Code: `src/Alastor.Core/Firewall/`. Policy: `firewall: {manage, ssh, allow, defa
 
 | Secret | At rest |
 |---|---|
-| Admin password | PBKDF2 (`PasswordHasher`), dummy-hash timing equalization on unknown users |
+| Admin password | PBKDF2 (`PasswordHasher`), dummy-hash timing equalization on unknown and locked users; 5 failures lock the account for 1 min, doubling up to 1 h |
+| Dashboard sessions | HS256 JWT in an httpOnly, SameSite=Strict cookie whose `jti` is a `Sessions` row: sign-out, password changes and *Settings → Account* revoke it before it expires (checked per request, cached 30 s) |
+| Two-factor secrets (optional, per user) | TOTP (RFC 6238, ±1 step, no reuse of a step) secret under Data Protection; 10 single-use recovery codes stored as SHA-256 |
 | Enrollment tokens (`sve_…`, 256-bit) | SHA-256; consumed by an atomic conditional `UPDATE` (single use), 24 h TTL |
 | Agent credentials (`{hostId}.sva_…`) | SHA-256; constant-time compare; deleting a host revokes it |
 | API keys (`svk_…`) | SHA-256; reader role only. Writes return 403 |
 | JWT signing key | `data/jwt.key` (0600) or `ALASTOR_JWTKEY` |
 | Notification channel credentials | Data Protection (AES-256-CBC + HMAC), keys in `data/keys`; write-only over the API |
 
+**Exposure.** The server listens on `127.0.0.1:8080` unless `ASPNETCORE_URLS` says otherwise, and answers only the
+networks in `DashboardAllowFrom` (SPA, `/api`, `/hubs/dashboard`, `/openapi`) and `AgentAllowFrom` (`/api/agent`,
+`/hubs/agent`, `/install`), both `loopback,private,tailnet` by default; anything else gets a bare 404 before
+authentication. `X-Forwarded-For` is trusted from loopback only, so a local Caddy or `tailscale serve` passes the real
+client address. Every response carries a strict CSP (same-origin scripts, `frame-ancestors 'none'`), `nosniff`,
+`no-referrer` and HSTS over HTTPS. The OpenAPI document and the exact version need a sign-in.
+
+**Self-check.** `SelfChecks` (Services/Security) judges the server's own posture: listening addresses against the
+machine's NICs, plain HTTP outside loopback and the tailnet, allowlists that reach the internet, running as root, data
+dir and `jwt.key` permissions, admins still on their first-start password, and agents whose heartbeats arrive over plain
+HTTP from public addresses (`Hosts.ObservedScheme`). Failures are logged at startup, shown in *Settings → Security* and as
+an overview banner; `alastor-server security-check` runs the configuration part without starting the server (exit 1 on
+failure). Two-factor sign-in is reported as information only: it's optional.
+
+**Own data.** The retention worker also prunes the audit log, stale SSH login sources, policy history beyond
+`PolicyVersionsKeep` per layer (never the current version), old enrollment tokens and sessions, OSV advisories no
+package refers to, and partial mirror downloads. SQLite is compacted (`VACUUM`) at most weekly once free pages exceed a
+quarter of the file and 50 MB, or on demand in *Settings → Alastor data*, which also deletes mirrored databases no agent
+has asked for in 30 days and extraction folders of older server versions.
+
 Agents refuse plain HTTP unless enrolled with `--insecure`, and support certificate pinning (`--pin <sha256>`)
 for self-signed servers. Manual bans refuse ranges wider than /8 (v4) or /32 (v6), anything overlapping the
 allowlist, and the operator's own address.
+
+**Not yet.** The agent's systemd unit runs as root without a sandbox (it installs packages and manages the firewall, so
+the safe subset needs testing per distribution); agent installs skip checksum verification when no `SHA256SUMS` is
+published; and commands and policy are trusted on TLS alone, not signed by a key the agent pins at enrollment.
 
 ## 7. Measured footprint (this repo, linux-x64)
 
