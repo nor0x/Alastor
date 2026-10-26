@@ -24,7 +24,7 @@
   import About from './pages/About.svelte';
   import ThreatFeed from './lib/ThreatFeed.svelte';
   import Icon from './lib/ui/Icon.svelte';
-  import Logo from './lib/ui/Logo.svelte';
+  import BrandSpell from './lib/ui/BrandSpell.svelte';
 
   let checking = $state(true);
   let menuOpen = $state(false);
@@ -120,10 +120,9 @@
   <div class="shell">
     <aside class="side" class:open={menuOpen}>
       <div class="bar">
-        <a class="brand" href="/" aria-label="Alastor overview">
-          <Logo size={20} />
-          Alastor
-        </a>
+        <BrandSpell size={20} placement="below">
+          {#snippet label()}<a class="brand" href="/" aria-label="Alastor overview">Alastor</a>{/snippet}
+        </BrandSpell>
         <button class="menu-btn btn small" aria-expanded={menuOpen} aria-controls="main-nav" onclick={() => (menuOpen = !menuOpen)}>
           <Icon name={menuOpen ? 'close' : 'menu'} />Menu
           {#if !menuOpen && issues.summary && issues.summary.unacknowledged > 0}
@@ -199,10 +198,9 @@
     background: var(--color-paper-2); border-right: var(--rule-hair) solid var(--border);
   }
   .bar { display: flex; align-items: center; justify-content: space-between; gap: var(--space-sm); padding: var(--space-md) var(--space-md) var(--space-sm); }
-  .brand { display: inline-flex; align-items: center; gap: var(--space-xs); color: var(--text-strong); font: 600 var(--text-xl)/1 var(--font-display); letter-spacing: var(--tracking-display); white-space: nowrap; }
-  .brand :global(svg) { color: var(--color-accent); }
+  .brand { color: var(--text-strong); font: 600 var(--text-xl)/1 var(--font-display); letter-spacing: var(--tracking-display); white-space: nowrap; }
   .brand:hover { text-decoration: none; }
-  .menu-btn { display: none; }
+  .menu-btn { display: none; align-self: flex-start; margin-top: 5px; }
   nav { flex: 1; display: flex; flex-direction: column; gap: var(--space-md); padding: var(--space-xs) var(--space-sm); overflow-y: auto; }
   .group { display: flex; flex-direction: column; gap: var(--space-3xs); }
   .group-name { padding: 0 var(--space-sm) var(--space-2xs); font-family: var(--font-display); font-weight: 500; font-size: var(--text-xs); color: var(--muted); }
