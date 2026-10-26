@@ -124,14 +124,14 @@
           <th>CPU</th>
           <th class="hide-sm">Memory</th>
           <th class="hide-sm">Disk</th>
-          <th class="num">Bans</th>
-          <th>Tools</th>
-          <th>Policy</th>
+          <th class="num" title="Active IP bans on this host">Bans</th>
+          <th title="Security tools the agent manages here, and any with problems">Tools</th>
+          <th title="Has the agent applied the latest policy?">Policy</th>
           <th class="num hide-sm" title="Security baseline score">Baseline</th>
           <th class="num hide-sm" title="Lynis hardening index">Lynis</th>
           <th class="hide-sm" title="Is SSH reachable from the internet?">SSH</th>
-          <th class="hide-sm">Updates</th>
-          <th class="hide-sm">CVEs</th>
+          <th class="hide-sm" title="Pending package updates and whether a reboot is needed">Updates</th>
+          <th class="hide-sm" title="Open vulnerabilities in installed packages">CVEs</th>
           <th class="hide-sm">Last seen</th>
         </tr>
       </thead>

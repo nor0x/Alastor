@@ -2,7 +2,7 @@
   import { parseDocument } from 'yaml';
   import { api, errorText, type PolicyLayerDetail } from '../lib/api';
   import {
-    categoryLabels, ignorePath, scoreTone, setLayerKey, severityRank,
+    categoryLabels, ignorePath, scoreTone, setLayerKey, severityHelp, severityRank, weightsText,
     type BaselineCheck, type BaselineFleet, type BaselineFleetCheck, type ScopeOption,
   } from '../lib/baseline';
   import { fleet } from '../lib/fleet.svelte';
@@ -139,7 +139,7 @@
         <span class="figure-value" class:bad={failingChecks > 0}>{failingChecks}<span class="figure-of">/ {data.checks.length}</span></span>
       </div>
       <p class="muted small explain">
-        The score weighs failures by severity (critical 10, high 6, medium 3, low 1). Accepted risks and checks that
+        The score weighs failures by severity ({weightsText}). Accepted risks and checks that
         don't apply are left out. Agents check every hour by default; change it with <code>baseline.checkSchedule</code> in the <a href="/policies/global">policy</a>.
       </p>
     </div>
@@ -152,6 +152,11 @@
       <label class="check-label"><input type="checkbox" bind:checked={onlyFailing} /> Only checks that fail on some host</label>
     </div>
     <section class="card">
+      <div class="cols" aria-hidden="true">
+        <span class="th">Check</span>
+        <span class="th" title="How many hosts pass, fail, or have accepted the risk">Hosts</span>
+        <span class="th" title="How much a failure lowers the score: {weightsText}">Severity</span>
+      </div>
       {#each sorted as fc (fc.check.id)}
         {@const c = fc.check}
         {@const total = reported(fc)}
@@ -181,7 +186,7 @@
                 {#if !total}<span class="muted">{fc.notApplicable ? 'n/a' : fc.unknown ? 'unknown' : 'not checked'}</span>{/if}
               </span>
             </span>
-            <Severity value={c.severity} />
+            <Severity value={c.severity} title={severityHelp(c.severity)} />
           </summary>
           <div class="body">
             <p>{c.why}</p>
@@ -226,7 +231,7 @@
   {:else}
     <section class="card table-wrap">
       <table class="table">
-        <thead><tr><th>Host</th><th class="hide-sm">Group</th><th class="num">Score</th><th class="num">Failing</th><th class="num hide-sm">High / critical</th><th>Checked</th></tr></thead>
+        <thead><tr><th>Host</th><th class="hide-sm">Group</th><th class="num" title="0–100. Failing checks are weighted by severity; accepted risks are left out">Score</th><th class="num" title="Failing checks, not counting accepted risks">Failing</th><th class="num hide-sm" title="Failing checks rated high or critical">High / critical</th><th title="When the agent last ran the checks">Checked</th></tr></thead>
         <tbody>
           {#each hostsSorted as h (h.id)}
             <tr>
@@ -255,6 +260,9 @@
   .strip > .stat { flex: 0 0 auto; min-width: 176px; }
   .strip > .explain { display: block; flex: 1 1 320px; align-self: stretch; margin: 0; }
   .check-label { display: inline-flex; gap: var(--space-xs); align-items: center; color: var(--color-ink-2); font-size: var(--text-sm); cursor: pointer; }
+  /* Column labels for the check rows: the same grid as a summary, styled like a table header. */
+  .cols { display: grid; grid-template-columns: minmax(0, 1fr) minmax(160px, 260px) 96px; gap: var(--space-md); padding: var(--space-xs) var(--space-md); border-bottom: var(--rule-hair) solid var(--border-strong); }
+  .cols .th { justify-self: start; font-family: var(--font-display); font-weight: 500; font-size: var(--text-sm); color: var(--muted); white-space: nowrap; }
   .row { border-bottom: var(--rule-hair) solid var(--border); }
   .row:last-child { border-bottom: 0; }
   .row > summary { display: grid; grid-template-columns: minmax(0, 1fr) minmax(160px, 260px) 96px; align-items: center; gap: var(--space-md); min-height: 56px; padding: var(--space-xs) var(--space-md); cursor: pointer; list-style: none; }
@@ -288,6 +296,7 @@
   .actions { display: flex; flex-wrap: wrap; gap: var(--space-xs); align-items: center; }
   td .dot { margin-right: var(--space-xs); }
   @media (max-width: 640px) {
+    .cols { display: none; }
     .row > summary { grid-template-columns: minmax(0, 1fr) auto; }
     .dist { grid-column: 1 / -1; grid-row: 2; }
     .strip > .stat { flex: 1 1 50%; min-width: 0; }

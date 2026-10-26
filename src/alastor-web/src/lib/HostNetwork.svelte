@@ -240,7 +240,7 @@
         </header>
         <div class="table-wrap">
           <table class="table">
-            <thead><tr><th>Service</th><th>Port</th><th>Reach</th><th class="hide-sm">Bound to</th><th class="hide-sm" title="systemd-analyze security: 0 = sandboxed, 10 = unprotected">Hardening</th><th></th></tr></thead>
+            <thead><tr><th>Service</th><th>Port</th><th title="Who can connect: public (from the internet), firewalled, private network, or localhost only">Reach</th><th class="hide-sm" title="Addresses the socket listens on">Bound to</th><th class="hide-sm" title="systemd-analyze security: 0 = sandboxed, 10 = unprotected">Hardening</th><th></th></tr></thead>
             <tbody>
               {#each services.filter((s) => showLocal || s.reach !== 'Local') as s (key(s))}
                 {@const look = reachLook(s)}
@@ -276,7 +276,7 @@
         <header class="addr-head"><h2>Addresses</h2><span class="hint">{#if data.observedAddress}the server sees this host as <span class="mono">{data.observedAddress}</span>{/if}</span></header>
         <div class="table-wrap">
           <table class="table">
-            <thead><tr><th>Interface</th><th>Address</th><th>Kind</th><th>SSH</th></tr></thead>
+            <thead><tr><th>Interface</th><th>Address</th><th title="Public, private, or tailnet address">Kind</th><th title="Whether sshd listens on this address">SSH</th></tr></thead>
             <tbody>
               {#each report.addresses.filter((a) => a.kind !== 'Loopback' && a.kind !== 'LinkLocal') as a (a.interface + a.address)}
                 <tr>

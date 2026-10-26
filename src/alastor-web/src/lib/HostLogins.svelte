@@ -44,7 +44,7 @@
   {:else}
     <div class="table-wrap">
       <table class="table">
-        <thead><tr><th>User</th><th>From</th><th class="num">Logins</th><th class="hide-sm">Method</th><th>First seen</th><th class="hide-sm">Last</th></tr></thead>
+        <thead><tr><th>User</th><th title="Source address of the login">From</th><th class="num" title="Successful logins from this source">Logins</th><th class="hide-sm" title="How the user signed in">Method</th><th>First seen</th><th class="hide-sm" title="Most recent login">Last</th></tr></thead>
         <tbody>
           {#each data.sources as s (s.user + s.address)}
             <tr>

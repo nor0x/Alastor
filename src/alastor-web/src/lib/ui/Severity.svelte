@@ -1,6 +1,6 @@
 <script lang="ts">
   import type { Severity } from '../api';
-  let { value }: { value: Severity } = $props();
+  let { value, title }: { value: Severity; title?: string } = $props();
 </script>
 
-<span class="sev sev-{value.toLowerCase()}">{value}</span>
+<span class="sev sev-{value.toLowerCase()}" {title}>{value}</span>

@@ -80,6 +80,11 @@ export const categoryLabels: Record<BaselineCategory, string> = {
 
 export const severityRank: Record<Severity, number> = { Critical: 4, High: 3, Medium: 2, Low: 1, Info: 0 };
 
+/** How much a check counts toward the score (BaselineScore.Weight on the server). */
+export const severityWeight: Record<Severity, number> = { Critical: 10, High: 6, Medium: 3, Low: 1, Info: 0 };
+export const weightsText = 'critical 10, high 6, medium 3, low 1';
+export const severityHelp = (s: Severity) => `${s} severity: weighs ${severityWeight[s]} in the score (${weightsText})`;
+
 /** Score tone: the number is always shown next to it, so colour is never the only signal. */
 export function scoreTone(score: number | null): 'ok' | 'warn' | 'bad' | 'muted' {
   if (score === null) return 'muted';

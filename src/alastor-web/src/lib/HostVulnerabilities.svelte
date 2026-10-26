@@ -257,7 +257,7 @@
           <header><h2>Container images</h2><span class="hint">scanned locally with the host; host updates don't reach them</span></header>
           <div class="table-wrap">
             <table class="table">
-              <thead><tr><th>Image</th><th class="hide-sm">Containers</th><th class="num">Findings</th></tr></thead>
+              <thead><tr><th>Image</th><th class="hide-sm" title="Running containers using this image">Containers</th><th class="num" title="Vulnerabilities found in the image">Findings</th></tr></thead>
               <tbody>
                 {#each data.images as i (i.runtime + i.image)}
                   <tr>
@@ -303,7 +303,7 @@
         {:else}
           <div class="table-wrap">
             <table class="table">
-              <thead><tr><th>Vulnerability</th><th>Severity</th><th class="num hide-sm">CVSS</th><th>Package → fix</th>{#if canWrite()}<th class="hide-sm"></th>{/if}</tr></thead>
+              <thead><tr><th>Vulnerability</th><th title="Severity rating reported by the vulnerability scanner">Severity</th><th class="num hide-sm" title="CVSS base score, 0–10">CVSS</th><th title="Installed package and the version that fixes it">Package → fix</th>{#if canWrite()}<th class="hide-sm"></th>{/if}</tr></thead>
               <tbody>
                 {#each filtered.slice(0, limit) as g (g.id)}
                   <tr class:accepted={g.accepted}>
