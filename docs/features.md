@@ -2,8 +2,8 @@
 
 # Features
 
-All 10 planned deliverables are done. The server (REST API, SignalR, SQLite or PostgreSQL), the agent and the Svelte
-dashboard cover everything below. Live updates use SignalR, with polling when the hub is unreachable.
+Everything below works today, across the server (REST API, SignalR, SQLite or PostgreSQL), the agent and the Svelte
+dashboard. Live updates use SignalR, with polling when the hub is unreachable.
 
 ## Fleet overview
 
