@@ -123,7 +123,7 @@
   <div class="shell">
     <aside class="side" class:open={menuOpen}>
       <div class="bar">
-        <BrandSpell size={20} placement="below">
+        <BrandSpell size={32} placement="below">
           {#snippet label()}<a class="brand" href="/" aria-label="Alastor overview">Alastor</a>{/snippet}
         </BrandSpell>
         <button class="menu-btn btn small" aria-expanded={menuOpen} aria-controls="main-nav" onclick={() => (menuOpen = !menuOpen)}>

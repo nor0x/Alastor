@@ -59,7 +59,7 @@
   .inline-space { width: 100%; container-type: inline-size; }
   .effect-definitions { position: absolute; width: 0; height: 0; pointer-events: none; }
   .branding {
-    display: grid; grid-template-columns: 44px max-content; grid-template-rows: 44px 48px;
+    display: grid; grid-template-columns: 44px max-content; grid-template-rows: 44px 32px;
     align-items: center; column-gap: var(--space-xs); min-width: 0;
   }
   .logo-button {
@@ -70,7 +70,7 @@
   .label { min-width: 0; }
   .spell-slot { grid-column: 1 / -1; position: relative; align-self: stretch; pointer-events: none; }
   .spell {
-    position: absolute; inset: var(--space-md) var(--space-xs) auto;
+    position: absolute; inset: var(--space-2xs) var(--space-xs) auto;
     width: max-content; white-space: nowrap;
     color: var(--color-accent-deep); font: 500 var(--text-sm)/1.25 var(--font-display);
     letter-spacing: 0;
@@ -88,13 +88,13 @@
   .spell::after {
     color: var(--color-accent-2); animation-name: smoke-curl;
   }
-  .inline { grid-template-columns: 44px max-content minmax(0, 1fr); grid-template-rows: 64px; }
-  .inline .spell-slot { grid-column: 3; height: 64px; }
-  .inline .spell { inset: 24px var(--space-2xs) auto; }
+  .inline { grid-template-columns: 44px max-content minmax(0, 1fr); grid-template-rows: 44px; }
+  .inline .spell-slot { grid-column: 3; height: 44px; }
+  .inline .spell { inset: 14px var(--space-2xs) auto; }
   @container (max-width: 270px) {
-    .inline { grid-template-columns: 44px max-content; grid-template-rows: 44px 48px; }
+    .inline { grid-template-columns: 44px max-content; grid-template-rows: 44px 32px; }
     .inline .spell-slot { grid-column: 1 / -1; height: auto; }
-    .inline .spell { inset: var(--space-md) var(--space-xs) auto; }
+    .inline .spell { inset: var(--space-2xs) var(--space-xs) auto; }
   }
   @keyframes inscribe {
     0% { opacity: 0; transform: translateY(8px) scale(0.7) rotate(-8deg); filter: blur(5px); text-shadow: 0 0 14px var(--color-accent-2); }
