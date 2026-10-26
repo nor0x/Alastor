@@ -135,7 +135,7 @@ Cookie-authenticated writes must also send `X-Alastor-Request: 1` (CSRF guard on
 | `GET /api/hosts/{id}/metrics?hours=` | R | downsampled CPU/mem/disk/load history |
 | `GET /api/hosts/{id}/effective-policy` · `/commands` | R | merged YAML and revision · command history |
 | `PATCH /api/hosts/{id}` · `DELETE /api/hosts/{id}` | A | rename, group, tags · remove (revokes the agent) |
-| `POST /api/hosts/{id}/actions/{reconcile\|reclaim\|refresh-bans\|recheck\|check-updates\|apply-updates\|collect-software\|scan-storage\|scan-vulnerabilities\|run-audit\|check-network\|scan-malware\|check-integrity\|accept-integrity\|scan-rootkits\|accept-rootkits}` | A | operator actions (`recheck` re-runs the security baseline; the update and scan actions queue a `run-job` command) |
+| `POST /api/hosts/{id}/actions/{reconcile\|reclaim\|refresh-bans\|recheck\|check-updates\|apply-updates\|collect-software\|scan-storage\|scan-vulnerabilities\|run-audit\|check-network\|scan-malware\|check-integrity\|accept-integrity\|scan-rootkits\|accept-rootkits\|reboot}` | A | operator actions (`recheck` re-runs the security baseline; the update and scan actions queue a `run-job` command; `reboot` is refused with 409 while the host is offline) |
 | `GET /api/hosts/{id}/updates` | R | pending packages (security first), reboot flag, last install with its log tail, effective update schedules |
 | `GET /api/updates` · `POST /api/updates/apply` `{hostIds}` | R · A | per-host update counts across the fleet · "install now" on several hosts |
 | `GET /api/hosts/{id}/software` | R | installed packages (version, source package, installed on purpose or as a dependency, protected), each with its update candidate, known CVEs (scan + OSV.dev) and the manual upgrade/remove command; last upgrade/uninstall with its log tail |
@@ -377,7 +377,9 @@ server is unreachable. The server stores the latest report per host and kind, pl
   so its configured origins, blacklist and dpkg conffile handling apply exactly as they would from its own timer.
   If it isn't installed (and `autoInstall` is off), the fallback is `apt-get install --only-upgrade` of the security
   packages only, keeping existing config files. RHEL family runs `dnf upgrade --security`, Alpine runs `apk upgrade`.
-  The agent never reboots. It reports `updates.reboot-required` once, and the dashboard shows it.
+  Installing never reboots. The agent reports `updates.reboot-required` once, and the dashboard shows it with a
+  Reboot button: the `reboot` command runs `shutdown -r +1` (acknowledged before the host goes down, cancellable with
+  `shutdown -c`, a redelivered copy is ignored), and the first start afterwards re-runs `updates.check`.
 * **Services to restart.** After every check and install, `needrestart -b -r l` (batch output, list mode: it never
   restarts anything) on Debian/Ubuntu, or `needs-restarting -s` on the RHEL family, lists the services still running
   code from libraries or binaries an update replaced. needrestart is adopted, never installed: installing it changes how

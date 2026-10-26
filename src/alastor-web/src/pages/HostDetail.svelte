@@ -5,7 +5,9 @@
   import { navigate, route } from '../lib/router.svelte';
   import { canWrite } from '../lib/session.svelte';
   import { toast } from '../lib/toast.svelte';
-  import { bytes, fullDate, uptime } from '../lib/format';
+  import { bytes, fullDate, liveUptime, uptime } from '../lib/format';
+  import { rebootHost } from '../lib/hostActions';
+  import { clock } from '../lib/ui/clock.svelte';
   import { scoreTone } from '../lib/baseline';
   import { confirm } from '../lib/ui/confirm.svelte';
   import BanDialog from '../lib/BanDialog.svelte';
@@ -154,6 +156,12 @@
     }
   }
 
+  async function reboot() {
+    if (!host) return;
+    const cmd = await rebootHost(host.summary);
+    if (cmd) commands = [cmd, ...commands.filter((c) => c.id !== cmd.id)];
+  }
+
   async function remove() {
     if (!host) return;
     const ok = await confirm(
@@ -262,6 +270,7 @@
         <button class="btn" onclick={() => action('reconcile', 'Re-apply policy')} title="Run the reconcile loop now">Re-apply policy</button>
         <button class="btn" onclick={() => action('refresh-bans', 'Ban list refresh')}>Refresh bans</button>
         <button class="btn" onclick={openEdit}>Edit</button>
+        <button class="btn danger" onclick={reboot} disabled={!s.isOnline} title={s.isOnline ? 'Reboot this host in one minute' : 'The host is offline'}>Reboot</button>
         <button class="btn danger" onclick={remove}>Remove</button>
       </div>
     {/if}
@@ -380,7 +389,7 @@
             <dt>IP addresses</dt><dd class="mono">{#if host.ipAddresses.length}{host.ipAddresses.join(', ')}{:else}<span class="nil" aria-label="none"></span>{/if}</dd>
             <dt>OS</dt><dd>{s.osPrettyName} <span class="muted">({host.osId} {host.osVersion})</span></dd>
             <dt>Kernel</dt><dd class="mono">{host.kernelVersion}</dd>
-            <dt>Uptime</dt><dd>{uptime(host.uptimeSeconds)}</dd>
+            <dt>Uptime</dt><dd>{#if liveUptime(s, clock.now) !== null}{uptime(liveUptime(s, clock.now) ?? 0)}{:else}{uptime(host.uptimeSeconds)} <span class="muted small">when last seen</span>{/if}</dd>
             <dt>Load</dt><dd class="mono load"><span title="1 min">{s.load1.toFixed(2)}</span><span title="5 min">{host.load5.toFixed(2)}</span><span title="15 min">{host.load15.toFixed(2)}</span></dd>
             <dt>Enrolled</dt><dd>{fullDate(host.enrolledAt)}</dd>
             <dt>Last heartbeat</dt><dd><Time iso={s.lastSeenAt} /></dd>
