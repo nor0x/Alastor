@@ -273,6 +273,8 @@ times, so the editor can show `0 4 * * 1-5` as "Mon 04:00, Tue 04:00, …".
 | `ALASTOR_THREATFEEDINTERVAL` | `20m` | per-source refetch after a success (5m–1d) |
 | `ALASTOR_THREATFEEDRETENTION` | `30d` | feed items older than this are pruned and not fetched |
 | `ALASTOR_NVDAPIKEY` | – | optional; raises NVD's rate limit from 5 to 50 requests / 30 s |
+| `ALASTOR_UPDATECHECKENABLED` | `true` | `UpdateCheckWorker` asks GitHub for the latest release at startup and every 12 h; the sidebar shows a notice when it's newer |
+| `ALASTOR_UPDATEREPOSITORY` | `nor0x/Alastor` | `owner/name` whose releases the update check reads (404, e.g. a private repo, means no notice) |
 
 All values are validated: an invalid policy is rejected with the key's path, and invalid server config stops
 startup with a message naming the variable. Deliberately **not** knobs: retry backoffs, tool command timeouts

@@ -6,7 +6,7 @@ namespace Alastor.Core.Baseline;
 /// The security baseline: the handful of settings that matter most on an internet-facing Linux server, each with
 /// a fix. Checks read the system's own authoritative output (<c>sshd -T</c> for the effective SSH config,
 /// <c>sysctl</c>, <c>ufw status</c>, <c>nft -j</c>, <c>apt-config</c>, <c>timedatectl show</c>, <c>passwd -S</c>), never config files
-/// guessed at by hand. Lynis (deliverable 8) audits far more broadly. This list exists because Lynis only
+/// guessed at by hand. Lynis audits (the hardening integration) go far more broadly. This list exists because Lynis only
 /// suggests: the baseline's policy fixes are applied by the agent as managed, reversible drop-ins.
 /// </summary>
 public static class BaselineCatalog
@@ -59,7 +59,7 @@ public static class BaselineCatalog
         new("updates-automatic", "Security updates install automatically", BaselineCategory.Updates, Severity.Medium,
             "Most compromises use vulnerabilities that already have a fix. Automatic updates close them within a day.",
             "unattended-upgrades (Debian/Ubuntu) or dnf-automatic (RHEL family) enabled", FixKind.Manual,
-            "Install and enable the distribution's automatic security updates. Alastor will manage this with the update integration (deliverable 6)."),
+            "Install and enable the distribution's automatic security updates. Or let Alastor install them with updates.applySchedule and set this check to ignore under baseline.mitigations."),
         new("updates-reboot-required", "No reboot is pending", BaselineCategory.Updates, Severity.Medium,
             "Kernel and library fixes only take effect after a reboot.",
             "No pending reboot", FixKind.Manual,
