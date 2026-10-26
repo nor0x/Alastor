@@ -4,6 +4,7 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.Extensions.DependencyInjection;
 using Alastor.Core.Baseline;
 using Alastor.Core.Contracts;
 using Alastor.Core.Events;
@@ -148,6 +149,34 @@ public sealed class ServerApiTests : IClassFixture<ServerApiTests.Factory>
 
         var events = await admin.GetFromJsonAsync<JsonElement>($"/api/events?hostId={hostId}&ip=203.0.113.9");
         Assert.Single(events.GetProperty("items").EnumerateArray());
+    }
+
+    [Fact]
+    public async Task Summary_carries_uptime_and_reboot_is_only_queued_for_online_hosts()
+    {
+        var admin = await AdminAsync();
+        var (hostId, agent) = await EnrollAsync(admin);
+
+        (await agent.PostAsJsonAsync("/api/agent/heartbeat", new HeartbeatRequest("0.1.0", "web-01", "Ubuntu 26.04", "6.8.0-40-generic",
+            new HostMetrics(5, 1_000, 500, 1_000, 500, 0.1, 0.2, 0.3, 86_400), [], null, ["192.0.2.51", "2001:db8::51"]), Json)).EnsureSuccessStatusCode();
+
+        var summary = (await admin.GetFromJsonAsync<JsonElement>("/api/hosts", Json)).EnumerateArray().Single(h => h.GetProperty("id").GetGuid() == hostId);
+        Assert.Equal(86_400, summary.GetProperty("uptimeSeconds").GetInt64());
+        Assert.Equal("6.8.0-40-generic", summary.GetProperty("kernelVersion").GetString());
+        Assert.Equal(["192.0.2.51", "2001:db8::51"], summary.GetProperty("ipAddresses").EnumerateArray().Select(a => a.GetString()!).ToArray());
+
+        Assert.Equal(HttpStatusCode.Accepted, (await admin.PostAsync($"/api/hosts/{hostId}/actions/reboot", null)).StatusCode);
+        Assert.Contains((await agent.GetFromJsonAsync<List<AgentCommand>>("/api/agent/commands", Json))!, c => c.Type == AgentCommandTypes.Reboot);
+
+        // Offline (as the presence sweep marks it): a reboot must not wait in the queue for whenever the host comes back.
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<Alastor.Server.Data.AlastorDbContext>();
+            (await db.Hosts.FindAsync(hostId))!.IsOnline = false;
+            await db.SaveChangesAsync();
+        }
+        Assert.Equal(HttpStatusCode.Conflict, (await admin.PostAsync($"/api/hosts/{hostId}/actions/reboot", null)).StatusCode);
+        Assert.Empty((await agent.GetFromJsonAsync<List<AgentCommand>>("/api/agent/commands", Json))!);
     }
 
     [Fact]

@@ -117,6 +117,9 @@ public static class AgentCommandTypes
 
     /// <summary>Run one storage cleanup. Payload: <c>cleanup</c> = a <see cref="Alastor.Core.Storage.StorageCleanups"/> id. Acknowledged at once; the outcome follows as a storage report.</summary>
     public const string StorageCleanup = "storage-cleanup";
+
+    /// <summary>Reboot the host in one minute (<c>shutdown -r +1</c>). Acknowledged before the host goes down; a redelivered copy is ignored.</summary>
+    public const string Reboot = "reboot";
 }
 
 public sealed record AgentCommand(Guid Id, string Type, IReadOnlyDictionary<string, string> Payload, DateTime CreatedAtUtc);

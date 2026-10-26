@@ -70,6 +70,7 @@ builder.Services.AddSingleton(config);
 builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddSingleton(platform.Os);
 builder.Services.AddSingleton<IStateStore>(platform.State);
+builder.Services.AddSingleton<ICommandRunner>(platform.Runner);
 builder.Services.AddSingleton(new ServerClient(ServerClient.CreateHttpClient(config.ServerUrl, config.Credential, config.CertificatePin)));
 builder.Services.AddSingleton<HostMetricsCollector>();
 builder.Services.AddSingleton<IToolIntegration>(sp => platform.CreateFail2Ban(sp.GetRequiredService<ILogger<Fail2BanIntegration>>()));

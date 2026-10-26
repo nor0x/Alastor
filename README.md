@@ -8,7 +8,9 @@ configuration declaratively, and turns their output into one normalized alert pi
 **Status:** all 10 deliverables are done. The server (REST API, SignalR, SQLite or PostgreSQL), the agent and the
 Svelte dashboard cover:
 
-- **Hosts:** overview and host detail with live metrics, a capability matrix, events, bans and commands.
+- **Hosts:** a table or a grid of host cards (OS, kernel, IPs, uptime, usage and posture), and host detail with live
+  metrics, a capability matrix, events, bans and commands. Reboot a host from the dashboard (in one minute, with a
+  warning to logged-in users).
 - **Charts:** events per day by severity, ban activity per hour, a host × area posture matrix, and 30/90/365-day trends
   of baseline score, CVEs, exploited CVEs and pending updates from daily posture snapshots.
 - **Banning:** fail2ban, or CrowdSec with its firewall bouncer (opt-in), managed from policy, with bans and allowlist

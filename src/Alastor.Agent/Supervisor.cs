@@ -21,7 +21,7 @@ namespace Alastor.Agent;
 /// The agent's main loop. Every heartbeat interval, or right away when the server sends a SignalR "wake":
 ///   1. heartbeat: metrics + per-tool status. The response says which policy revision is desired and whether commands are waiting.
 ///   2. reconcile: when the revision changed (or every 5 min, to catch drift), plan + apply each integration.
-///   3. commands: ban / unban / reconcile / reclaim / refresh-bans.
+///   3. commands: ban / unban / reconcile / reclaim / refresh-bans / jobs / packages / reboot.
 /// A second, faster loop drains tool events every 5 s and pushes ban-list snapshots when they change.
 /// All IO is async. A failing tool is reported, never fatal to the loop.
 /// </summary>
@@ -30,6 +30,7 @@ public sealed class Supervisor(
     IEnumerable<IToolIntegration> integrations,
     HostMetricsCollector metrics,
     IStateStore state,
+    ICommandRunner runner,
     OsInfo os,
     AgentConfig config,
     TimeProvider time,
@@ -59,12 +60,23 @@ public sealed class Supervisor(
     private readonly ConcurrentQueue<AgentReport> _pendingReports = new();
     private readonly ConcurrentDictionary<string, bool> _runningJobs = new();
 
+    private const string StateRebootCommand = "agent.rebootCommand";
+    private const string StateRebootPending = "agent.rebootPending";
+
+    /// <summary>Set on the first start after a dashboard reboot: the update check runs again so "reboot required" clears.</summary>
+    private bool _recheckAfterReboot;
+
     /// <summary>Called by the SignalR listener. Wakes the main loop without waiting for the next interval.</summary>
     public void Wake(string reason) => _wake.Writer.TryWrite(reason);
 
     protected override async Task ExecuteAsync(CancellationToken ct)
     {
         _lastServerContact = time.GetUtcNow().UtcDateTime;
+        if (state.Get(StateRebootPending) is not null)
+        {
+            _recheckAfterReboot = true;
+            await state.SetAsync(StateRebootPending, null, ct);
+        }
         var pump = Task.Run(() => EventPumpAsync(ct), ct);
         var jobs = Task.Run(() => JobLoopAsync(ct), ct);
         string? forced = "startup";
@@ -374,6 +386,8 @@ public sealed class Supervisor(
                 return await PackageCommandAsync(cmd, ct);
             case AgentCommandTypes.StorageCleanup:
                 return StorageCleanup(cmd, ct);
+            case AgentCommandTypes.Reboot:
+                return await RebootAsync(cmd, ct);
             default:
                 return new(false, $"Unknown command '{cmd.Type}' (agent {AgentInfo.Version})");
         }
@@ -463,6 +477,27 @@ public sealed class Supervisor(
         return new(true, $"{cleanup.Title}: cleanup started; the result follows as a report");
     }
 
+    /// <summary>
+    /// Schedules the reboot a minute out instead of rebooting now: the acknowledgement reaches the server first, logged-in
+    /// users get a warning, and it can be cancelled on the host with <c>shutdown -c</c>. A redelivered copy of the same
+    /// command (the acknowledgement got lost) does not reboot again.
+    /// </summary>
+    private async Task<CommandOutcome> RebootAsync(AgentCommand cmd, CancellationToken ct)
+    {
+        var id = cmd.Id.ToString();
+        if (state.Get(StateRebootCommand) == id) return new(true, "Reboot already ran for this command");
+        if (runner.Which("shutdown") is null) return new(false, "shutdown is not available on this host (container or minimal image?)");
+        await state.SetAsync(StateRebootCommand, id, ct);
+        await state.SetAsync(StateRebootPending, "true", ct);
+        var r = await runner.RunAsync("shutdown", ["-r", "+1", "Alastor: reboot requested from the dashboard"], null, ct);
+        if (!r.Success)
+        {
+            await state.SetAsync(StateRebootPending, null, ct);
+            return new(false, $"shutdown failed: {r.CombinedOutput}");
+        }
+        return new(true, "Reboot scheduled in 1 minute (cancel on the host with shutdown -c)");
+    }
+
     private IBanProvider? ActiveBanProvider() =>
         _tools.Where(t => _policy is not null && t.IsWanted(_policy)).OfType<IBanProvider>().FirstOrDefault();
 
@@ -497,9 +532,11 @@ public sealed class Supervisor(
                         var lastRun = DateTime.TryParse(state.Get($"job.{job.Id}.lastRunUtc"), System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.RoundtripKind, out var l) ? l : (DateTime?)null;
                         var schedule = job.ScheduleKey.Length == 0 ? Schedule.Parse("off") : ScheduleDefaults.For(policy, job.ScheduleKey);
                         var due = forced == job.Id
+                                  || (_recheckAfterReboot && job.Id == Alastor.Core.Updates.UpdatesIntegration.CheckJob)
                                   || (lastRun is null && job.RunOnFirstStart && !schedule.IsDisabled)
                                   || schedule.IsDue(lastRun, lastRun ?? started, now, TimeZoneInfo.Local, spread);
                         if (!due || !_runningJobs.TryAdd(job.Id, true)) continue;
+                        if (job.Id == Alastor.Core.Updates.UpdatesIntegration.CheckJob) _recheckAfterReboot = false;
                         // Each job runs on its own: a CVE scan waiting for the server's database mirror must not hold up an update check.
                         var isForced = forced == job.Id;
                         _ = Task.Run(() => RunJobAsync(job, policy, isForced, ct), ct);

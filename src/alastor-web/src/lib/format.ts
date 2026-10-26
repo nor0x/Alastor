@@ -41,6 +41,12 @@ export function uptime(seconds: number): string {
   return d > 0 ? `${d}d ${h}h` : h > 0 ? `${h}h ${m}m` : `${m}m`;
 }
 
+/** Uptime now: the last reported value plus the time since that heartbeat. Null when offline or not reported yet. */
+export function liveUptime(h: { isOnline: boolean; lastSeenAt: string | null; uptimeSeconds: number }, now = Date.now()): number | null {
+  if (!h.isOnline || !h.lastSeenAt || !h.uptimeSeconds) return null;
+  return h.uptimeSeconds + Math.max(0, (now - new Date(h.lastSeenAt).getTime()) / 1000);
+}
+
 export function shortTime(iso: string): string {
   return new Date(iso).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
 }
