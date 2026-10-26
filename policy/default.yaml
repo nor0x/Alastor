@@ -50,6 +50,7 @@ blocklists:
 updates:
   checkSchedule: every 6h    # count pending security updates
   applySchedule: "off"       # auto-install security updates, e.g. "0 4 * * *"; "off" = report only + "Apply now"
+  inventorySchedule: every 6h # list installed packages and versions (Software tab); also after every upgrade/uninstall
 
 vulnerabilities:
   scanSchedule: "0 3 * * *"  # Trivy/Grype package scan, nightly

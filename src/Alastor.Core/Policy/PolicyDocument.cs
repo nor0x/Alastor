@@ -84,6 +84,9 @@ public sealed class UpdatesPolicy
 
     /// <summary>When pending security updates are installed automatically. "off" means report only; apply via "Apply now".</summary>
     public string? ApplySchedule { get; set; }
+
+    /// <summary>How often the installed-software inventory (every package and version) is collected.</summary>
+    public string? InventorySchedule { get; set; }
 }
 
 /// <summary>CVE scans of the installed packages with Trivy or Grype, against a vulnerability database the server mirrors.</summary>

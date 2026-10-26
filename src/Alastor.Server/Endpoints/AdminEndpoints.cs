@@ -140,6 +140,7 @@ public static class AdminEndpoints
                 S("Threat feed", nameof(o.ThreatFeedEnabled), o.ThreatFeedEnabled ? "true" : "false", "Fetch NVD, CISA KEV and security news."),
                 S("Threat feed", nameof(o.ThreatFeedInterval), o.ThreatFeedInterval, "How often each source is fetched."),
                 S("Threat feed", nameof(o.ThreatFeedRetention), o.ThreatFeedRetention, "Keep feed items this long."),
+                S("Software", nameof(o.OsvEnabled), o.OsvEnabled ? "true" : "false", "Look up installed package versions on OSV.dev (names and versions only)."),
                 S("Threat feed", nameof(o.NvdApiKey), string.IsNullOrEmpty(o.NvdApiKey) ? "(not set)" : "(set)", "Optional NVD API key for a higher rate limit."),
             };
         }).WithTags("Settings").RequireAuthorization(AuthPolicies.Admin);

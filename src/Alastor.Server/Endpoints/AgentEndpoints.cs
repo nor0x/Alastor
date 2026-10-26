@@ -61,6 +61,7 @@ public static class AgentEndpoints
             cmd.Status = result.Success ? CommandStatus.Succeeded : CommandStatus.Failed;
             cmd.CompletedAt = time.GetUtcNow().UtcDateTime;
             cmd.ResultMessage = result.Message.Length > 1000 ? result.Message[..1000] : result.Message;
+            cmd.ResultDetail = result.Detail is { Length: <= 64 * 1024 } detail ? detail : null;
             await db.SaveChangesAsync(ct);
             await notifier.CommandUpdatedAsync(Dto.Command(cmd), ct);
             return Results.NoContent();

@@ -110,6 +110,7 @@ public static partial class PolicyYaml
         }
         CheckSchedule("updates.checkSchedule", doc.Updates?.CheckSchedule);
         CheckSchedule("updates.applySchedule", doc.Updates?.ApplySchedule);
+        CheckSchedule("updates.inventorySchedule", doc.Updates?.InventorySchedule);
         CheckSchedule("vulnerabilities.scanSchedule", doc.Vulnerabilities?.ScanSchedule);
         CheckSchedule("hardening.auditSchedule", doc.Hardening?.AuditSchedule);
         CheckSchedule("malware.scanSchedule", doc.Malware?.ScanSchedule);

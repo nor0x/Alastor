@@ -164,6 +164,15 @@ builder.Services.AddHttpClient(VulnDbMirror.HttpClientName, c =>
     c.DefaultRequestHeaders.UserAgent.ParseAdd($"Alastor/{typeof(Program).Assembly.GetName().Version?.ToString(3) ?? "dev"} (self-hosted; vulnerability db mirror)");
 });
 if (options.VulnDbEnabled) builder.Services.AddHostedService<VulnDbWorker>();
+builder.Services.AddScoped<Alastor.Server.Services.Software.SoftwareService>();
+builder.Services.AddScoped<Alastor.Server.Services.Osv.OsvService>();
+builder.Services.AddHttpClient(Alastor.Server.Services.Osv.OsvService.HttpClientName, c =>
+{
+    c.Timeout = TimeSpan.FromSeconds(60);
+    c.MaxResponseContentBufferSize = 32 * 1024 * 1024;
+    c.DefaultRequestHeaders.UserAgent.ParseAdd($"Alastor/{typeof(Program).Assembly.GetName().Version?.ToString(3) ?? "dev"} (self-hosted; software inventory)");
+}).ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler { AutomaticDecompression = System.Net.DecompressionMethods.All });
+if (options.OsvEnabled) builder.Services.AddHostedService<OsvWorker>();
 
 var app = builder.Build();
 
@@ -219,6 +228,7 @@ app.MapStatsEndpoints();
 app.MapIssueEndpoints();
 app.MapAccessEndpoints();
 app.MapIntegrityEndpoints();
+app.MapSoftwareEndpoints();
 app.MapHub<AgentHub>("/hubs/agent");
 app.MapHub<DashboardHub>("/hubs/dashboard");
 app.MapInstallScripts();

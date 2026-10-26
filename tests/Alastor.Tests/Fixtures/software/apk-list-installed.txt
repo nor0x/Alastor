@@ -1,0 +1,7 @@
+alpine-baselayout-3.6.5-r0 x86_64 {alpine-baselayout} (GPL-2.0-only) [installed]
+busybox-1.36.1-r29 x86_64 {busybox} (GPL-2.0-only) [installed]
+libcrypto3-3.3.2-r0 x86_64 {openssl} (Apache-2.0) [installed]
+libssl3-3.3.2-r0 x86_64 {openssl} (Apache-2.0) [installed]
+musl-1.2.5-r0 x86_64 {musl} (MIT) [installed]
+nginx-1.26.2-r0 x86_64 {nginx} (BSD-2-Clause) [installed]
+py3-setuptools-70.3.0-r0 noarch {py3-setuptools} (MIT) [installed]
