@@ -29,6 +29,10 @@
   --color-graphite-success: oklch(78% 0.13 150); --color-graphite-warning: oklch(82% 0.12 80); --color-graphite-error: oklch(74% 0.14 27);
   /* Severity cells: graphics, not text, so they only need 3:1 together with their count. */
   --color-sev-critical: oklch(52% 0.2 27); --color-sev-high: oklch(62% 0.17 45); --color-sev-medium: oklch(76% 0.14 80); --color-sev-low: oklch(66% 0.09 230); --color-sev-info: var(--color-rule-2);
+  /* Chart fills for severity: stacked segments sit side by side, so these step further apart in lightness and hue than the
+     cells above (checked for adjacent-pair separation under colour-vision deficiency). Charts always carry a legend,
+     tooltip and table, which covers the two lightest fills sitting under 3:1 on paper. */
+  --chart-sev-critical: oklch(45% 0.17 25); --chart-sev-high: oklch(62% 0.18 48); --chart-sev-medium: oklch(76% 0.15 85); --chart-sev-low: oklch(53% 0.12 245); --chart-sev-info: oklch(68% 0.1 305);
 
   --font-display: "Familjen Grotesk", system-ui, sans-serif; --font-body: "IBM Plex Sans", system-ui, sans-serif;
   --font-outlier: "JetBrains Mono", ui-monospace, monospace;

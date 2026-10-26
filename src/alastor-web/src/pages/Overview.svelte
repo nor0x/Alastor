@@ -154,7 +154,7 @@
           <a class="ledger-cell" href="/issues?rule=service.public">
             <span class="figure-label">Unexpected public services</span>
             <span class="figure-value" class:bad={data.hostsWithPublicServices > 0}>{data.hostsWithPublicServices}</span>
-            <span class="figure-foot">host{data.hostsWithPublicServices === 1 ? '' : 's'} with ports open beyond <code>allowPublicPorts</code></span>
+            <span class="figure-foot" title="Public ports not in network.allowPublicPorts">host{data.hostsWithPublicServices === 1 ? '' : 's'} with ports open beyond the allowed list</span>
             <Sparkline values={spark((p) => p.hostsWithPublicServices)} label="Hosts with unexpected public services, last 14 days" />
           </a>
         {/if}
@@ -285,7 +285,6 @@
   .band .ledger > * { padding: var(--space-md) var(--space-md) var(--space-sm); }
   .figure-foot { display: inline-flex; align-items: center; gap: var(--space-xs); }
   .figure-value .nil { width: 24px; height: 2px; }
-  .figure-foot :global(code) { font-size: var(--text-xs); }
   .ledger-cell :global(.spark) { margin-top: var(--space-2xs); }
   .viz { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr)); gap: var(--space-md); align-items: start; margin-bottom: var(--space-md); }
   .trends { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); overflow: hidden; }

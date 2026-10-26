@@ -135,7 +135,7 @@
       </header>
       <div class="card-body">
         {#if activity}<StackedBars title="Per hour{hostId ? ` on ${fleet.hosts.find((h) => h.id === hostId)?.name ?? 'this host'}` : ', all hosts'}" series={banSeries} buckets={banBuckets(activity)} height={130} empty="No bans or auth failures in this period." />
-        {:else}<div class="skeleton-block" style="height:130px"></div>{/if}
+        {:else}<div class="skeleton-block" style:height="130px"></div>{/if}
       </div>
     </section>
 

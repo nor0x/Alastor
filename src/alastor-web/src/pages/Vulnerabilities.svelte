@@ -267,7 +267,7 @@
   .sevbar span:only-child { border-radius: 2px; }
   .sevbar .c { background: var(--chart-sev-critical); }
   .sevbar .h { background: var(--chart-sev-high); }
-  .sevbar .o { background: var(--chart-sev-info); }
+  .sevbar .o { background: var(--color-rule-2); }
   .vuln { min-width: 220px; max-width: 460px; }
   .vuln .pill, .vuln .kev { margin-left: var(--space-xs); }
   .kev { display: inline-flex; align-items: center; gap: var(--space-2xs); color: var(--color-error); font-family: var(--font-display); font-weight: 500; font-size: var(--text-sm); white-space: nowrap; vertical-align: middle; }

@@ -13,8 +13,8 @@ export function eventBuckets(stats: EventStats): Bucket[] {
 }
 
 export const banSeries: Series[] = [
-  { key: 'bans', label: 'Bans', color: 'var(--info)' },
-  { key: 'authFailures', label: 'Auth-failure reports', color: 'var(--chart-sev-info)' },
+  { key: 'bans', label: 'Bans', color: 'var(--color-accent)' },
+  { key: 'authFailures', label: 'Auth-failure reports', color: 'var(--color-accent-2)' },
 ];
 
 export function banBuckets(hours: BanHour[]): Bucket[] {

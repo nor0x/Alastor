@@ -122,6 +122,11 @@
         </a>
         <button class="menu-btn btn small" aria-expanded={menuOpen} aria-controls="main-nav" onclick={() => (menuOpen = !menuOpen)}>
           <Icon name={menuOpen ? 'close' : 'menu'} />Menu
+          {#if !menuOpen && issues.summary && issues.summary.unacknowledged > 0}
+            <span class="badge sev-{issues.summary.topSeverity?.toLowerCase() ?? 'info'}" title="{issues.summary.unacknowledged} unacknowledged issues">
+              <span class="visually-hidden">Issues: </span>{issues.summary.unacknowledged}
+            </span>
+          {/if}
         </button>
       </div>
       <nav id="main-nav" aria-label="Main">

@@ -1,5 +1,5 @@
 <script lang="ts">
-  // A tiny trend line for stat tiles: no axes, the tile's number is the value. Null days leave a gap.
+  // A tiny trend line for ledger figures: no axes, the tile's number is the value. Null days leave a gap.
   let { values, label, height = 28 }: { values: (number | null)[]; label: string; height?: number } = $props();
 
   let width = $state(120);
@@ -29,6 +29,6 @@
 <style>
   .spark { width: 100%; min-height: 4px; }
   svg { display: block; overflow: visible; }
-  path { fill: none; stroke: var(--muted); stroke-width: 1.5; stroke-linejoin: round; stroke-linecap: round; }
-  circle { fill: var(--info); stroke: var(--surface); stroke-width: 2; }
+  path { fill: none; stroke: var(--color-glyph-4); stroke-width: 1.5; stroke-linejoin: round; stroke-linecap: round; }
+  circle { fill: var(--color-accent); stroke: var(--color-key-face); stroke-width: 2; }
 </style>

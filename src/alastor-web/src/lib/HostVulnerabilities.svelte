@@ -263,7 +263,7 @@
                   <tr>
                     <td><span class="mono small">{i.image}</span> <span class="muted small">{i.runtime}</span>{#if i.error}<div class="small bad-text">{i.error}</div>{/if}</td>
                     <td class="hide-sm small">{i.containers.join(', ')}</td>
-                    <td class="num">{#if i.error}<span class="muted">—</span>{:else}<button class="btn ghost small" onclick={() => (source = i.image)}>{i.findings}</button>{/if}</td>
+                    <td class="num">{#if i.error}<span class="nil" aria-label="none"></span>{:else}<button class="btn ghost small" onclick={() => (source = i.image)}>{i.findings}</button>{/if}</td>
                   </tr>
                 {/each}
               </tbody>
