@@ -8,6 +8,7 @@ using Alastor.Core.Contracts;
 using Alastor.Core.Events;
 using Alastor.Core.Integrations;
 using Alastor.Core.Platform;
+using Alastor.Core.Policy;
 using Alastor.Core.Storage;
 using Alastor.Server.Data;
 using Alastor.Server.Services.Issues;
@@ -157,7 +158,7 @@ public class StorageIntegrationTests
             .On("find /tmp -xdev -type f -mtime +10 -atime +10 -printf %s\n", "");
     }
 
-    private StorageIntegration Integration() => new(_runner, _fs, _state, Ubuntu, NullLogger<StorageIntegration>.Instance, TimeProvider.System);
+    private StorageIntegration Integration() => new(_runner, _fs, _state, Ubuntu, StateDir, NullLogger<StorageIntegration>.Instance, TimeProvider.System);
 
     private static async Task<List<SecurityEvent>> Drain(StorageIntegration s)
     {
@@ -338,6 +339,157 @@ public class StorageIntegrationTests
         var result = await Integration().RunCleanupAsync(StorageCleanups.DockerVolumes, default);
         Assert.True(result.Success, result.Error);
         Assert.Contains("docker volume prune -f", _runner.Calls);
+    }
+
+    // ---- the agent's own data ----
+
+    private const string StateDir = "/var/lib/alastor-agent";
+    private const string Trivy = StateDir + "/vulndb/trivy";
+    private const string Grype = StateDir + "/vulndb/grype";
+    private const string LeftoversFind = "find " + StateDir + " -xdev -type f ( -name *.part -o -name scan-*.json -o -name .*.tmp ) -mmin +60";
+    private const string TrivyChildren = "find " + Trivy + " -mindepth 1 -maxdepth 1 ! -name db ! -name db.* ! -name metadata.json -print";
+
+    private static readonly string[] OwnIds =
+        [StorageCleanups.AlastorScannerDbs, StorageCleanups.AlastorImageCache, StorageCleanups.AlastorClamAv, StorageCleanups.AlastorAide, StorageCleanups.AlastorLeftovers];
+
+    /// <summary>A state directory with every kind of agent data, 1000 KB per folder, and two stale leftovers.</summary>
+    private void AgentData(string leftovers = "4096\n8192\n")
+    {
+        foreach (var f in new[]
+                 {
+                     "state.json", "blocklist.nft", "vulndb/trivy/db/trivy.db", "vulndb/trivy/db/metadata.json", "vulndb/trivy/fanal/fanal.db",
+                     "vulndb/grype/6/vulnerability.db", "clamav/main.cvd", "aide/aide.db",
+                 })
+            _fs.Files[$"{StateDir}/{f}"] = "x";
+        _runner.On(TrivyChildren, $"{Trivy}/fanal\n/etc\n{Trivy}/fanal/../../..\n")
+            .On(LeftoversFind + " -printf %s\n", leftovers);
+        _runner.Fallback = (file, args) => file == "du" && args[0] == "-sk" && args.Skip(1).All(a => a.StartsWith(StateDir + "/", StringComparison.Ordinal))
+            ? new CommandResult(0, string.Concat(args.Skip(1).Select(a => $"1000\t{a}\n")), "")
+            : null;
+    }
+
+    private static PolicyDocument Policy(string scanner, bool malware = false, bool integrity = false) => new()
+    {
+        Vulnerabilities = new() { Scanner = scanner },
+        Malware = new() { ScanSchedule = malware ? "0 4 * * *" : "off" },
+        Integrity = new() { CheckSchedule = integrity ? "every 1h" : "off" },
+    };
+
+    private async Task<Dictionary<string, CleanupCandidate>> OwnCleanups(PolicyDocument? policy)
+    {
+        var s = Integration();
+        if (policy is not null) s.IsWanted(policy);
+        var r = (await s.ScanAsync(default)).Storage!;
+        return r.Cleanups.Where(c => OwnIds.Contains(c.Id)).ToDictionary(c => c.Id);
+    }
+
+    [Fact]
+    public async Task Before_any_policy_only_agent_leftovers_are_measured()
+    {
+        AgentData();
+        var c = await OwnCleanups(null);
+        Assert.Equal([StorageCleanups.AlastorLeftovers], c.Keys);
+        Assert.Equal((12288L, 2), (c[StorageCleanups.AlastorLeftovers].Bytes!.Value, c[StorageCleanups.AlastorLeftovers].Items!.Value));
+    }
+
+    [Theory]
+    [InlineData("trivy", new[] { "trivy", "grype" }, new[] { Grype })]
+    [InlineData("grype", new[] { "trivy", "grype" }, new[] { Trivy })]
+    [InlineData("auto", new[] { "trivy", "grype" }, new[] { Grype })]
+    [InlineData("auto", new[] { "grype" }, new[] { Trivy })]
+    [InlineData("off", new[] { "trivy" }, new[] { Trivy, Grype })]
+    // Neither installed: either may be any time, so both databases stay.
+    [InlineData("auto", new string[0], new string[0])]
+    public async Task Only_databases_of_scanners_the_policy_doesnt_use_are_offered(string scanner, string[] installed, string[] offered)
+    {
+        AgentData();
+        _runner.Installed.UnionWith(installed);
+        var c = await OwnCleanups(Policy(scanner, malware: true, integrity: true));
+        if (offered.Length == 0) Assert.DoesNotContain(StorageCleanups.AlastorScannerDbs, c.Keys);
+        else Assert.Equal((offered.Length * 1000L * 1024, string.Join(", ", offered)), (c[StorageCleanups.AlastorScannerDbs].Bytes!.Value, c[StorageCleanups.AlastorScannerDbs].Detail));
+        // The scan cache goes with an unused Trivy folder, so it's offered on its own only while Trivy is in use.
+        Assert.Equal(!offered.Contains(Trivy), c.ContainsKey(StorageCleanups.AlastorImageCache));
+        Assert.DoesNotContain(StorageCleanups.AlastorClamAv, c.Keys);
+        Assert.DoesNotContain(StorageCleanups.AlastorAide, c.Keys);
+    }
+
+    [Fact]
+    public async Task An_old_trivy_database_is_offered_even_while_trivy_is_in_use()
+    {
+        AgentData();
+        _fs.Files[$"{Trivy}/db.old/trivy.db"] = "x";
+        _runner.Installed.Add("trivy");
+        var c = await OwnCleanups(Policy("trivy"));
+        Assert.Equal($"{Grype}, {Trivy}/db.old", c[StorageCleanups.AlastorScannerDbs].Detail);
+    }
+
+    [Fact]
+    public async Task Trivy_cache_is_its_folders_except_the_database()
+    {
+        AgentData();
+        _runner.Installed.Add("trivy");
+        var image = (await OwnCleanups(Policy("trivy")))[StorageCleanups.AlastorImageCache];
+        // Not /etc, nor a path that climbs out: only direct children find was asked for.
+        Assert.Equal((1000L * 1024, 1, $"{Trivy}/fanal"), (image.Bytes!.Value, image.Items!.Value, image.Detail));
+    }
+
+    [Fact]
+    public async Task ClamAv_and_aide_data_are_offered_only_while_their_scans_are_off()
+    {
+        AgentData();
+        _runner.Installed.Add("trivy");
+        var off = await OwnCleanups(Policy("trivy"));
+        Assert.Equal(1000L * 1024, off[StorageCleanups.AlastorClamAv].Bytes);
+        Assert.Equal(1000L * 1024, off[StorageCleanups.AlastorAide].Bytes);
+        Assert.Equal(CleanupRisk.Caution, StorageCleanups.Find(StorageCleanups.AlastorAide)!.Risk);
+
+        var on = await OwnCleanups(Policy("trivy", malware: true, integrity: true));
+        Assert.DoesNotContain(StorageCleanups.AlastorClamAv, on.Keys);
+        Assert.DoesNotContain(StorageCleanups.AlastorAide, on.Keys);
+    }
+
+    [Fact]
+    public async Task Leftovers_younger_than_an_hour_are_left_alone()
+    {
+        // find's -mmin +60 is what skips them: with only fresh files it reports none, and nothing is deleted.
+        AgentData(leftovers: "");
+        var s = Integration();
+        var result = await s.RunCleanupAsync(StorageCleanups.AlastorLeftovers, default);
+        Assert.True(result.Success, result.Error);
+        Assert.Contains(LeftoversFind + " -printf %s\n", _runner.Calls);
+        Assert.Equal(0, result.Storage!.Cleanups.Single(c => c.Id == StorageCleanups.AlastorLeftovers).Bytes);
+        Assert.DoesNotContain(_runner.Calls, c => c.EndsWith("-delete", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task Each_agent_data_cleanup_deletes_exactly_what_it_measured_and_never_the_agent_state()
+    {
+        AgentData();
+        var expected = new Dictionary<string, (PolicyDocument Policy, string Command)>
+        {
+            [StorageCleanups.AlastorScannerDbs] = (Policy("off"), $"find {Trivy} {Grype} -xdev -delete"),
+            [StorageCleanups.AlastorImageCache] = (Policy("trivy"), $"find {Trivy}/fanal -xdev -delete"),
+            [StorageCleanups.AlastorClamAv] = (Policy("off"), $"find {StateDir}/clamav -xdev -delete"),
+            [StorageCleanups.AlastorAide] = (Policy("off"), $"find {StateDir}/aide -xdev -delete"),
+            [StorageCleanups.AlastorLeftovers] = (Policy("off"), LeftoversFind + " -delete"),
+        };
+        _runner.Installed.Add("trivy");
+        var calls = new List<string>();
+        foreach (var (id, (policy, command)) in expected)
+        {
+            _runner.On(command, "");
+            _runner.Calls.Clear();
+            var s = Integration();
+            s.IsWanted(policy);
+            var result = await s.RunCleanupAsync(id, default);
+            Assert.True(result.Success, $"{id}: {result.Error}");
+            Assert.Equal([command], _runner.Calls.Where(c => c.EndsWith("-delete", StringComparison.Ordinal)));
+            calls.AddRange(_runner.Calls);
+        }
+        Assert.DoesNotContain(calls, c => c.Contains("state.json", StringComparison.Ordinal) || c.Contains("agent.json", StringComparison.Ordinal) || c.Contains("blocklist", StringComparison.Ordinal));
+        // Nothing outside the state directory, and never the state directory itself as a whole folder.
+        Assert.DoesNotContain(calls, c => c.Contains("/etc", StringComparison.Ordinal) || c.Contains("..", StringComparison.Ordinal));
+        Assert.DoesNotContain($"find {StateDir} -xdev -delete", calls);
     }
 
     [Theory]

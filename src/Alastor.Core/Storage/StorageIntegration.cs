@@ -6,9 +6,12 @@ using Microsoft.Extensions.Logging;
 using Alastor.Core.Contracts;
 using Alastor.Core.Events;
 using Alastor.Core.Integrations;
+using Alastor.Core.Integrity;
+using Alastor.Core.Malware;
 using Alastor.Core.Platform;
 using Alastor.Core.Policy;
 using Alastor.Core.Software;
+using Alastor.Core.Vulnerabilities;
 
 namespace Alastor.Core.Storage;
 
@@ -19,6 +22,8 @@ namespace Alastor.Core.Storage;
 /// mount, at the lowest CPU and IO priority (<c>nice</c>, <c>ionice -c 3</c>).</item>
 /// <item>Every <see cref="StorageCleanups">cleanup</see> that applies to the host, measured with the tool it belongs to
 /// (<c>docker system df</c>, <c>journalctl --disk-usage</c>, an apt dry run, …).</item>
+/// <item>The agent's own data under its state directory: databases of scanners the policy doesn't use, Trivy's scan cache,
+/// and files left behind by an interrupted download or write.</item>
 /// <item>One cleanup on request: re-measured first, then exactly its commands, with df before and after.</item>
 /// </list>
 /// The server only ever names a cleanup by id; every path and argument comes from here.
@@ -28,6 +33,7 @@ public sealed class StorageIntegration(
     IFileSystem fs,
     IStateStore state,
     OsInfo os,
+    string stateDir,
     ILogger<StorageIntegration> logger,
     TimeProvider time) : IToolIntegration, IScheduledJobProvider
 {
@@ -50,8 +56,15 @@ public sealed class StorageIntegration(
 
     private static readonly string[] RotatedLogPatterns = ["*.gz", "*.xz", "*.bz2", "*.zst", "*.[0-9]", "*.[0-9].log", "*.old"];
     private static readonly string[] DevCacheSuffixes = ["*/.cache/pip", "*/.npm/_cacache", "*/.cache/yarn", "*/.cache/go-build", "*/.cache/composer", "*/.composer/cache"];
+    private static readonly string[] LeftoverPatterns = ["*.part", "scan-*.json", ".*.tmp"];
+
+    /// <summary>In Trivy's cache folder, what isn't scan cache: the live database, its staging and old copies, and metadata.</summary>
+    private static readonly string[] TrivyDbNames = ["db", "db.*", "metadata.json"];
 
     private readonly Queue<SecurityEvent> _events = new();
+
+    /// <summary>The last policy the supervisor asked about; it decides which of the agent's own databases are unused. Null until the first reconcile.</summary>
+    private volatile PolicyDocument? _policy;
 
     public static readonly ToolDescriptor Info = new(
         "storage",
@@ -66,10 +79,19 @@ public sealed class StorageIntegration(
 
     public IReadOnlyList<ScheduledJob> Jobs =>
     [
-        new(ScanJob, "Scan disk usage", "storage.scanSchedule", RunOnFirstStart: true, (_, _, ct) => ScanAsync(ct)),
+        new(ScanJob, "Scan disk usage", "storage.scanSchedule", RunOnFirstStart: true, (policy, _, ct) =>
+        {
+            _policy = policy;
+            return ScanAsync(ct);
+        }),
     ];
 
-    public bool IsWanted(PolicyDocument policy) => true;
+    public bool IsWanted(PolicyDocument policy)
+    {
+        // The supervisor asks with every new policy before anything else, so this is where the storage scan learns it.
+        _policy = policy;
+        return true;
+    }
 
     public Task<ToolStatus> DetectAsync(CancellationToken ct)
     {
@@ -236,7 +258,66 @@ public sealed class StorageIntegration(
         var tmp = new[] { "/tmp", "/var/tmp" }.Where(fs.DirectoryExists).ToArray();
         if (tmp.Length > 0)
             await Add(StorageCleanups.OldTempFiles, () => FindAsync(StorageCleanups.OldTempFiles, [.. tmp, "-xdev", "-type", "f", "-mtime", "+10", "-atime", "+10"], ["-delete"], ct));
+        await MeasureOwnDataAsync(Add, ct);
         return result.OrderBy(m => StorageCleanups.All.ToList().FindIndex(c => c.Id == m.Candidate.Id)).ToList();
+    }
+
+    // ---- the agent's own data ----
+
+    private string StatePath(params string[] parts) => string.Join('/', [stateDir.TrimEnd('/'), .. parts]);
+
+    /// <summary>
+    /// Paths come only from the integrations' folder names under the state directory. Databases count as unused by the last
+    /// policy seen, so before the first one only the leftovers are measured. state.json and the blocklist sit at the top
+    /// of the state directory and match none of this.
+    /// </summary>
+    private async Task MeasureOwnDataAsync(Func<string, Func<Task<Measured?>>, Task> add, CancellationToken ct)
+    {
+        if (!fs.DirectoryExists(stateDir)) return;
+        if (_policy is { } policy)
+        {
+            var inUse = VulnerabilityIntegration.DatabasesInUse(policy, runner);
+            var trivy = StatePath(VulnerabilityIntegration.DbDirName, VulnerabilityIntegration.Trivy);
+            var dbs = new[] { VulnerabilityIntegration.Trivy, VulnerabilityIntegration.Grype }
+                .Where(s => !inUse.Contains(s)).Select(s => StatePath(VulnerabilityIntegration.DbDirName, s)).ToList();
+            if (inUse.Contains(VulnerabilityIntegration.Trivy)) dbs.Add(StatePath(VulnerabilityIntegration.DbDirName, VulnerabilityIntegration.Trivy, "db.old"));
+            var unused = dbs.Where(fs.DirectoryExists).ToArray();
+            if (unused.Length > 0)
+                await add(StorageCleanups.AlastorScannerDbs, () => TreesAsync(StorageCleanups.AlastorScannerDbs, unused, ct));
+            // An unused Trivy folder goes whole with the databases above, its cache included.
+            if (inUse.Contains(VulnerabilityIntegration.Trivy) && fs.DirectoryExists(trivy))
+                await add(StorageCleanups.AlastorImageCache, () => TrivyCacheAsync(trivy, ct));
+
+            var clamav = StatePath(ClamAvIntegration.DbDirName);
+            if (ScheduleDefaults.For(policy, "malware.scanSchedule").IsDisabled && fs.DirectoryExists(clamav))
+                await add(StorageCleanups.AlastorClamAv, () => TreesAsync(StorageCleanups.AlastorClamAv, [clamav], ct));
+            var aide = StatePath(AideIntegration.DbDirName);
+            if (ScheduleDefaults.For(policy, "integrity.checkSchedule").IsDisabled && fs.DirectoryExists(aide))
+                await add(StorageCleanups.AlastorAide, () => TreesAsync(StorageCleanups.AlastorAide, [aide], ct));
+        }
+        var names = LeftoverPatterns.SelectMany((p, i) => i == 0 ? new[] { "-name", p } : ["-o", "-name", p]);
+        // Untouched for an hour: a download or scan in progress keeps writing to its file.
+        await add(StorageCleanups.AlastorLeftovers, () => FindAsync(StorageCleanups.AlastorLeftovers, [stateDir, "-xdev", "-type", "f", "(", .. names, ")", "-mmin", "+60"], ["-delete"], ct));
+    }
+
+    /// <summary>Whole folders, deleted with <c>find -xdev -delete</c> so nothing mounted below them is touched.</summary>
+    private async Task<Measured?> TreesAsync(string id, string[] dirs, CancellationToken ct)
+    {
+        var bytes = StorageParsers.ParseDuTotal((await runner.RunAsync("du", ["-sk", .. dirs], Measure, ct)).StdOut);
+        return new(new CleanupCandidate(id, bytes, dirs.Length, Describe(dirs)), bytes == 0 ? [] : [new("find", [.. dirs, "-xdev", "-delete"])]);
+    }
+
+    private async Task<Measured?> TrivyCacheAsync(string trivy, CancellationToken ct)
+    {
+        var keep = TrivyDbNames.SelectMany(n => new[] { "!", "-name", n });
+        var r = await runner.RunAsync("find", [trivy, "-mindepth", "1", "-maxdepth", "1", .. keep, "-print"], Measure, ct);
+        // Only direct children that aren't the database: anything else find printed is never deleted.
+        var children = r.StdOut.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Where(p => p.StartsWith(trivy + "/", StringComparison.Ordinal) && p[(trivy.Length + 1)..] is { Length: > 0 } name
+                        && !name.Contains('/') && name != "db" && !name.StartsWith("db.", StringComparison.Ordinal) && name != "metadata.json")
+            .Distinct().Order(StringComparer.Ordinal).ToArray();
+        if (children.Length == 0) return null;
+        return await TreesAsync(StorageCleanups.AlastorImageCache, children, ct);
     }
 
     private static string[] RotatedLogsArgs()
