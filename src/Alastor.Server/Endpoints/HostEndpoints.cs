@@ -109,10 +109,15 @@ public static class HostEndpoints
                 "accept-integrity" => (AgentCommandTypes.RunJob, Alastor.Core.Integrity.AideIntegration.AcceptJob),
                 "scan-rootkits" => (AgentCommandTypes.RunJob, Alastor.Core.Malware.RkhunterIntegration.ScanJob),
                 "accept-rootkits" => (AgentCommandTypes.RunJob, Alastor.Core.Malware.RkhunterIntegration.AcceptJob),
+                "reboot" => (AgentCommandTypes.Reboot, null),
                 _ => ((string?)null, (string?)null),
             };
             if (type is null) return Results.Problem($"Unknown action '{action}'.", statusCode: 400);
-            if (!await db.Hosts.AnyAsync(h => h.Id == id, ct)) return Results.NotFound();
+            var online = await db.Hosts.Where(h => h.Id == id).Select(h => (bool?)h.IsOnline).FirstOrDefaultAsync(ct);
+            if (online is null) return Results.NotFound();
+            // A queued reboot would run whenever the host comes back, possibly hours later. Only reboot hosts that are online now.
+            if (type == AgentCommandTypes.Reboot && online == false)
+                return Results.Problem("The host is offline. Reboot it once it's back online.", statusCode: 409);
             db.Audit.Add(new AuditEntry { Actor = user.Actor(), Action = $"host.{action}", Target = id.ToString() });
             var cmds = await commands.QueueAsync([id], type, job is null ? [] : new() { ["job"] = job }, user.Actor(), ct);
             return Results.Accepted(value: Dto.Command(cmds[0]));
@@ -137,6 +142,9 @@ public static class HostEndpoints
         {
             IntegrityChanges = h.IntegrityChanges,
             RootkitWarnings = h.RootkitWarnings,
+            UptimeSeconds = h.UptimeSeconds,
+            KernelVersion = h.KernelVersion,
+            IpAddresses = h.IpAddresses,
         };
     }
 }

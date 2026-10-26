@@ -135,6 +135,10 @@ export interface HostSummary {
   malwareFindings: number | null;
   integrityChanges?: number | null;
   rootkitWarnings?: number | null;
+  /** As of lastSeenAt; use liveUptime() to display it. */
+  uptimeSeconds: number;
+  kernelVersion: string;
+  ipAddresses: string[];
 }
 
 export interface ToolStatus {
