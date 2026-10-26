@@ -9,7 +9,8 @@
 # Options:
 #   --server URL       your Alastor server
 #   --token TOKEN      single-use enrollment token (needed for the first install, or with --force)
-#   --insecure         allow a plain-HTTP server URL (trusted networks and local testing only)
+#   --insecure         allow a plain-HTTP server URL (trusted networks and local testing only). Not needed for
+#                      loopback or Tailscale addresses (100.64.0.0/10, fd7a:115c:a1e0::/48, *.ts.net): WireGuard encrypts those
 #   --pin SHA256       accept only this TLS certificate (hex SHA-256 of the DER certificate), e.g. for self-signed
 #   --force            enroll again as a new host even if this machine is already enrolled
 #   --version vX.Y.Z   agent release to download from GitHub when the server has no agent binaries (default: latest)
@@ -61,7 +62,8 @@ main() {
   if [ -n "$server" ]; then
     case "$server" in
       https://*) ;;
-      http://*) [ "$insecure" -eq 1 ] || die "Refusing plain HTTP ($server). Use https://, or pass --insecure on a trusted network." ;;
+      http://*) [ "$insecure" -eq 1 ] || private_transport "$server" \
+        || die "Refusing plain HTTP ($server). Use https://, or pass --insecure on a trusted network." ;;
       *) die "--server must start with https:// (or http:// with --insecure)." ;;
     esac
   fi
@@ -158,6 +160,24 @@ check_pin() {
   got="$(openssl s_client -connect "$hostport" -servername "$host" </dev/null 2>/dev/null \
     | openssl x509 -outform DER 2>/dev/null | sha256sum | cut -d' ' -f1 | tr '[:lower:]' '[:upper:]')"
   [ "$got" = "$want" ] || die "The certificate of $hostport does not match --pin (got $got)."
+}
+
+# private_transport URL: the host is loopback or on the tailnet, so plain HTTP never crosses a network unencrypted.
+# Kept in sync with IsPrivateTransport in the agent, which checks again.
+private_transport() {
+  local host="${1#*://}"; host="${host%%/*}"; host="${host##*@}"
+  case "$host" in
+    \[*) host="${host#\[}"; host="${host%%\]*}" ;;
+    *) host="${host%:*}" ;;
+  esac
+  host="$(printf '%s' "${host%.}" | tr '[:upper:]' '[:lower:]')"
+  case "$host" in
+    localhost|::1|*.ts.net|fd7a:115c:a1e0:*) return 0 ;;
+    *[!0-9.]*|'') return 1 ;;
+    127.*) return 0 ;;
+    100.*) local b="${host#100.}"; b="${b%%.*}"; [ -n "$b" ] && [ "$b" -ge 64 ] && [ "$b" -le 127 ] ;;
+    *) return 1 ;;
+  esac
 }
 
 # verify FILE NAME SUMS: check FILE against NAME's line in a SHA256SUMS text, when one is published.

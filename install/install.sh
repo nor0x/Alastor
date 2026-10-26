@@ -10,10 +10,20 @@
 # Run from a clone of the repository, it builds the server and agent from that checkout instead of downloading a
 # release (needs the .NET 10 SDK and Node.js; clang and zlib1g-dev for a Native AOT agent, else a JIT build).
 #
+# Installing Alastor does not expose anything new by default: the server is reachable only over your tailnet when
+# Tailscale is up, else only from this machine. Choose with --access, or --domain for HTTPS on the internet.
+#
 # Options:
+#   --access MODE        who can reach the dashboard and the agent API (default: auto)
+#                          auto       tailscale when Tailscale is running on this machine, else local
+#                          tailscale  your tailnet only: https://<machine>.<tailnet>.ts.net through `tailscale serve`
+#                                     when the tailnet has HTTPS certificates, else http://<tailnet name or IP>:PORT
+#                          local      this machine only (127.0.0.1); open the dashboard through an SSH tunnel
+#                          public     plain HTTP on every interface, port opened in the firewall: not for the internet
+#                        An upgrade without --access or --domain keeps how the server is reached.
 #   --domain NAME        serve https://NAME through Caddy (installed from the distro repos); needs ports 80/443 and DNS
-#   --port N             port the server listens on (default 8080; loopback only when --domain is set)
-#   --public-url URL     URL agents and browsers use (default: https://DOMAIN, else http://<primary IP>:PORT)
+#   --port N             port the server listens on (default 8080)
+#   --public-url URL     URL agents and browsers use (default: follows from --access or --domain)
 #   --with-agent         also install the agent on this machine and enroll it with the new server
 #   --version vX.Y.Z     release to install (default: latest); from a clone, download this release instead of building
 #   --binary PATH        install this alastor-server binary instead of downloading one
@@ -37,10 +47,12 @@ main() {
   UNIT=/etc/systemd/system/alastor-server.service
   CADDY_SNIPPET=/etc/caddy/alastor.caddy
   SERVICE_USER=alastor
+  SERVE_MARK='# managed: tailscale-serve'
 
-  local domain="" port="" public_url="" version="latest" version_set=0 binary="" agent_dir="" with_agent=0 uninstall=0 purge=0
+  local access="" domain="" port="" public_url="" version="latest" version_set=0 binary="" agent_dir="" with_agent=0 uninstall=0 purge=0
   while [ $# -gt 0 ]; do
     case "$1" in
+      --access) access="$(need_arg "$@")"; shift ;;
       --domain) domain="$(need_arg "$@")"; shift ;;
       --port) port="$(need_arg "$@")"; shift ;;
       --public-url) public_url="$(need_arg "$@")"; shift ;;
@@ -56,6 +68,9 @@ main() {
     shift
   done
 
+  case "$access" in ''|auto|tailscale|local|public) ;; *) die "--access must be auto, tailscale, local or public." ;; esac
+  [ -z "$domain" ] || [ -z "$access" ] || [ "$access" = auto ] || die "--domain already decides access (HTTPS through Caddy); drop --access $access."
+
   [ "$(uname -s)" = Linux ] || die "Alastor runs on Linux."
   [ "$(id -u)" -eq 0 ] || die "Run as root, e.g.: curl -fsSL … | sudo bash"
   command -v systemctl >/dev/null && [ -d /run/systemd/system ] || die "systemd is required."
@@ -67,18 +82,47 @@ main() {
   TMP="$(mktemp -d)"; trap 'rm -rf "$TMP"' EXIT
 
   # Settings from a previous install are kept unless overridden on the command line.
-  local upgrade=0
+  local upgrade=0 mode
   if [ -f "$ENV_FILE" ]; then
     upgrade=1
     [ -n "$port" ] || port="$(env_port)"
-    [ -n "$public_url" ] || public_url="$(env_get ALASTOR_PUBLICURL)"
   fi
   port="${port:-8080}"
   case "$port" in ''|*[!0-9]*) die "--port must be a number." ;; esac
-  if [ -z "$public_url" ]; then
-    if [ -n "$domain" ]; then public_url="https://$domain"; else public_url="http://$(primary_ip):$port"; fi
+
+  # How browsers and agents reach the server. Without --access or --domain an upgrade keeps what it had.
+  if [ -n "$domain" ]; then mode=domain
+  elif [ "$upgrade" -eq 1 ] && [ -z "$access" ]; then mode=keep
+  else mode="${access:-auto}"; fi
+  if [ "$mode" = auto ]; then
+    if tailscale_up; then mode=tailscale; else mode=local; fi
+  elif [ "$mode" = tailscale ] && ! tailscale_up; then
+    die "--access tailscale: Tailscale is not running here. Start it (tailscale up) or choose --access local."
   fi
-  public_url="${public_url%/}"
+  # listen: bind address; allow: ALLOWFROM for the dashboard and agents; serve: put `tailscale serve` in front.
+  local listen allow="" serve=0 cert_domain="" default_url
+  case "$mode" in
+    domain) listen=127.0.0.1; allow=any; default_url="https://$domain" ;;
+    tailscale)
+      allow=loopback,tailnet
+      cert_domain="$(ts_cert_domain)"
+      if [ -n "$cert_domain" ] && ts_serve_free "$port"; then
+        listen=127.0.0.1; serve=1; default_url="https://$cert_domain"
+      else
+        [ -z "$cert_domain" ] || warn "tailscale serve already uses port 443 here; serving Alastor on its tailnet address instead."
+        listen="$(ts_ipv4)"
+        [ -n "$listen" ] || die "Tailscale has no IPv4 address on this machine; choose --access local."
+        default_url="http://$(ts_dns_name || echo "$listen"):$port"
+      fi ;;
+    local) listen=127.0.0.1; allow=loopback; default_url="http://localhost:$port" ;;
+    public) listen=0.0.0.0; allow=any; default_url="http://$(primary_ip):$port" ;;
+    keep)
+      listen="$(env_host)"; listen="${listen:-127.0.0.1}"
+      [ -n "$public_url" ] || public_url="$(env_get ALASTOR_PUBLICURL)"
+      # Re-applied on every upgrade, so a changed --port reaches tailscale serve too.
+      if serve_managed; then serve=1; fi
+      if [ "$listen" = 127.0.0.1 ]; then default_url="http://localhost:$port"; else default_url="http://$(primary_ip):$port"; fi ;;
+  esac
 
   # From a clone, install what is checked out rather than a release, unless one was asked for.
   local src=""
@@ -128,9 +172,28 @@ main() {
   fi
   ln -sf "$PREFIX/alastor-server" /usr/local/bin/alastor-server
 
-  local listen="0.0.0.0"; [ -n "$domain" ] && listen="127.0.0.1"
+  if [ "$serve" -eq 1 ]; then
+    step "Serving Alastor on your tailnet through tailscale serve (HTTPS, port 443)"
+    if ! tailscale serve --bg --https=443 "http://127.0.0.1:$port" >/dev/null; then
+      if [ "$mode" = keep ]; then
+        warn "tailscale serve failed: $public_url is unreachable until it runs. Re-run with --access to choose again."
+      else
+        # Older Tailscale releases have a different `serve` syntax: fall back to the tailnet address.
+        warn "tailscale serve failed; serving Alastor on its tailnet address instead."
+        serve=0
+        listen="$(ts_ipv4)"
+        [ -n "$listen" ] || die "Tailscale has no IPv4 address on this machine; choose --access local."
+        default_url="http://$(ts_dns_name || echo "$listen"):$port"
+      fi
+    fi
+  elif [ "$mode" != keep ] && serve_managed; then
+    tailscale serve --https=443 off >/dev/null 2>&1 || warn "Could not turn off tailscale serve on port 443; check: tailscale serve status"
+  fi
+  [ -n "$public_url" ] || public_url="$default_url"
+  public_url="${public_url%/}"
+
   local secure=true; case "$public_url" in http://*) secure=false ;; esac
-  local password=""
+  local password="" legacy=0
   install -d -m 750 -o root -g "$SERVICE_USER" "$CONF_DIR"
   if [ "$upgrade" -eq 0 ]; then
     password="$(head -c 18 /dev/urandom | base64 | tr -d '/+=' | head -c 20)"
@@ -141,6 +204,9 @@ ALASTOR_DATADIR=$DATA_DIR
 ALASTOR_PUBLICURL=$public_url
 ALASTOR_SECURECOOKIES=$secure
 ASPNETCORE_URLS=http://$listen:$port
+# Who may connect, comma-separated: any, loopback, private, tailnet or CIDRs.
+ALASTOR_DASHBOARDALLOWFROM=$allow
+ALASTOR_AGENTALLOWFROM=$allow
 # Read on first start only, then removed by the installer.
 ALASTOR_ADMINPASSWORD=$password
 EOF
@@ -148,6 +214,20 @@ EOF
     env_set ALASTOR_PUBLICURL "$public_url"
     env_set ALASTOR_SECURECOOKIES "$secure"
     env_set ASPNETCORE_URLS "http://$listen:$port"
+    if [ "$mode" != keep ]; then
+      env_set ALASTOR_DASHBOARDALLOWFROM "$allow"
+      env_set ALASTOR_AGENTALLOWFROM "$allow"
+    else
+      # Installs from before the allowlists were reachable from anywhere; keep that until asked otherwise.
+      local key
+      for key in ALASTOR_DASHBOARDALLOWFROM ALASTOR_AGENTALLOWFROM; do
+        grep -q "^$key=" "$ENV_FILE" || { env_set "$key" any; legacy=1; }
+      done
+    fi
+  fi
+  if [ "$mode" != keep ]; then
+    sed -i "/^$SERVE_MARK\$/d" "$ENV_FILE"
+    [ "$serve" -eq 0 ] || echo "$SERVE_MARK" >> "$ENV_FILE"
   fi
   chown root:"$SERVICE_USER" "$ENV_FILE"; chmod 640 "$ENV_FILE"
 
@@ -155,7 +235,7 @@ EOF
 [Unit]
 Description=Alastor server
 Documentation=https://github.com/$REPO
-After=network-online.target
+After=network-online.target tailscaled.service
 Wants=network-online.target
 
 [Service]
@@ -200,16 +280,21 @@ EOF
     systemctl daemon-reload
     systemctl restart alastor-server || true
   fi
-  wait_healthy "http://127.0.0.1:$port/healthz" || die "The server did not start. See: journalctl -u alastor-server -n 50"
+  # The server answers on the address it is bound to: loopback, or the tailnet address.
+  local api="http://$(reach_host "$listen"):$port"
+  wait_healthy "$api/healthz" || die "The server did not start. See: journalctl -u alastor-server -n 50"
   # The admin now exists in the database; the password must not stay on disk.
   [ -n "$password" ] && sed -i '/^# Read on first start only/d;/^ALASTOR_ADMINPASSWORD=/d' "$ENV_FILE"
 
-  if [ -n "$domain" ]; then setup_caddy "$domain" "$port"; fi
-  open_firewall "$domain" "$port"
+  case "$mode" in
+    domain) setup_caddy "$domain" "$port"; open_firewall 80 443 ;;
+    public) open_firewall "$port" ;;
+    tailscale) [ "$serve" -eq 1 ] || allow_tailnet_port "$port" ;;
+  esac
 
   if [ "$with_agent" -eq 1 ]; then
     if [ -n "$password" ]; then
-      install_local_agent "$public_url" "$password"
+      install_local_agent "$([ "$mode" = domain ] && echo "$public_url" || echo "$api")" "$api" "$password"
     else
       warn "--with-agent on an upgrade needs a token: create one under Settings → Enrollment and run the command it shows."
     fi
@@ -221,17 +306,36 @@ EOF
     printf '  Username    admin\n'
     printf '  Password    \033[1m%s\033[0m   (shown once; change it under Settings)\n' "$password"
   fi
+  printf '  Access      %s\n' "$(access_summary "$mode" "$serve" "$listen")"
   printf '  Settings    %s\n' "$ENV_FILE"
   printf '  Logs        journalctl -u alastor-server -f\n\n'
-  printf '  Next: in the dashboard, Settings → Enrollment → New token, then run the command it shows on each server.\n'
-  if [ "$secure" = false ]; then
-    printf '\n\033[33m  Plain HTTP: fine on a trusted network or for a try-out. For a VPS on the internet, re-run with\n'
-    printf '  --domain your.domain to get HTTPS.\033[0m\n'
+  case "$mode" in
+    local)
+      printf '  Open the dashboard from your computer through an SSH tunnel, then browse to %s:\n' "$public_url"
+      printf '    ssh -L %s:127.0.0.1:%s %s@%s\n\n' "$port" "$port" "${SUDO_USER:-root}" "$(primary_ip)"
+      printf '  Other servers cannot reach this one yet. To enroll them, re-run this installer with\n'
+      printf '  --access tailscale (after installing Tailscale) or --domain your.domain (HTTPS through Caddy).\n' ;;
+    *) printf '  Next: in the dashboard, Settings → Enrollment → New token, then run the command it shows on each server.\n' ;;
+  esac
+  if [ "$mode" = public ]; then
+    printf '\n\033[1;31m  ! The dashboard and the agent API are open to every network over plain HTTP: passwords and agent\n'
+    printf '    credentials cross the network unencrypted. Only do this on a trusted network. On a VPS, re-run with\n'
+    printf '    --access tailscale or --domain your.domain instead.\033[0m\n'
+  elif [ "$mode" = keep ] && [ "$secure" = false ] && [ "$(reach_host "$listen")" != "$listen" ]; then
+    printf '\n\033[33m  Plain HTTP on every interface. For a VPS on the internet, re-run with --access tailscale,\n'
+    printf '  --access local or --domain your.domain.\033[0m\n'
   fi
+  if [ "$legacy" -eq 1 ]; then
+    printf '\n\033[33m  This server stays reachable from anywhere, as before. To limit it to your tailnet, re-run with --access tailscale.\033[0m\n'
+  fi
+  security_check
 }
 
 do_uninstall() {
   step "Removing Alastor server"
+  if serve_managed; then
+    tailscale serve --https=443 off >/dev/null 2>&1 || warn "Could not turn off tailscale serve on port 443; check: tailscale serve status"
+  fi
   systemctl disable --now alastor-server 2>/dev/null || true
   rm -rf "$UNIT" "$UNIT.d" /usr/local/bin/alastor-server
   rm -rf "$PREFIX" /var/cache/alastor
@@ -278,10 +382,9 @@ EOF
   ok "Caddy serves https://$domain (the certificate is issued on first request; DNS must point here)."
 }
 
+# open_firewall PORT...: allow these TCP ports from everywhere (--domain and --access public only).
 open_firewall() {
-  local domain="$1" port="$2" ports
-  if [ -n "$domain" ]; then ports="80 443"; else ports="$port"; fi
-  local p
+  local ports="$*" p
   if command -v ufw >/dev/null && ufw status 2>/dev/null | grep -q '^Status: active'; then
     for p in $ports; do ufw allow "$p/tcp" >/dev/null; done
     ok "ufw: allowed $ports/tcp"
@@ -292,24 +395,38 @@ open_firewall() {
   fi
 }
 
+# allow_tailnet_port PORT: let tailnet peers through ufw to PORT, on the tailscale0 interface only.
+allow_tailnet_port() {
+  if command -v ufw >/dev/null && ufw status 2>/dev/null | grep -q '^Status: active'; then
+    ufw allow in on tailscale0 to any port "$1" proto tcp >/dev/null
+    ok "ufw: allowed $1/tcp on tailscale0 only"
+  elif command -v firewall-cmd >/dev/null && firewall-cmd --state >/dev/null 2>&1; then
+    warn "firewalld is active: if tailnet peers cannot reach port $1, allow it for the zone of tailscale0."
+  fi
+}
+
+# install_local_agent URL API PASSWORD: enroll this machine with the server at URL. API is the address the server is
+# bound to (loopback or the tailnet address), used for the login and the installer download.
 install_local_agent() {
-  local url="$1" password="$2"
+  local url="$1" api="$2" password="$3"
   step "Installing the agent on this machine"
   if [ "${url#https://}" != "$url" ] && ! wait_healthy "$url/healthz" 30; then
     warn "$url is not reachable yet (DNS or certificate). Enroll this machine later from Settings → Enrollment."
     return 0
   fi
   local hdrs body cookie secret
-  hdrs="$(curl -fsS -D - -o /dev/null -X POST "$url/api/auth/login" -H 'content-type: application/json' \
-    -d "{\"username\":\"admin\",\"password\":\"$password\"}")" || { warn "Login failed; enroll this machine from the dashboard."; return 0; }
+  # Secrets go through stdin, not argv, where any local user could read them in ps.
+  hdrs="$(printf '{"username":"admin","password":"%s"}' "$password" | curl -fsS -D - -o /dev/null -X POST "$api/api/auth/login" \
+    -H 'content-type: application/json' --data @-)" || { warn "Login failed; enroll this machine from the dashboard."; return 0; }
   cookie="$(printf '%s' "$hdrs" | tr -d '\r' | sed -n 's/^[Ss]et-[Cc]ookie: \(alastor_session=[^;]*\).*/\1/p' | head -n1)"
-  body="$(curl -fsS -X POST "$url/api/enrollment-tokens" -H 'content-type: application/json' -H 'X-Alastor-Request: 1' \
-    -H "Cookie: $cookie" -d "{\"note\":\"$(hostname) (server)\",\"ttlHours\":1}")" || { warn "Could not create an enrollment token."; return 0; }
+  body="$(printf 'Cookie: %s\n' "$cookie" | curl -fsS -X POST "$api/api/enrollment-tokens" -H 'content-type: application/json' \
+    -H 'X-Alastor-Request: 1' -H @- -d "{\"note\":\"$(hostname) (server)\",\"ttlHours\":1}")" || { warn "Could not create an enrollment token."; return 0; }
   secret="$(printf '%s' "$body" | sed -n 's/.*"secret":"\([^"]*\)".*/\1/p')"
   [ -n "$secret" ] || { warn "Could not read the enrollment token."; return 0; }
   local args=(--server "$url" --token "$secret")
+  # Agents from before plain HTTP over loopback and the tailnet was accepted still need --insecure for it.
   [ "${url#http://}" != "$url" ] && args+=(--insecure)
-  curl -fsSL "http://127.0.0.1:$(env_port)/install/agent.sh" | bash -s -- "${args[@]}"
+  curl -fsSL "$api/install/agent.sh" | bash -s -- "${args[@]}"
 }
 
 # ---- building from a checkout ------------------------------------------------------------------
@@ -423,6 +540,58 @@ asset_url() {
     /"name":/ { v = $0; sub(/.*"name": */, "", v); sub(/ *}*$/, "", v); if (v == n && u != "") { print u; exit } }'
 }
 
+# ---- access ------------------------------------------------------------------------------------
+
+# `tailscale status --json` on one line, read without jq: Self, with its DNSName, comes before the peers.
+ts_status() { if command -v tailscale >/dev/null; then { tailscale status --json 2>/dev/null || true; } | tr -d '\n\r\t'; fi; }
+tailscale_up() { [[ "$(ts_status)" =~ \"BackendState\":\ *\"Running\" ]]; }
+# The tailnet's HTTPS certificate name for this machine, when the tailnet has HTTPS certificates turned on.
+ts_cert_domain() { ts_status | sed -n 's/.*"CertDomains": *\[ *"\([^"]*\)".*/\1/p'; }
+# This machine's MagicDNS name without the trailing dot; fails when MagicDNS is off.
+ts_dns_name() {
+  local status name; status="$(ts_status)"
+  [[ "$status" =~ \"MagicDNSEnabled\":\ *true ]] || return 1
+  name="$(printf '%s' "$status" | sed -n 's/.*"Self": *{[^}]*"DNSName": *"\([^"]*\)".*/\1/p')"
+  [ -n "${name%.}" ] && echo "${name%.}"
+}
+ts_ipv4() { { tailscale ip -4 2>/dev/null || true; } | head -n1; }
+# Port 443 of `tailscale serve` is unused, or already proxies to this server (an upgrade).
+ts_serve_free() {
+  serve_managed && return 0
+  local status; status="$(tailscale serve status --json 2>/dev/null | tr -d ' \n\r\t')" || true
+  case "$status" in
+    *"\"Proxy\":\"http://127.0.0.1:$1\""*) return 0 ;;
+    *':443"'*) return 1 ;;
+  esac
+}
+serve_managed() { grep -qx "$SERVE_MARK" "$ENV_FILE" 2>/dev/null; }
+
+# The address to reach a server bound to $1 from this machine.
+reach_host() { case "$1" in 0.0.0.0|'*'|+|'[::]') echo 127.0.0.1 ;; *) echo "$1" ;; esac; }
+
+access_summary() {
+  local mode="$1" serve="$2" listen="$3"
+  if [ "$mode" = domain ]; then echo "the internet, HTTPS through Caddy"
+  elif [ "$serve" -eq 1 ]; then echo "your tailnet only, HTTPS through tailscale serve"
+  elif [ "$listen" = 127.0.0.1 ]; then echo "this machine only ($listen)"
+  elif [ "$(reach_host "$listen")" != "$listen" ]; then echo "every network ($listen)"
+  else case "$listen" in 100.*) echo "your tailnet only ($listen)" ;; *) echo "$listen only" ;; esac
+  fi
+}
+
+# Prints the server's own configuration checks. Servers from before `alastor-server security-check` existed
+# would start up instead (and fail on the busy port): only output in the check's format is shown.
+security_check() {
+  local vars=() line out
+  # The service's environment, read literally like systemd's EnvironmentFile rather than sourced.
+  while IFS= read -r line; do case "$line" in [A-Za-z_]*=*) vars+=("$line") ;; esac; done < "$ENV_FILE"
+  out="$(cd / && timeout 30 runuser -u "$SERVICE_USER" -- env "${vars[@]}" DOTNET_BUNDLE_EXTRACT_BASE_DIR=/var/cache/alastor \
+    "$PREFIX/alastor-server" security-check 2>&1)" || true
+  printf '%s\n' "$out" | grep -Eq '^(pass|info|warn|fail) ' || return 0
+  printf '\n  Security check (alastor-server security-check):\n'
+  printf '%s\n' "$out" | sed 's/^/    /'
+}
+
 # ---- helpers -----------------------------------------------------------------------------------
 
 detect_rid() {
@@ -459,6 +628,7 @@ install_pkg() {
 
 env_get() { sed -n "s/^$1=//p" "$ENV_FILE" 2>/dev/null | tail -n1; }
 env_port() { env_get ASPNETCORE_URLS | sed -n 's#.*:\([0-9][0-9]*\).*#\1#p'; }
+env_host() { env_get ASPNETCORE_URLS | sed -n 's#^[a-z]*://\(.*\):[0-9][0-9]*/*$#\1#p'; }
 env_set() {
   if grep -q "^$1=" "$ENV_FILE"; then sed -i "s#^$1=.*#$1=$2#" "$ENV_FILE"; else echo "$1=$2" >> "$ENV_FILE"; fi
 }
