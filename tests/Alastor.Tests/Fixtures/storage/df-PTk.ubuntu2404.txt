@@ -1,0 +1,11 @@
+Filesystem     Type     1024-blocks     Used Available Capacity Mounted on
+tmpfs          tmpfs         400212     1144    399068       1% /run
+/dev/vda1      ext4        24676576 22547900   1095260      96% /
+tmpfs          tmpfs        2001048        0   2001048       0% /dev/shm
+tmpfs          tmpfs           5120        0      5120       0% /run/lock
+/dev/vda16     ext4          901520   125144    713248      15% /boot
+/dev/vda15     vfat          106832     6250    100582       6% /boot/efi
+/dev/sdb       xfs        104806400 31457280  73349120      31% /mnt/data
+/dev/loop0     squashfs       65536    65536         0     100% /snap/core20/2318
+overlay        overlay     24676576 22547900   1095260      96% /var/lib/docker/rootfs/overlayfs/0b1f4c
+tmpfs          tmpfs         400208       12    400196       1% /run/user/0

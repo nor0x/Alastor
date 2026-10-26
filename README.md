@@ -26,6 +26,10 @@ Svelte dashboard cover:
   address (Critical for root) and trusted sources that never alert.
 - **Software inventory:** every installed package and version per host and across the fleet, with available updates
   and known CVEs from the CVE scan and OSV.dev; upgrade or uninstall one package after a dry run, or copy the command.
+- **Storage:** the biggest folders (with what the common ones hold) and files per host, and one-click cleanups with
+  the command next to each: package caches, old journal entries, rotated logs, Docker build cache, stopped containers,
+  unused images and volumes, old kernels, snap revisions, dev caches. A fleet view sorted by disk usage cleans several
+  hosts at once, and a host whose root filesystem passes 90% gets an issue and an alert.
 - **CVE scans:** Trivy or Grype against a server-mirrored database, joined with CISA KEV, plus the images of running
   Docker/Podman containers (opt-in, local images only).
 - **Firewall:** ufw managed from policy (opt-in, Debian/Ubuntu) with lockout guards for SSH.

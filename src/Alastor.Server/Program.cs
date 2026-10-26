@@ -165,6 +165,7 @@ builder.Services.AddHttpClient(VulnDbMirror.HttpClientName, c =>
 });
 if (options.VulnDbEnabled) builder.Services.AddHostedService<VulnDbWorker>();
 builder.Services.AddScoped<Alastor.Server.Services.Software.SoftwareService>();
+builder.Services.AddScoped<Alastor.Server.Services.Storage.StorageService>();
 builder.Services.AddScoped<Alastor.Server.Services.Osv.OsvService>();
 builder.Services.AddHttpClient(Alastor.Server.Services.Osv.OsvService.HttpClientName, c =>
 {
@@ -229,6 +230,7 @@ app.MapIssueEndpoints();
 app.MapAccessEndpoints();
 app.MapIntegrityEndpoints();
 app.MapSoftwareEndpoints();
+app.MapStorageEndpoints();
 app.MapHub<AgentHub>("/hubs/agent");
 app.MapHub<DashboardHub>("/hubs/dashboard");
 app.MapInstallScripts();

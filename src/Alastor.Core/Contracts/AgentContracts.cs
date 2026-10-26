@@ -87,6 +87,7 @@ public sealed record AgentReport(string JobId, DateTime StartedAtUtc, DateTime F
     public Alastor.Core.Integrity.IntegrityReport? Integrity { get; init; }
     public Alastor.Core.Malware.RootkitReport? Rootkit { get; init; }
     public Alastor.Core.Software.SoftwareReport? Software { get; init; }
+    public Alastor.Core.Storage.StorageReport? Storage { get; init; }
 }
 
 public static class AgentCommandTypes
@@ -113,6 +114,9 @@ public static class AgentCommandTypes
 
     /// <summary>Upgrade or remove one package. Payload as <see cref="PackagePlan"/>. Acknowledged at once; the outcome follows as a software report.</summary>
     public const string PackageAction = "package-action";
+
+    /// <summary>Run one storage cleanup. Payload: <c>cleanup</c> = a <see cref="Alastor.Core.Storage.StorageCleanups"/> id. Acknowledged at once; the outcome follows as a storage report.</summary>
+    public const string StorageCleanup = "storage-cleanup";
 }
 
 public sealed record AgentCommand(Guid Id, string Type, IReadOnlyDictionary<string, string> Payload, DateTime CreatedAtUtc);

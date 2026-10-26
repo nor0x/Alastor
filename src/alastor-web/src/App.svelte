@@ -18,6 +18,7 @@
   import Baseline from './pages/Baseline.svelte';
   import Vulnerabilities from './pages/Vulnerabilities.svelte';
   import Software from './pages/Software.svelte';
+  import Storage from './pages/Storage.svelte';
   import Policies from './pages/Policies.svelte';
   import PolicyEditor from './pages/PolicyEditor.svelte';
   import Settings from './pages/Settings.svelte';
@@ -61,6 +62,7 @@
     { href: '/', label: 'Overview', group: 'Fleet', match: (p: string) => p === '/' },
     { href: '/issues', label: 'Issues', group: 'Fleet', match: (p: string) => p.startsWith('/issues') },
     { href: '/hosts', label: 'Hosts', group: 'Fleet', match: (p: string) => p.startsWith('/hosts') },
+    { href: '/storage', label: 'Storage', group: 'Fleet', match: (p: string) => p.startsWith('/storage') },
     { href: '/baseline', label: 'Baseline', group: 'Posture', match: (p: string) => p.startsWith('/baseline') },
     { href: '/vulnerabilities', label: 'CVEs', group: 'Posture', match: (p: string) => p.startsWith('/vulnerabilities') },
     { href: '/software', label: 'Software', group: 'Posture', match: (p: string) => p.startsWith('/software') },
@@ -91,6 +93,7 @@
     if (p === '/baseline') return { name: 'baseline' } as const;
     if (p === '/vulnerabilities') return { name: 'vulnerabilities' } as const;
     if (p === '/software') return { name: 'software' } as const;
+    if (p === '/storage') return { name: 'storage' } as const;
     if (p === '/policies') return { name: 'policies' } as const;
     if (p === '/policies/global') return { name: 'policy', scope: 'global', id: null } as const;
     if ((m = match('/policies/group/:id', p))) return { name: 'policy', scope: 'group', id: m.id } as const;
@@ -102,7 +105,7 @@
     return { name: 'notfound' } as const;
   });
 
-  const titles: Record<string, string> = { overview: 'Overview', hosts: 'Hosts', host: 'Host', events: 'Events', issues: 'Issues', bans: 'Bans', blocklists: 'Blocklists', baseline: 'Security baseline', vulnerabilities: 'Vulnerabilities', software: 'Software', policies: 'Policies', policy: 'Policy', feed: 'Threat feed', settings: 'Settings', about: 'About', notfound: 'Not found' };
+  const titles: Record<string, string> = { overview: 'Overview', hosts: 'Hosts', host: 'Host', events: 'Events', issues: 'Issues', bans: 'Bans', blocklists: 'Blocklists', baseline: 'Security baseline', vulnerabilities: 'Vulnerabilities', software: 'Software', storage: 'Storage', policies: 'Policies', policy: 'Policy', feed: 'Threat feed', settings: 'Settings', about: 'About', notfound: 'Not found' };
   $effect(() => {
     document.title = `${titles[page.name]} · Alastor`;
   });
@@ -175,6 +178,7 @@
       {:else if page.name === 'baseline'}<Baseline />
       {:else if page.name === 'vulnerabilities'}<Vulnerabilities />
       {:else if page.name === 'software'}<Software />
+      {:else if page.name === 'storage'}<Storage />
       {:else if page.name === 'policies'}<Policies />
       {:else if page.name === 'policy'}{#key `${page.scope}/${page.id}`}<PolicyEditor scope={page.scope} targetId={page.id} />{/key}
       {:else if page.name === 'feed'}<ThreatFeed />

@@ -44,6 +44,10 @@ public static class PolicyMerger
                 : (baseDoc.Firewall?.Allow ?? []).Concat(overlay.Firewall?.Allow ?? []).Distinct(StringComparer.Ordinal).ToList(),
             DefaultIncoming = overlay.Firewall?.DefaultIncoming ?? baseDoc.Firewall?.DefaultIncoming,
         },
+        Storage = baseDoc.Storage is null && overlay.Storage is null ? null : new StoragePolicy
+        {
+            ScanSchedule = overlay.Storage?.ScanSchedule ?? baseDoc.Storage?.ScanSchedule,
+        },
         Integrity = baseDoc.Integrity is null && overlay.Integrity is null ? null : new IntegrityPolicy
         {
             CheckSchedule = overlay.Integrity?.CheckSchedule ?? baseDoc.Integrity?.CheckSchedule,

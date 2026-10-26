@@ -1,0 +1,5 @@
+157876992 1792690098.0000000000 /root/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/lib/librustc_driver-a39fc8bf9e61dbb9.so
+107308936 1792690417.0000000000 /root/.bun/bin/bun
+4294967296 1761200000.0000000000 /swapfile
+2147483648 1761480000.5000000000 /var/backups/db dump.sql
+123215144 1716798380.0000000000 /usr/lib/llvm-18/lib/libLLVM.so.1

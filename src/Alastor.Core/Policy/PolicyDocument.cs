@@ -17,6 +17,7 @@ public sealed class PolicyDocument
     public MalwarePolicy? Malware { get; set; }
     public LoginsPolicy? Logins { get; set; }
     public IntegrityPolicy? Integrity { get; set; }
+    public StoragePolicy? Storage { get; set; }
     public FirewallPolicy? Firewall { get; set; }
     public NetworkPolicy? Network { get; set; }
     public BaselinePolicy? Baseline { get; set; }
@@ -163,6 +164,12 @@ public sealed class IntegrityPolicy
 
     /// <summary>Paths left out (prefixes, e.g. /etc/letsencrypt). Merged as a union across layers.</summary>
     public List<string>? Exclude { get; set; }
+}
+
+public sealed class StoragePolicy
+{
+    /// <summary>How often disk usage is measured: filesystems, the biggest folders and files, and what can be cleaned up.</summary>
+    public string? ScanSchedule { get; set; }
 }
 
 public sealed class LoginsPolicy

@@ -89,8 +89,8 @@ export interface TagCount {
 
 // ---- Fleet, events, bans, policy, admin (see docs/architecture.md §3) ----
 
-export type Capability = 'Agent' | 'Banning' | 'Blocklist' | 'Firewall' | 'Updates' | 'Vulnerabilities' | 'Hardening' | 'Network' | 'Malware' | 'Access';
-export const capabilities: Capability[] = ['Agent', 'Banning', 'Blocklist', 'Firewall', 'Updates', 'Vulnerabilities', 'Hardening', 'Network', 'Malware', 'Access'];
+export type Capability = 'Agent' | 'Banning' | 'Blocklist' | 'Firewall' | 'Updates' | 'Vulnerabilities' | 'Hardening' | 'Network' | 'Malware' | 'Access' | 'Storage';
+export const capabilities: Capability[] = ['Agent', 'Banning', 'Blocklist', 'Firewall', 'Updates', 'Vulnerabilities', 'Hardening', 'Network', 'Malware', 'Access', 'Storage'];
 export type Availability = 'Available' | 'Unavailable' | 'Disabled';
 export type Ownership = 'Managed' | 'Adopted' | 'NotInstalled';
 export type ConfigState = 'Unknown' | 'InSync' | 'Pending' | 'Drifted' | 'Conflict' | 'Rejected';
@@ -1068,4 +1068,101 @@ export interface HostIntegrity {
     ignore: string[];
     run: IntegrityRun;
   };
+}
+
+// ---- Storage ----
+
+export type CleanupRisk = 'Safe' | 'Caution' | 'Destructive';
+
+export interface FilesystemUsage {
+  mount: string;
+  device: string;
+  type: string;
+  totalBytes: number;
+  usedBytes: number;
+  availableBytes: number;
+  inodesUsedPercent: number | null;
+}
+
+export interface DirectoryUsage {
+  path: string;
+  bytes: number;
+}
+
+export interface LargeFile {
+  path: string;
+  bytes: number;
+  modifiedUtc: string | null;
+}
+
+/** A cleanup that applies to the host, with what the agent measured. */
+export interface StorageCleanup {
+  id: string;
+  title: string;
+  description: string;
+  risk: CleanupRisk;
+  /** The command to run by hand; a note after # isn't copied. */
+  command: string;
+  bytes: number | null;
+  items: number | null;
+  detail: string | null;
+  /** Why the agent refuses to run it on this host. */
+  blocked: string | null;
+}
+
+export interface CleanupResult {
+  atUtc: string;
+  id: string;
+  success: boolean;
+  freedBytes: number;
+  error: string | null;
+  logTail: string;
+}
+
+export interface HostStorage {
+  hostId: string;
+  name: string;
+  online: boolean;
+  scannedAt: string | null;
+  reportedAt: string | null;
+  success: boolean | null;
+  error: string | null;
+  filesystems: FilesystemUsage[];
+  directories: DirectoryUsage[];
+  largestFiles: LargeFile[];
+  cleanups: StorageCleanup[];
+  /** What the non-destructive cleanups would free together. */
+  reclaimableBytes: number;
+  lastCleanup: CleanupResult | null;
+  running: { commandId: string; id: string; startedAt: string } | null;
+  notes: string[];
+  schedules: { key: string; value: string; isDefault: boolean }[];
+}
+
+export interface CleanupDefinition {
+  id: string;
+  title: string;
+  description: string;
+  risk: CleanupRisk;
+  display: string;
+}
+
+export interface FleetStorageRow {
+  hostId: string;
+  name: string;
+  online: boolean;
+  groupName: string | null;
+  diskPercent: number;
+  diskUsedBytes: number;
+  diskTotalBytes: number;
+  reclaimableBytes: number | null;
+  scannedAt: string | null;
+  cleanups: { id: string; bytes: number | null; items: number | null; blocked: boolean }[];
+  /** The id of a cleanup still running there. */
+  running: string | null;
+}
+
+export interface FleetStorage {
+  catalog: CleanupDefinition[];
+  hosts: FleetStorageRow[];
 }

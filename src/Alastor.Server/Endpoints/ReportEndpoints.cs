@@ -77,10 +77,19 @@ public static class ReportEndpoints
     private static async Task<IResult> Receive(AgentReport report, ClaimsPrincipal user, AlastorDbContext db, PolicyService policies, DashboardNotifier notifier,
         Services.Vulnerabilities.VulnerabilityService vulnerabilities, Services.Hardening.HardeningService hardening,
         Services.Network.NetworkService network, Services.Malware.MalwareService malware, Services.Integrity.IntegrityService integrity,
-        Services.Software.SoftwareService software, HostStateService hostState, TimeProvider time, CancellationToken ct)
+        Services.Software.SoftwareService software, Services.Storage.StorageService storage, HostStateService hostState, TimeProvider time, CancellationToken ct)
     {
         var hostId = user.HostId();
         IResult result;
+        if (report.Storage is not null || report.JobId.StartsWith("storage.", StringComparison.Ordinal))
+        {
+            if (report.Storage is { } st && Services.Storage.StorageService.IsTooLarge(st))
+                return Results.Problem("Report too large.", statusCode: 413);
+            await storage.ReceiveAsync(hostId, report, ct);
+            var eff = await policies.GetEffectiveAsync(hostId, ct);
+            await notifier.HostUpdatedAsync(await HostEndpoints.SummaryAsync(db, hostId, eff.Revision, ct), ct);
+            return Results.NoContent();
+        }
         if (report.Software is not null || report.JobId.StartsWith("software.", StringComparison.Ordinal))
         {
             if (report.Software?.Packages.Count > Alastor.Core.Software.SoftwareIntegration.MaxPackages)
