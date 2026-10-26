@@ -26,6 +26,7 @@ public sealed class ServerApiTests : IClassFixture<ServerApiTests.Factory>
             builder.UseSetting("AdminPassword", "test-password-123");
             builder.UseSetting("SecureCookies", "false");
             builder.UseSetting("ThreatFeedEnabled", "false"); // no internet in tests; ThreatFeedTests drives the feed itself
+            builder.UseSetting("OsvEnabled", "false");
             builder.UseSetting("BlocklistsEnabled", "false"); // no list downloads in tests; BlocklistApiTests drives them itself
             builder.UseSetting("VulnDbEnabled", "false"); // no scanner database downloads in tests
             builder.UseSetting("AuthRateLimitPerMinute", "1000"); // every test signs in and enrolls; the default 10/min is for real clients

@@ -47,7 +47,7 @@ public sealed class UpdatesIntegration(
     private static readonly CommandOptions Upgrade = new() { Timeout = TimeSpan.FromMinutes(60), Environment = new Dictionary<string, string> { ["DEBIAN_FRONTEND"] = "noninteractive" } };
 
     private readonly Queue<SecurityEvent> _events = new();
-    private readonly SemaphoreSlim _lock = new(1, 1);
+    private readonly SemaphoreSlim _lock = PackageManagerLock.Instance;
 
     public static readonly ToolDescriptor Info = new(
         "updates",

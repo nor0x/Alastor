@@ -477,6 +477,9 @@ namespace Alastor.Server.Data.Migrations.Sqlite
                         .IsRequired()
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("ResultDetail")
+                        .HasColumnType("TEXT");
+
                     b.Property<string>("ResultMessage")
                         .HasColumnType("TEXT");
 
@@ -701,6 +704,51 @@ namespace Alastor.Server.Data.Migrations.Sqlite
                     b.HasIndex("HostId", "At");
 
                     b.ToTable("MetricSamples");
+                });
+
+            modelBuilder.Entity("Alastor.Server.Data.HostPackage", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Arch")
+                        .HasMaxLength(32)
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("HostId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("Manual")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("Protected")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<long?>("SizeKb")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Source")
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Version")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("HostId");
+
+                    b.HasIndex("Name");
+
+                    b.ToTable("Packages");
                 });
 
             modelBuilder.Entity("Alastor.Server.Data.HostPostureSnapshot", b =>
@@ -1111,6 +1159,12 @@ namespace Alastor.Server.Data.Migrations.Sqlite
                         .IsRequired()
                         .HasColumnType("TEXT");
 
+                    b.Property<int?>("PackagesManual")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("PackagesTotal")
+                        .HasColumnType("INTEGER");
+
                     b.Property<int?>("PendingUpdates")
                         .HasColumnType("INTEGER");
 
@@ -1147,6 +1201,9 @@ namespace Alastor.Server.Data.Migrations.Sqlite
                         .HasColumnType("INTEGER");
 
                     b.Property<string>("ServicesNeedingRestart")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("SoftwareCollectedAt")
                         .HasColumnType("TEXT");
 
                     b.Property<string>("SshExposure")
@@ -1299,6 +1356,70 @@ namespace Alastor.Server.Data.Migrations.Sqlite
                     b.HasIndex("ChannelId");
 
                     b.ToTable("NotificationDeliveries");
+                });
+
+            modelBuilder.Entity("Alastor.Server.Data.OsvPackageResult", b =>
+                {
+                    b.Property<string>("Ecosystem")
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Package")
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Version")
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("CheckedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("VulnIds")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Ecosystem", "Package", "Version");
+
+                    b.HasIndex("CheckedAt");
+
+                    b.ToTable("OsvPackages");
+                });
+
+            modelBuilder.Entity("Alastor.Server.Data.OsvVulnerability", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasMaxLength(80)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Aliases")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<double?>("Cvss")
+                        .HasColumnType("REAL");
+
+                    b.Property<DateTime>("FetchedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Fixed")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("Modified")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int?>("Severity")
+                        .HasMaxLength(32)
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Summary")
+                        .HasMaxLength(512)
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("OsvVulnerabilities");
                 });
 
             modelBuilder.Entity("Alastor.Server.Data.PolicyLayer", b =>
@@ -1512,6 +1633,15 @@ namespace Alastor.Server.Data.Migrations.Sqlite
                 });
 
             modelBuilder.Entity("Alastor.Server.Data.HostMetricSample", b =>
+                {
+                    b.HasOne("Alastor.Server.Data.ManagedHost", null)
+                        .WithMany()
+                        .HasForeignKey("HostId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Alastor.Server.Data.HostPackage", b =>
                 {
                     b.HasOne("Alastor.Server.Data.ManagedHost", null)
                         .WithMany()

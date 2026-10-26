@@ -100,6 +100,7 @@ public static class HostEndpoints
                 "recheck" => (AgentCommandTypes.BaselineCheck, null),
                 "check-updates" => (AgentCommandTypes.RunJob, "updates.check"),
                 "apply-updates" => (AgentCommandTypes.RunJob, "updates.apply"),
+                "collect-software" => (AgentCommandTypes.RunJob, Alastor.Core.Software.SoftwareIntegration.InventoryJob),
                 "scan-vulnerabilities" => (AgentCommandTypes.RunJob, Alastor.Core.Vulnerabilities.VulnerabilityIntegration.ScanJob),
                 "run-audit" => (AgentCommandTypes.RunJob, Alastor.Core.Hardening.HardeningIntegration.AuditJob),
                 "check-network" => (AgentCommandTypes.RunJob, Alastor.Core.Network.NetworkIntegration.CheckJob),

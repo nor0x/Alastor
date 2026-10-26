@@ -1,0 +1,14 @@
+Updating and loading repositories:
+Repositories loaded.
+Package                     Arch   Version                    Repository      Size
+Upgrading:
+ openssl-libs               x86_64 1:3.2.2-6.fc41             updates      7.8 MiB
+   replacing openssl-libs   x86_64 1:3.2.2-5.fc41             updates      7.8 MiB
+Installing dependencies:
+ crypto-policies-scripts    noarch 20240828-1.git1.fc41       updates    323.1 KiB
+
+Transaction Summary:
+ Installing:         1 package
+ Upgrading:          1 package
+ Replacing:          1 package
+Operation aborted by the user.

@@ -1,0 +1,4 @@
+alpine-base
+nginx
+py3-setuptools<71
+so:libc.musl-x86_64.so.1

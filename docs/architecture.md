@@ -135,9 +135,13 @@ Cookie-authenticated writes must also send `X-Alastor-Request: 1` (CSRF guard on
 | `GET /api/hosts/{id}/metrics?hours=` | R | downsampled CPU/mem/disk/load history |
 | `GET /api/hosts/{id}/effective-policy` · `/commands` | R | merged YAML and revision · command history |
 | `PATCH /api/hosts/{id}` · `DELETE /api/hosts/{id}` | A | rename, group, tags · remove (revokes the agent) |
-| `POST /api/hosts/{id}/actions/{reconcile\|reclaim\|refresh-bans\|recheck\|check-updates\|apply-updates\|scan-vulnerabilities\|run-audit\|check-network\|scan-malware\|check-integrity\|accept-integrity\|scan-rootkits\|accept-rootkits}` | A | operator actions (`recheck` re-runs the security baseline; the update and scan actions queue a `run-job` command) |
+| `POST /api/hosts/{id}/actions/{reconcile\|reclaim\|refresh-bans\|recheck\|check-updates\|apply-updates\|collect-software\|scan-vulnerabilities\|run-audit\|check-network\|scan-malware\|check-integrity\|accept-integrity\|scan-rootkits\|accept-rootkits}` | A | operator actions (`recheck` re-runs the security baseline; the update and scan actions queue a `run-job` command) |
 | `GET /api/hosts/{id}/updates` | R | pending packages (security first), reboot flag, last install with its log tail, effective update schedules |
 | `GET /api/updates` · `POST /api/updates/apply` `{hostIds}` | R · A | per-host update counts across the fleet · "install now" on several hosts |
+| `GET /api/hosts/{id}/software` | R | installed packages (version, source package, installed on purpose or as a dependency, protected), each with its update candidate, known CVEs (scan + OSV.dev) and the manual upgrade/remove command; last upgrade/uninstall with its log tail |
+| `POST /api/hosts/{id}/software/plan` `{op, package}` · `GET …/software/plan/{commandId}` | A · R | ask the agent for a dry run of `upgrade` or `remove` (a `package-plan` command) · its result |
+| `POST /api/hosts/{id}/software/{upgrade\|remove}` `{package}` | A | upgrade or uninstall one package (a `package-action` command, audited) |
+| `GET /api/software?all` · `GET /api/software/{name}/hosts` · `POST /api/software/upgrade` `{package, hostIds}` | R · R · A | packages across the fleet with version spread, outdated and vulnerable host counts · the hosts that have one · upgrade it on several hosts |
 | `GET /api/hosts/{id}/vulnerabilities` | R | every finding (package, installed → fixed, severity, CVSS, KEV flag, accepted), scanner and database info, ignored-package counts |
 | `GET /api/vulnerabilities?minSeverity&fixable&kev&q&limit` | R | fleet view: open CVEs ranked KEV → severity → hosts affected, per-host counts, database mirror status |
 | `GET /api/vulnerabilities/db` · `POST /api/vulnerabilities/db/{trivy\|grype}/refresh` | R · A | mirror status · check upstream now |
@@ -234,6 +238,7 @@ times, so the editor can show `0 4 * * 1-5` as "Mon 04:00, Tue 04:00, …".
 | `baseline.checkSchedule` | `every 1h` | ≥1m | security baseline checks; also run at agent start, after policy changes, and on "Re-check now" |
 | `updates.checkSchedule` | `every 6h` | ≥1m | refresh package lists and count pending (security) updates; also at agent start and on "Check now" |
 | `updates.applySchedule` | `off` | ≥1m | install security updates automatically, e.g. `0 4 * * *`; `off` = report only plus "Install now" |
+| `updates.inventorySchedule` | `every 6h` | ≥1m | software inventory (§5c-1); also at agent start, after every upgrade or uninstall, and on "Refresh inventory" |
 | `vulnerabilities.scanSchedule` | `0 3 * * *` | ≥1m | Trivy/Grype scan of installed packages; also at agent start and on "Scan now" |
 | `hardening.auditSchedule` | `0 5 * * 0` | ≥1m | Lynis audit (§5e) |
 | `network.checkSchedule` | `every 1h` | ≥1m | SSH exposure and Tailscale check (§5f) |
@@ -260,6 +265,7 @@ times, so the editor can show `0 4 * * 1-5` as "Mon 04:00, Tue 04:00, …".
 | `ALASTOR_TRIVYDBREPOSITORY` / `ALASTOR_GRYPEDBURL` | `ghcr.io/aquasecurity/trivy-db:2` / `https://grype.anchore.io/databases` | upstream sources (e.g. `mirror.gcr.io/aquasec/trivy-db:2`, or your own mirror) |
 | `ALASTOR_ALERTDEDUPWINDOW` / `ALASTOR_ALERTBURST` | `1h` / `1` | alert dedup: per host and dedup key, `burst` notifications per window (§5a) |
 | `ALASTOR_THREATFEEDENABLED` | `true` | fetch NVD, CISA KEV and news RSS (§5) |
+| `ALASTOR_OSVENABLED` | `true` | look up the fleet's package versions on OSV.dev (§5c-1); `false` for air-gapped servers |
 | `ALASTOR_THREATFEEDINTERVAL` | `20m` | per-source refetch after a success (5m–1d) |
 | `ALASTOR_THREATFEEDRETENTION` | `30d` | feed items older than this are pruned and not fetched |
 | `ALASTOR_NVDAPIKEY` | – | optional; raises NVD's rate limit from 5 to 50 requests / 30 s |
@@ -378,6 +384,40 @@ server is unreachable. The server stores the latest report per host and kind, pl
 * **Events:** `updates.pending` when the set of pending security updates changes (not on every check),
   `updates.applied` / `updates.failed` after an install, `updates.reboot-required` and `updates.restart-required`. They go through the normal
   alert pipeline (§5a).
+
+## 5c-1. Software inventory, single-package upgrades and uninstalls
+
+* **Inventory (`software.inventory`)**, on `updates.inventorySchedule`, at first start and after every change: every
+  installed package from the package database, never from a package manager's "pretty" output. Debian/Ubuntu:
+  `dpkg-query -W` with a fixed tab-separated format (name, version, arch, status, size, priority, `Essential`,
+  `Source`) and `apt-mark showmanual`; RHEL family: `rpm -qa --qf` (epoch only when set, as dnf prints it; the source
+  name from the SRPM) and `dnf repoquery --userinstalled`; Alpine: `apk list --installed` (origin = source) and
+  `/etc/apk/world`. "Manual" marks packages someone installed on purpose; the dashboard shows those by default.
+  The server stores one `HostPackages` row per package, replaced per report, like CVE findings.
+* **Enrichment, at read time.** Each package is joined with the host's last update check (the candidate version and
+  the security flag), its Trivy/Grype findings for OS packages (`deb`/`rpm`/`apk`), and cached OSV.dev results.
+  Findings are merged by CVE id: an OSV advisory (DSA-…, UBUNTU-CVE-…, ALSA-…) expands into the CVEs it names in
+  `aliases`/`upstream`, and the scanner's finding wins where both have one. KEV marks exploited CVEs.
+* **OSV.dev.** `OsvWorker` (every 15 min, off with `ALASTOR_OSVENABLED=false`) sends the distinct
+  (ecosystem, package, version) tuples of the fleet to `POST /v1/querybatch` (1,000 per request) and caches the
+  answer for 24 h; advisories are fetched once from `GET /v1/vulns/{id}` and refetched when OSV reports them modified.
+  Only package names and versions leave the server. Ecosystems come from os-release: `Debian:12`, `Ubuntu:24.04:LTS`,
+  `Alpine:v3.20` (queried by source package), `AlmaLinux:9`, `Rocky Linux:9` (binary package). RHEL, whose OSV
+  ecosystem is split per repository, and Fedora aren't covered. Severity is the distribution's own rating where it has
+  one (as Trivy does), else the CVSS v3 base score computed from the vector.
+* **Upgrade and uninstall.** Always two steps. The dashboard first queues `package-plan` `{op, package}`: the agent
+  runs the package manager's dry run (`apt-get -s`, `dnf --assumeno`, `apk --simulate`) and returns the transaction in
+  the command result's `Detail`. The dialog shows it next to the command to run by hand (both come from
+  `PackageCommands`, so they never differ). Applying queues `package-action`, which the agent acknowledges at once and
+  runs off the heartbeat loop under the same lock as `updates.apply`: `apt-get install --only-upgrade` (keeping changed
+  config files) / `apt-get remove`, `dnf upgrade` / `dnf remove`, `apk upgrade` / `apk del`. It then re-collects the
+  inventory, reports it with `lastAction` (from → to, log tail), and re-runs the update check and CVE scan.
+* **Protection.** Package names must match `^[A-Za-z0-9][A-Za-z0-9.+_:~@-]{0,127}$` (never an option) and be in the
+  host's inventory. Packages that would break booting, logins or the package manager (Debian `Essential`/`required`,
+  kernels, systemd, libc, sudo, openssh-server, apt/dpkg/rpm/dnf/apk) are never removed: the server refuses them, and
+  the agent re-checks the dry run and refuses any removal that would take one along, whatever the server asked.
+  apt's own "Yes, do as I say!" guard for essential packages stays in place (`-y` never answers it). There is no
+  bulk uninstall. Events: `software.upgraded`, `software.removed`, `software.failed`.
 
 ## 5d. Vulnerability scans (Trivy / Grype)
 

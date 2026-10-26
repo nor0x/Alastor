@@ -167,6 +167,7 @@ public sealed class AlertApiTests : IDisposable
             builder.UseSetting("AdminPassword", "test-password-123");
             builder.UseSetting("SecureCookies", "false");
             builder.UseSetting("ThreatFeedEnabled", "false");
+            builder.UseSetting("OsvEnabled", "false");
             builder.UseSetting("BlocklistsEnabled", "false"); // no list downloads in tests; BlocklistApiTests drives them itself
             builder.UseSetting("PublicUrl", "https://alastor.example.com");
             builder.ConfigureTestServices(s =>

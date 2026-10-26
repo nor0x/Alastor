@@ -24,6 +24,8 @@ Svelte dashboard cover:
   (needrestart / needs-restarting) and a kernel-reboot check.
 - **SSH logins:** successful logins from the journal or auth.log, with an alert on a user's first login from a new
   address (Critical for root) and trusted sources that never alert.
+- **Software inventory:** every installed package and version per host and across the fleet, with available updates
+  and known CVEs from the CVE scan and OSV.dev; upgrade or uninstall one package after a dry run, or copy the command.
 - **CVE scans:** Trivy or Grype against a server-mirrored database, joined with CISA KEV, plus the images of running
   Docker/Podman containers (opt-in, local images only).
 - **Firewall:** ufw managed from policy (opt-in, Debian/Ubuntu) with lockout guards for SSH.
@@ -145,6 +147,7 @@ you install them from their vendor's repository (Alpine's `trivy` package is the
 | The Hacker News, BleepingComputer, Krebs on Security, SecurityWeek, Dark Reading (RSS) | security news in the threat feed |
 | [Spamhaus DROP](https://www.spamhaus.org/blocklists/do-not-route-or-peer/), [FireHOL level 1](https://iplists.firehol.org/?ipset=firehol_level1), [abuse.ch Feodo Tracker](https://feodotracker.abuse.ch/blocklist/), [Emerging Threats compromised](https://rules.emergingthreats.net/), [blocklist.de](https://www.blocklist.de/en/export.html), [CINS Army](https://cinsscore.com/#list) | IP blocklists, merged per host minus private ranges and your allowlist |
 | `ghcr.io/aquasecurity/trivy-db:2`, Grype DB v6 | vulnerability databases mirrored for agents |
+| [OSV.dev](https://osv.dev/) API | known vulnerabilities for the software inventory (only package names and versions are sent) |
 | ClamAV signatures (`database.clamav.net`, through `freshclam`) | malware scans; mirrored only once some host has a malware scan schedule |
 
 **Main libraries:** ASP.NET Core, EF Core (SQLite, [Npgsql](https://www.npgsql.org/)), SignalR,
@@ -284,6 +287,7 @@ and starts streaming ban events.
 | `ALASTOR_RETENTIONRUNINTERVAL`, `…METRICRETENTION`, `…EVENTRETENTION`, … | `1h`, `7d`, `90d` | all server timings: see [docs/architecture.md](docs/architecture.md#timings-and-schedules) |
 | `ALASTOR_SECURECOOKIES` | `true` | set `false` only for plain-HTTP local dev |
 | `ALASTOR_BLOCKLISTSENABLED` / `ALASTOR_BLOCKLISTREFRESHINTERVAL` | `true` / `4h` | public IP blocklists the server pulls and merges per host (*Bans → Blocklists*) |
+| `ALASTOR_OSVENABLED` | `true` | look up installed package versions on OSV.dev for the *Software* view; `false` for air-gapped servers |
 | `ALASTOR_VULNDBENABLED` / `ALASTOR_VULNDBREFRESHINTERVAL` | `true` / `12h` | mirror the Trivy/Grype databases for agents' CVE scans; `false` for air-gapped servers (place the files in `data/vulndb/`) |
 | `ALASTOR_FRESHCLAMPATH` / `ALASTOR_CLAMAVMIRROR` | `freshclam` / `database.clamav.net` | ClamAV signature mirror for agents' malware scans (needs the `clamav-freshclam` package on the server; the Docker image has it). Also under `data/vulndb/clamav/` |
 | `ALASTOR_TRIVYDBREPOSITORY` / `ALASTOR_GRYPEDBURL` | `ghcr.io/aquasecurity/trivy-db:2` / `https://grype.anchore.io/databases` | where the mirror pulls from (an internal registry or mirror) |

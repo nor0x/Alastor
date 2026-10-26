@@ -106,6 +106,11 @@ public sealed class ManagedHost
     public bool RebootRequired { get; set; }
     public DateTime? UpdatesCheckedAt { get; set; }
 
+    // Latest software inventory, denormalized for list views. Null until the agent reports one.
+    public int? PackagesTotal { get; set; }
+    public int? PackagesManual { get; set; }
+    public DateTime? SoftwareCollectedAt { get; set; }
+
     // Latest CVE scan, denormalized for list views (accepted risks excluded). Null until a scan succeeds.
     public int? VulnCritical { get; set; }
     public int? VulnHigh { get; set; }
@@ -203,6 +208,61 @@ public sealed class HostVulnerability
 
     /// <summary>First scan that reported this (id, package, path) on the host. Kept across scans.</summary>
     public DateTime FirstSeenAt { get; set; }
+}
+
+/// <summary>One installed package on one host, from the latest software inventory. Replaced as a set per inventory.</summary>
+public sealed class HostPackage
+{
+    public long Id { get; set; }
+    public Guid HostId { get; set; }
+    public required string Name { get; set; }
+    public required string Version { get; set; }
+    public string? Arch { get; set; }
+
+    /// <summary>The source package (Debian <c>Source:</c>, SRPM name, apk origin): what OSV and the distro trackers key on.</summary>
+    public string? Source { get; set; }
+
+    /// <summary>Installed on purpose rather than as a dependency (apt-mark showmanual, dnf userinstalled, apk world).</summary>
+    public bool Manual { get; set; }
+
+    /// <summary>The dashboard never uninstalls it (essential, kernel, SSH, package manager).</summary>
+    public bool Protected { get; set; }
+
+    public long? SizeKb { get; set; }
+}
+
+/// <summary>What OSV.dev knows about one package version in one ecosystem (<c>Debian:12</c>, <c>AlmaLinux:9</c>). Shared by every host that has it.</summary>
+public sealed class OsvPackageResult
+{
+    public required string Ecosystem { get; set; }
+    public required string Package { get; set; }
+    public required string Version { get; set; }
+
+    /// <summary>OSV ids (DSA-…, USN-…, ALSA-…, CVE-…) affecting this version. Empty means none known.</summary>
+    public List<string> VulnIds { get; set; } = [];
+
+    public DateTime CheckedAt { get; set; }
+}
+
+/// <summary>One OSV advisory, fetched once and refreshed when OSV says it changed.</summary>
+public sealed class OsvVulnerability
+{
+    public required string Id { get; set; }
+    public string? Summary { get; set; }
+
+    /// <summary>From the CVSS vector, or the distribution's own rating; null when OSV has neither.</summary>
+    public Severity? Severity { get; set; }
+
+    public double? Cvss { get; set; }
+
+    /// <summary>CVE ids and other names for the same issue, used to merge it with the scanner's findings.</summary>
+    public List<string> Aliases { get; set; } = [];
+
+    /// <summary>The first fixed version per <c>ecosystem/package</c>.</summary>
+    public Dictionary<string, string> Fixed { get; set; } = [];
+
+    public DateTime? Modified { get; set; }
+    public DateTime FetchedAt { get; set; }
 }
 
 /// <summary>The latest report of one kind (updates, vulnerabilities, hardening, …) from one host's scheduled jobs, as JSON.</summary>
@@ -532,6 +592,10 @@ public sealed class HostCommand
     public DateTime? DeliveredAt { get; set; }
     public DateTime? CompletedAt { get; set; }
     public string? ResultMessage { get; set; }
+
+    /// <summary>Structured result JSON from commands that return one (a package dry run).</summary>
+    public string? ResultDetail { get; set; }
+
     public required string CreatedBy { get; set; }
 
     public AgentCommand ToContract() => new(Id, Type, Payload, CreatedAt);

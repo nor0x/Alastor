@@ -36,6 +36,9 @@ public abstract class AlastorDbContext(DbContextOptions options) : DbContext(opt
     public DbSet<BlocklistSourceState> BlocklistSources => Set<BlocklistSourceState>();
     public DbSet<HostReport> HostReports => Set<HostReport>();
     public DbSet<HostVulnerability> Vulnerabilities => Set<HostVulnerability>();
+    public DbSet<HostPackage> Packages => Set<HostPackage>();
+    public DbSet<OsvPackageResult> OsvPackages => Set<OsvPackageResult>();
+    public DbSet<OsvVulnerability> OsvVulnerabilities => Set<OsvVulnerability>();
     public DbSet<HostHardeningItem> HardeningItems => Set<HostHardeningItem>();
     public DbSet<NotificationChannel> NotificationChannels => Set<NotificationChannel>();
     public DbSet<AlertBucket> AlertBuckets => Set<AlertBucket>();
@@ -97,6 +100,35 @@ public abstract class AlastorDbContext(DbContextOptions options) : DbContext(opt
             e.HasIndex(v => v.HostId);
             e.HasIndex(v => v.VulnId);
             e.HasOne<ManagedHost>().WithMany().HasForeignKey(v => v.HostId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        m.Entity<HostPackage>(e =>
+        {
+            e.HasKey(p => p.Id);
+            e.Property(p => p.Name).HasMaxLength(200);
+            e.Property(p => p.Version).HasMaxLength(200);
+            e.Property(p => p.Arch).HasMaxLength(32);
+            e.Property(p => p.Source).HasMaxLength(200);
+            e.HasIndex(p => p.HostId);
+            e.HasIndex(p => p.Name);
+            e.HasOne<ManagedHost>().WithMany().HasForeignKey(p => p.HostId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        m.Entity<OsvPackageResult>(e =>
+        {
+            e.HasKey(o => new { o.Ecosystem, o.Package, o.Version });
+            e.Property(o => o.Ecosystem).HasMaxLength(64);
+            e.Property(o => o.Package).HasMaxLength(200);
+            e.Property(o => o.Version).HasMaxLength(200);
+            e.HasIndex(o => o.CheckedAt);
+        });
+
+        m.Entity<OsvVulnerability>(e =>
+        {
+            e.HasKey(o => o.Id);
+            e.Property(o => o.Id).HasMaxLength(80);
+            e.Property(o => o.Summary).HasMaxLength(512);
+            e.Property(o => o.Severity).HasConversion<int?>();
         });
 
         m.Entity<HostHardeningItem>(e =>
