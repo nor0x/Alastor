@@ -228,7 +228,7 @@ public static partial class StorageParsers
         var result = new List<(string, string)>();
         foreach (var raw in output.Split('\n').Skip(1))
         {
-            var f = raw.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+            var f = raw.TrimEnd('\r').Split(' ', StringSplitOptions.RemoveEmptyEntries);
             if (f.Length >= 3 && f.Skip(3).Any(n => n.Split(',').Contains("disabled")) && SnapNameRegex().IsMatch(f[0]) && f[2].All(char.IsAsciiDigit))
                 result.Add((f[0], f[2]));
         }
