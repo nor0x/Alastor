@@ -10,6 +10,7 @@
   import { fullDate } from '../lib/format';
   import { fieldSections, type PolicyField } from '../lib/policyFields';
   import { confirm } from '../lib/ui/confirm.svelte';
+  import Icon from '../lib/ui/Icon.svelte';
   import Modal from '../lib/ui/Modal.svelte';
   import Time from '../lib/ui/Time.svelte';
 
@@ -240,10 +241,10 @@
 <div class="page-head">
   <div>
     <h1>{scope === 'global' ? 'Global policy' : `${scope === 'group' ? 'Group' : 'Host'} overrides: ${targetName}`}</h1>
-    <p class="sub">
-      {#if detail?.layer}v{detail.layer.currentVersion} · saved by {detail.layer.updatedBy} <Time iso={detail.layer.updatedAt} />
-      {:else if detail}No overrides yet. Saving creates v1.{/if}
-      {#if scope === 'host' && targetId} · <a href="/hosts/{targetId}?tab=policy">host's effective policy</a>{/if}
+    <p class="sub byline">
+      {#if detail?.layer}<span class="ver mono">v{detail.layer.currentVersion}</span><span>saved by {detail.layer.updatedBy} <Time iso={detail.layer.updatedAt} /></span>
+      {:else if detail}<span>No overrides yet. Saving creates v1.</span>{/if}
+      {#if scope === 'host' && targetId}<span class="sep"><a href="/hosts/{targetId}?tab=policy">host's effective policy</a></span>{/if}
     </p>
   </div>
   {#if !readOnly}
@@ -257,11 +258,11 @@
   {/if}
 </div>
 
-{#if loadError}<div class="banner bad" role="alert"><p>{loadError}</p></div>{/if}
+{#if loadError}<div class="banner bad spaced" role="alert"><Icon name="error" /><p>{loadError}</p></div>{/if}
 {#if remoteChanged}
-  <div class="banner warn spaced"><p>Someone else saved a new version while you were editing.</p><button class="btn small" onclick={load}>Load theirs (discard mine)</button></div>
+  <div class="banner warn spaced split"><Icon name="alert" /><p>Someone else saved a new version while you were editing.</p><button class="btn small" onclick={load}>Load theirs (discard mine)</button></div>
 {/if}
-{#if readOnly}<div class="banner info spaced"><p>Read-only access: you can view and validate, but not save.</p></div>{/if}
+{#if readOnly}<div class="banner info spaced"><Icon name="info" /><p>Read-only access: you can view and validate, but not save.</p></div>{/if}
 
 {#if detail}
   <div class="editor-layout">
@@ -273,7 +274,7 @@
 
       {#if mode === 'form'}
         {#if !doc}
-          <div class="banner bad m"><p>The YAML has a syntax error, so the form is unavailable. Fix it in the YAML view.</p></div>
+          <div class="banner bad m"><Icon name="error" /><p>The YAML has a syntax error, so the form is unavailable. Fix it in the YAML view.</p></div>
         {:else}
           <div class="form-view">
             <p class="muted small intro">
@@ -283,13 +284,13 @@
             {#each fieldSections as section (section.title)}
               <fieldset>
                 <legend>{section.title}</legend>
-                <p class="muted small">{section.description}</p>
+                <p class="muted small desc">{section.description}</p>
                 <div class="fields">
                   {#each section.fields as f (f.path.join('.'))}
                     {@const issue = fieldIssue(f)}
                     {@const own = layerValue(f)}
                     <label class="f" class:overridden={own !== '' && scope !== 'global'}>
-                      <span class="name">{f.label}{#if own !== '' && scope !== 'global'}<span class="pill info tiny">override</span>{/if}</span>
+                      <span class="name">{f.label}{#if own !== '' && scope !== 'global'}<span class="ovr">override</span>{/if}</span>
                       <input
                         class="field mono" class:invalid={!!issue}
                         value={own}
@@ -336,33 +337,33 @@
             <ul class="issues">
               {#each issues as i, n (n)}
                 <li class={i.level === 'Error' ? 'bad' : 'warn'}>
-                  <span class="lvl">{i.level === 'Error' ? '✕' : '⚠'}</span>
-                  <div>
+                  <span class="lvl"><Icon name={i.level === 'Error' ? 'error' : 'alert'} label={i.level} /></span>
+                  <div class="issue">
                     <div>{i.message}</div>
-                    <div class="muted small">
+                    <div class="where muted small">
                       <span class="mono">{i.path || '(document)'}</span>
-                      {#if i.line}· <button class="link" onclick={() => goToLine(i.line!)}>line {i.line}</button>{/if}
+                      {#if i.line}<button class="link" onclick={() => goToLine(i.line!)}>line {i.line}</button>{/if}
                     </div>
                   </div>
                 </li>
               {/each}
             </ul>
           {:else if preview}
-            <p class="ok-line">✓ Valid. {#if preview.revision}<span class="muted small">Effective revision <span class="mono">{preview.revision}</span></span>{/if}</p>
+            <p class="ok-line"><Icon name="check" /><span>Valid.</span> {#if preview.revision}<span class="muted small">Effective revision <span class="mono">{preview.revision}</span></span>{/if}</p>
           {/if}
 
           {#if preview?.schedules?.length}
             <h3>Schedules</h3>
-            <p class="muted small">Next runs in host-local time, before the per-host spread.</p>
+            <p class="muted small sched-note">Next runs in host-local time, before the per-host spread.</p>
             <table class="table sched">
               <tbody>
                 {#each preview.schedules as s (s.path)}
                   <tr>
                     <td>
                       <div>{scheduleLabels[s.path] ?? s.path}</div>
-                      <div class="mono small muted">{s.schedule}{s.isDefault ? ' · default' : ''}</div>
+                      <div class="expr small muted"><span class="mono">{s.schedule}</span>{#if s.isDefault}<span>default</span>{/if}</div>
                     </td>
-                    <td class="small">
+                    <td class="small runs">
                       {#if s.kind === 'off'}<span class="pill muted">off</span>
                       {:else}{#each s.nextRunsHostLocal as r (r)}<div class="nowrap">{nextRun(r)}</div>{/each}{/if}
                     </td>
@@ -372,11 +373,11 @@
             </table>
           {/if}
         {:else if side === 'fail2ban'}
-          <p class="muted small">What the agent writes to <code>/etc/fail2ban/jail.d/alastor.local</code>{scope === 'global' ? ' on a host with no group or host overrides' : ''}.</p>
-          {#if preview?.fail2BanConfig}<pre class="out">{preview.fail2BanConfig}</pre>{:else}<p class="muted">Fix the errors to see the rendered config.</p>{/if}
+          <p class="muted small lead">What the agent writes to <code>/etc/fail2ban/jail.d/alastor.local</code>{scope === 'global' ? ' on a host with no group or host overrides' : ''}.</p>
+          {#if preview?.fail2BanConfig}<pre class="code-block">{preview.fail2BanConfig}</pre>{:else}<p class="muted">Fix the errors to see the rendered config.</p>{/if}
         {:else}
-          <p class="muted small">The merged result {scope === 'global' ? 'for a host with no overrides' : `for this ${scope}`}, including the allowlist from the Bans page.</p>
-          {#if preview?.effectiveYaml}<pre class="out">{preview.effectiveYaml}</pre>{:else}<p class="muted">Fix the errors to see the effective policy.</p>{/if}
+          <p class="muted small lead">The merged result {scope === 'global' ? 'for a host with no overrides' : `for this ${scope}`}, including the allowlist from the Bans page.</p>
+          {#if preview?.effectiveYaml}<pre class="code-block">{preview.effectiveYaml}</pre>{:else}<p class="muted">Fix the errors to see the effective policy.</p>{/if}
         {/if}
       </div>
     </aside>
@@ -385,23 +386,25 @@
   {#if detail.versions.length}
     <section class="card versions">
       <header><h2>History</h2><span class="hint">every save is a new immutable version</span></header>
-      <table class="table">
-        <thead><tr><th>Version</th><th>Note</th><th class="hide-sm">By</th><th>When</th><th></th></tr></thead>
-        <tbody>
-          {#each detail.versions as v (v.version)}
-            <tr>
-              <td>v{v.version} {#if v.version === detail.layer?.currentVersion}<span class="pill ok">current</span>{/if}</td>
-              <td class="small">{v.comment ?? ''}</td>
-              <td class="hide-sm">{v.createdBy}</td>
-              <td class="nowrap" title={fullDate(v.createdAt)}><Time iso={v.createdAt} /></td>
-              <td class="actions">
-                <button class="btn small" onclick={() => view(v)}>View</button>
-                {#if !readOnly && v.version !== detail.layer?.currentVersion}<button class="btn small" onclick={() => revert(v.version)}>Revert to this</button>{/if}
-              </td>
-            </tr>
-          {/each}
-        </tbody>
-      </table>
+      <div class="table-wrap">
+        <table class="table">
+          <thead><tr><th>Version</th><th>Note</th><th class="hide-sm">By</th><th>When</th><th></th></tr></thead>
+          <tbody>
+            {#each detail.versions as v (v.version)}
+              <tr>
+                <td class="nowrap"><span class="mono">v{v.version}</span> {#if v.version === detail.layer?.currentVersion}<span class="pill ok">current</span>{/if}</td>
+                <td class="small">{v.comment ?? ''}</td>
+                <td class="hide-sm">{v.createdBy}</td>
+                <td class="nowrap" title={fullDate(v.createdAt)}><Time iso={v.createdAt} /></td>
+                <td class="actions">
+                  <button class="btn small" onclick={() => view(v)}>View</button>
+                  {#if !readOnly && v.version !== detail.layer?.currentVersion}<button class="btn small" onclick={() => revert(v.version)}>Revert to this</button>{/if}
+                </td>
+              </tr>
+            {/each}
+          </tbody>
+        </table>
+      </div>
     </section>
   {/if}
 {:else if !loadError}
@@ -410,8 +413,8 @@
 
 <Modal bind:open={viewOpen} title={viewing ? `v${viewing.version}` : 'Version'} wide>
   {#if viewing}
-    <p class="muted small">{viewing.createdBy} · {fullDate(viewing.createdAt)}{viewing.comment ? ` · ${viewing.comment}` : ''}</p>
-    <pre class="out">{viewing.yaml || '(empty)'}</pre>
+    <p class="muted small byline modal-meta"><span>{viewing.createdBy}</span><span class="sep">{fullDate(viewing.createdAt)}</span>{#if viewing.comment}<span class="sep">{viewing.comment}</span>{/if}</p>
+    <pre class="code-block">{viewing.yaml || '(empty)'}</pre>
   {/if}
   {#snippet footer()}
     {#if viewing && !readOnly}
@@ -422,52 +425,77 @@
 </Modal>
 
 <style>
+  .byline { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2xs) var(--space-sm); }
+  .byline .sep { padding-left: var(--space-sm); border-left: var(--rule-hair) solid var(--border-strong); }
+  .ver { padding: 0 var(--space-2xs); border-radius: 4px; background: var(--color-paper-3); color: var(--color-ink); line-height: 20px; }
   .comment { width: 220px; }
-  .spaced { margin-bottom: 12px; justify-content: space-between; align-items: center; }
-  .editor-layout { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); gap: 16px; align-items: start; }
-  .tabs.inner { margin: 0; padding: 0 8px; }
+  .spaced { margin-bottom: var(--space-sm); align-items: center; }
+  .banner > :global(.icon) { margin-top: var(--space-3xs); }
+  .split p { flex: 1; }
+  .editor-layout { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); gap: var(--space-md); align-items: start; }
+  .tabs.inner { margin: 0; padding: 0 var(--space-xs); }
   .count.bad { background: var(--bad-bg); color: var(--bad); }
-  .m { margin: 16px; }
+  .m { margin: var(--space-md); }
 
-  .form-view { padding: 16px; display: flex; flex-direction: column; gap: 20px; }
-  .intro { margin: 0; }
-  fieldset { border: 0; margin: 0; padding: 0; }
-  legend { font-weight: 600; color: var(--text-strong); padding: 0; }
-  fieldset > p { margin: 2px 0 10px; }
-  .fields { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 14px 16px; }
-  .f { display: flex; flex-direction: column; gap: 4px; }
-  .f .name { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--text); }
-  .f input::placeholder { color: color-mix(in srgb, var(--muted) 70%, transparent); }
-  .f.overridden input { border-color: color-mix(in srgb, var(--info) 60%, transparent); }
+  /* Form view */
+  .form-view { display: flex; flex-direction: column; gap: var(--space-lg); padding: var(--space-md); }
+  .intro { margin: 0; max-width: 75ch; }
+  fieldset { border: 0; margin: 0; padding: var(--space-md) 0 0; border-top: var(--rule-hair) solid var(--border); }
+  legend { float: left; width: 100%; padding: 0; font-family: var(--font-display); font-weight: 600; font-size: var(--text-lg); color: var(--text-strong); }
+  .desc { clear: both; margin: 0 0 var(--space-sm); padding-top: var(--space-3xs); }
+  .fields { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 230px), 1fr)); gap: var(--space-md); }
+  .f { display: flex; flex-direction: column; gap: var(--space-2xs); }
+  .f .name { display: flex; align-items: center; gap: var(--space-xs); font-family: var(--font-display); font-weight: 500; font-size: var(--text-sm); color: var(--color-ink-2); }
+  .ovr { font-size: var(--text-xs); font-weight: 500; color: var(--color-accent-deep); padding: 0 var(--space-2xs); border-radius: 4px; background: var(--color-accent-wash); line-height: 18px; }
+  .f input::placeholder { color: color-mix(in oklab, var(--muted) 70%, transparent); }
+  .f.overridden input { border-color: var(--color-accent); }
   .f input.invalid { border-color: var(--bad); }
-  .f .help { font-size: 11.5px; color: var(--muted); line-height: 1.4; }
+  .f .help { font-size: var(--text-xs); color: var(--muted); line-height: 1.4; }
   .err { color: var(--bad); }
-  .tiny { font-size: 10px; line-height: 16px; padding: 0 6px; }
 
-  .code { display: flex; height: 560px; font-family: var(--mono); font-size: 13px; line-height: 19.5px; }
-  .gutter { flex: none; width: 44px; padding: 10px 0; overflow: hidden; text-align: right; color: var(--muted); background: var(--surface-2); border-right: 1px solid var(--border); user-select: none; }
-  .gutter div { padding-right: 8px; opacity: 0.6; }
-  .gutter div.bad { opacity: 1; color: var(--bad); background: var(--bad-bg); }
-  textarea { flex: 1; padding: 10px 12px; border: 0; background: var(--bg); resize: none; outline: none; font: inherit; line-height: inherit; white-space: pre; tab-size: 2; }
+  /* YAML view: a graphite pane. Line height is fixed at 19.5px, goToLine() scrolls by it. */
+  .code { display: flex; height: 560px; background: var(--color-graphite); font-family: var(--mono); font-size: 13px; line-height: 19.5px; font-variant-ligatures: none; border-radius: 0 0 var(--radius-card) var(--radius-card); overflow: hidden; }
+  .gutter { flex: none; width: 48px; padding: var(--space-xs) 0; overflow: hidden; text-align: right; color: var(--color-graphite-muted); background: var(--color-graphite-2); user-select: none; font-variant-numeric: tabular-nums; }
+  .gutter div { padding-right: var(--space-xs); }
+  .gutter div.bad { color: var(--color-graphite-error); background: color-mix(in oklab, var(--color-graphite-error) 22%, transparent); }
+  textarea {
+    flex: 1; min-width: 0; padding: var(--space-xs) var(--space-sm); border: 0; resize: none; outline: none;
+    background: var(--color-graphite); color: var(--color-graphite-ink); caret-color: var(--color-accent-2);
+    font: inherit; line-height: inherit; white-space: pre; tab-size: 2;
+  }
+  textarea::selection { background: color-mix(in oklab, var(--color-accent-2) 35%, transparent); color: var(--color-graphite-ink); }
+  textarea:focus-visible { box-shadow: inset 0 0 0 2px var(--color-accent-2); }
 
-  .side-body { padding: 14px 16px; max-height: 620px; overflow: auto; transition: opacity 0.15s; }
+  /* Preview side: paper */
+  .side-body { padding: var(--space-md); max-height: 620px; overflow: auto; transition: opacity var(--dur-short) var(--ease-out); }
   .side-body.dim { opacity: 0.7; }
-  .issues { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
-  .issues li { display: flex; gap: 8px; padding: 8px 10px; border-radius: 6px; }
-  .issues li.bad { background: var(--bad-bg); }
-  .issues li.warn { background: var(--warn-bg); }
-  .issues .lvl { flex: none; font-weight: 700; }
+  .lead { margin: 0 0 var(--space-sm); }
+  .issues { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; border-top: var(--rule-hair) solid var(--border); }
+  .issues li { display: flex; gap: var(--space-xs); padding: var(--space-xs) 0; border-bottom: var(--rule-hair) solid var(--border); }
+  .issue { min-width: 0; overflow-wrap: anywhere; }
+  .issues .lvl { flex: none; display: inline-flex; padding-top: var(--space-3xs); }
   .issues li.bad .lvl { color: var(--bad); }
   .issues li.warn .lvl { color: var(--warn); }
-  .link { border: 0; background: none; color: var(--link); cursor: pointer; padding: 0; font-size: inherit; }
-  .ok-line { margin: 0 0 8px; color: var(--ok); }
-  h3 { font-size: 13px; margin: 18px 0 2px; }
-  .sched td { padding: 6px 8px 6px 0; vertical-align: top; }
-  .out { padding: 10px; border-radius: 6px; background: var(--bg); border: 1px solid var(--border); font-size: 12px; }
-  .versions { margin-top: 16px; }
+  .where { display: flex; flex-wrap: wrap; gap: var(--space-sm); margin-top: var(--space-3xs); }
+  .link { border: 0; background: none; color: var(--link); cursor: pointer; padding: 0; font: inherit; }
+  .link:hover { text-decoration: underline; text-decoration-color: var(--color-accent); }
+  .ok-line { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2xs) var(--space-xs); margin: 0 0 var(--space-xs); color: var(--ok); }
+  h3 { margin: var(--space-lg) 0 var(--space-3xs); font-size: var(--text-md); }
+  .sched-note { margin: 0 0 var(--space-xs); }
+  .sched td { padding: var(--space-xs) var(--space-xs) var(--space-xs) 0; height: auto; vertical-align: top; }
+  .sched td:first-child { padding-left: 0; }
+  .sched td:last-child { padding-right: 0; }
+  .runs { font-variant-numeric: tabular-nums; color: var(--color-ink-2); }
+  .expr { display: flex; gap: var(--space-xs); }
+  .expr > span + span { padding-left: var(--space-xs); border-left: var(--rule-hair) solid var(--border-strong); }
+  .versions { margin-top: var(--space-md); }
+  .modal-meta { margin: 0 0 var(--space-sm); }
 
   @media (max-width: 1000px) {
     .editor-layout { grid-template-columns: 1fr; }
     .code { height: 420px; }
+  }
+  @media (max-width: 640px) {
+    .comment { width: 100%; flex: 1 1 100%; }
   }
 </style>

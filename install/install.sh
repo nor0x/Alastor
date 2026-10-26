@@ -3,16 +3,19 @@
 #
 #   curl -fsSL https://raw.githubusercontent.com/nor0x/Alastor/main/install/install.sh | sudo bash
 #   curl -fsSL …/install.sh | sudo bash -s -- --domain alastor.example.com --with-agent
+#   sudo ./install/install.sh            # from a clone: builds and installs that checkout
 #
 # Installs (or upgrades, when run again) the alastor-server binary, the agent binaries it hands out to
 # new hosts, a systemd unit, and optionally Caddy for automatic HTTPS. Data and settings survive upgrades.
+# Run from a clone of the repository, it builds the server and agent from that checkout instead of downloading a
+# release (needs the .NET 10 SDK and Node.js; clang and zlib1g-dev for a Native AOT agent, else a JIT build).
 #
 # Options:
 #   --domain NAME        serve https://NAME through Caddy (installed from the distro repos); needs ports 80/443 and DNS
 #   --port N             port the server listens on (default 8080; loopback only when --domain is set)
 #   --public-url URL     URL agents and browsers use (default: https://DOMAIN, else http://<primary IP>:PORT)
 #   --with-agent         also install the agent on this machine and enroll it with the new server
-#   --version vX.Y.Z     release to install (default: latest)
+#   --version vX.Y.Z     release to install (default: latest); from a clone, download this release instead of building
 #   --binary PATH        install this alastor-server binary instead of downloading one
 #   --agent-dir DIR      take alastor-agent-linux-{x64,arm64} from DIR instead of downloading them
 #   --uninstall          remove the service and binaries; keeps data and settings
@@ -35,13 +38,13 @@ main() {
   CADDY_SNIPPET=/etc/caddy/alastor.caddy
   SERVICE_USER=alastor
 
-  local domain="" port="" public_url="" version="latest" binary="" agent_dir="" with_agent=0 uninstall=0 purge=0
+  local domain="" port="" public_url="" version="latest" version_set=0 binary="" agent_dir="" with_agent=0 uninstall=0 purge=0
   while [ $# -gt 0 ]; do
     case "$1" in
       --domain) domain="$(need_arg "$@")"; shift ;;
       --port) port="$(need_arg "$@")"; shift ;;
       --public-url) public_url="$(need_arg "$@")"; shift ;;
-      --version) version="$(need_arg "$@")"; shift ;;
+      --version) version="$(need_arg "$@")"; version_set=1; shift ;;
       --binary) binary="$(need_arg "$@")"; shift ;;
       --agent-dir) agent_dir="$(need_arg "$@")"; shift ;;
       --with-agent) with_agent=1 ;;
@@ -77,8 +80,19 @@ main() {
   fi
   public_url="${public_url%/}"
 
-  [ -n "$binary" ] && version="local build"
-  step "Downloading Alastor ($version, $rid)"
+  # From a clone, install what is checked out rather than a release, unless one was asked for.
+  local src=""
+  if [ -z "$binary" ] && [ "$version_set" -eq 0 ] && [ -z "${ALASTOR_DOWNLOAD_BASE:-}" ]; then src="$(checkout_dir)"; fi
+  if [ -n "$src" ]; then
+    build_from_source "$src" "$rid" "$([ -n "$agent_dir" ] && echo 0 || echo 1)"
+    binary="$src/artifacts/install/server/alastor-server"
+    [ -n "$agent_dir" ] || agent_dir="$src/artifacts/install/agent"
+    version="$(build_version "$src")"
+  elif [ -n "$binary" ]; then
+    version="local build"
+  else
+    step "Downloading Alastor ($version, $rid)"
+  fi
   if [ -n "$binary" ]; then
     [ -f "$binary" ] || die "--binary: $binary not found."
     cp "$binary" "$TMP/alastor-server"
@@ -296,6 +310,69 @@ install_local_agent() {
   local args=(--server "$url" --token "$secret")
   [ "${url#http://}" != "$url" ] && args+=(--insecure)
   curl -fsSL "http://127.0.0.1:$(env_port)/install/agent.sh" | bash -s -- "${args[@]}"
+}
+
+# ---- building from a checkout ------------------------------------------------------------------
+
+# Prints the repository root when this script runs from a clone (not when piped from curl).
+checkout_dir() {
+  local script="${BASH_SOURCE[0]:-}" dir
+  [ -f "$script" ] || return 0
+  dir="$(cd "$(dirname "$script")/.." && pwd)"
+  if [ -f "$dir/Alastor.slnx" ] && [ -d "$dir/src/Alastor.Server" ]; then echo "$dir"; fi
+}
+
+# build_from_source SRC RID WITH_AGENT: publish the server (and agent) into SRC/artifacts/install. The build runs as
+# the owner of the checkout, so sudo leaves no root-owned bin/, obj/ or node_modules/ behind.
+build_from_source() {
+  local src="$1" rid="$2" with_agent="$3" out="$1/artifacts/install"
+  BUILD_USER="$(stat -c %U "$src")"
+  local home; home="$(getent passwd "$BUILD_USER" | cut -d: -f6)"
+  BUILD_PATH="$PATH:$home/.dotnet:$home/.dotnet/tools:$home/.local/bin"
+  local dotnet; dotnet="$(find_dotnet "$home")" \
+    || die "Building from $src needs the .NET 10 SDK (https://dot.net/download), or install a release with --version latest."
+  as_build_user sh -c 'command -v npm' >/dev/null \
+    || die "Building the dashboard needs Node.js 22+ with npm, or install a release with --version latest."
+  local aot=true
+  if [ "$with_agent" -eq 1 ] && { ! command -v clang >/dev/null || [ ! -f /usr/include/zlib.h ]; }; then
+    aot=false
+    warn "clang or zlib1g-dev missing: building the agent without Native AOT (larger, uses more memory)."
+  fi
+
+  step "Building Alastor from $src ($rid)"
+  local log="$TMP/build.log"
+  rm -rf "$out"
+  as_build_user "$dotnet" publish "$src/src/Alastor.Server" -c Release -r "$rid" -o "$out/server" >"$log" 2>&1 \
+    || { tail -n 40 "$log" >&2; die "Building the server failed."; }
+  ok "Server built"
+  if [ "$with_agent" -eq 1 ]; then
+    as_build_user "$dotnet" publish "$src/src/Alastor.Agent" -c Release -r "$rid" -p:AgentAot="$aot" -o "$out/agent-build" >"$log" 2>&1 \
+      || { tail -n 40 "$log" >&2; die "Building the agent failed."; }
+    as_build_user mkdir -p "$out/agent"
+    as_build_user cp "$out/agent-build/alastor-agent" "$out/agent/alastor-agent-$rid"
+    ok "Agent built ($([ "$aot" = true ] && echo "Native AOT" || echo JIT))"
+  fi
+}
+
+# The .NET 10 SDK on PATH, in the build user's ~/.dotnet, or in the usual system locations.
+find_dotnet() {
+  local d
+  for d in "$(as_build_user sh -c 'command -v dotnet' 2>/dev/null)" "${DOTNET_ROOT:+$DOTNET_ROOT/dotnet}" "$1/.dotnet/dotnet" \
+      /usr/share/dotnet/dotnet /usr/lib/dotnet/dotnet /usr/local/share/dotnet/dotnet; do
+    [ -n "$d" ] && [ -x "$d" ] && as_build_user "$d" --list-sdks 2>/dev/null | grep -q '^10\.' && { echo "$d"; return 0; }
+  done
+  return 1
+}
+
+as_build_user() {
+  local env=(env PATH="$BUILD_PATH" DOTNET_CLI_TELEMETRY_OPTOUT=1 DOTNET_NOLOGO=1)
+  if [ "$BUILD_USER" = root ]; then "${env[@]}" "$@"
+  else runuser -u "$BUILD_USER" -- "${env[@]}" HOME="$(getent passwd "$BUILD_USER" | cut -d: -f6)" "$@"; fi
+}
+
+build_version() {
+  local rev; rev="$(as_build_user git -C "$1" describe --tags --always --dirty 2>/dev/null || true)"
+  echo "built from source${rev:+ at $rev}"
 }
 
 # ---- downloads ---------------------------------------------------------------------------------

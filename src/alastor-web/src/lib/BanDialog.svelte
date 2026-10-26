@@ -3,6 +3,7 @@
   import { fleet } from './fleet.svelte';
   import { toast } from './toast.svelte';
   import Modal from './ui/Modal.svelte';
+  import Icon from './ui/Icon.svelte';
 
   // Manual ban of an IP or CIDR on all hosts or a chosen subset. The server refuses targets that cover your
   // own address, overlap the allowlist, or are wider than /8 (IPv4) or /32 (IPv6), and says why.
@@ -71,7 +72,7 @@
       {/if}
     </fieldset>
     <p class="help">Manual bans go into fail2ban's <code>alastor-manual</code> jail (or become a CrowdSec decision on hosts with <code>banning.engine: crowdsec</code>) and last until you unban, unless the policy sets <code>banning.manualBantime</code>. CrowdSec has no permanent bans, so there "permanent" means ten years.</p>
-    {#if error}<div class="banner bad" role="alert"><p>{error}</p></div>{/if}
+    {#if error}<div class="banner bad" role="alert"><Icon name="error" /><p>{error}</p></div>{/if}
   </form>
   {#snippet footer()}
     <button class="btn" type="button" onclick={() => (open = false)}>Cancel</button>
@@ -80,6 +81,8 @@
 </Modal>
 
 <style>
-  fieldset { border: 0; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 8px; }
-  .hosts { display: flex; flex-direction: column; gap: 6px; max-height: 200px; overflow: auto; padding: 8px 12px; border: 1px solid var(--border); border-radius: var(--radius); }
+  fieldset { border: 0; padding: 0; margin: 0; display: flex; flex-direction: column; gap: var(--space-xs); }
+  legend { margin-bottom: var(--space-xs); }
+  .hosts { display: flex; flex-direction: column; gap: var(--space-xs); max-height: 200px; overflow: auto; padding: var(--space-sm); border-radius: var(--radius-input); background: var(--color-paper-2); }
+  .banner :global(svg) { color: var(--bad); margin-top: var(--space-3xs); }
 </style>

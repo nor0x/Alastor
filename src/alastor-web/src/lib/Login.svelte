@@ -1,5 +1,6 @@
 <script lang="ts">
   import { api, ApiError, type Me } from './api';
+  import Icon from './ui/Icon.svelte';
 
   let { onLogin }: { onLogin: (me: Me) => void } = $props();
 
@@ -25,31 +26,37 @@
 <div class="wrap">
   <form onsubmit={submit}>
     <h1>
-      <svg viewBox="0 0 16 16" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M8 0 1.5 2.5v5C1.5 11.6 4.3 15 8 16c3.7-1 6.5-4.4 6.5-8.5v-5Z" /></svg>
+      <Icon name="shield" size={24} />
       Alastor
     </h1>
     <label>Username <input class="field" bind:value={username} autocomplete="username" required /></label>
     <label>Password <input class="field" type="password" bind:value={password} autocomplete="current-password" required /></label>
-    {#if error}<p class="error" role="alert">{error}</p>{/if}
+    {#if error}<p class="error" role="alert"><Icon name="error" />{error}</p>{/if}
     <button class="btn primary" disabled={busy}>{busy ? 'Signing in…' : 'Sign in'}</button>
   </form>
 </div>
 
 <style>
-  .wrap { min-height: 100vh; display: grid; place-items: center; padding: 16px; }
-  form {
-    width: min(340px, 100%);
-    display: flex;
-    flex-direction: column;
-    gap: 14px;
-    padding: 28px;
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 10px;
+  /* The ground: Cobalt's dot grid on the 8 by 16 cell, standing in for the ASCII field. */
+  .wrap {
+    min-height: 100dvh; display: grid; place-items: center; padding: var(--space-md);
+    background-color: var(--color-paper);
+    background-image: radial-gradient(circle at 1px 1px, var(--color-glyph-2) 1px, transparent 1.5px);
+    background-size: var(--cell-w) var(--cell-h);
   }
-  h1 { display: flex; align-items: center; gap: 8px; margin: 0 0 6px; font-size: 20px; color: var(--text-strong); }
-  h1 svg { color: var(--link); }
-  label { display: flex; flex-direction: column; gap: 6px; color: var(--muted); font-size: 13px; }
-  .error { margin: 0; color: var(--sev-critical); }
-  .btn { justify-content: center; padding: 7px 12px; }
+  form {
+    width: min(360px, 100%);
+    display: flex; flex-direction: column; gap: var(--space-md);
+    padding: var(--space-xl) var(--space-lg) var(--space-lg);
+    background: var(--color-key-face); border: var(--rule-hair) solid var(--border); border-radius: var(--radius-card);
+    box-shadow: var(--shadow-float);
+  }
+  @supports (corner-shape: bevel) { form { border-radius: var(--cut-l) 4px; corner-shape: bevel round; } }
+  h1 { display: flex; align-items: center; gap: var(--space-xs); font-size: var(--text-2xl); }
+  h1 :global(svg) { color: var(--color-accent); }
+  label { display: flex; flex-direction: column; gap: var(--space-2xs); font-family: var(--font-display); font-weight: 500; font-size: var(--text-sm); color: var(--color-ink-2); }
+  label .field { font-family: var(--font-body); font-weight: 400; font-size: var(--text-md); min-height: 40px; }
+  .error { display: flex; gap: var(--space-xs); align-items: flex-start; color: var(--bad); }
+  .error :global(svg) { margin-top: var(--space-3xs); }
+  .btn { min-height: 40px; margin-top: var(--space-2xs); }
 </style>

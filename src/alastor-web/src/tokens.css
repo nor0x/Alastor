@@ -1,0 +1,60 @@
+/* Cobalt tokens (Hallmark scaffold) plus the dashboard's app scale and status tones. */
+:root {
+  color-scheme: light;
+  --space-3xs: 2px; --space-2xs: 4px; --space-xs: 8px; --space-sm: 12px; --space-md: 16px; --space-lg: 24px; --space-xl: 40px; --space-2xl: 64px; --space-3xl: 96px; --space-4xl: 144px;
+
+  /* App scale, 14px body at roughly 1.15 to 1.2 a step. Figures and page heads take the display face. */
+  --text-xs: 0.75rem; --text-sm: 0.8125rem; --text-md: 0.875rem; --text-lg: 1rem; --text-xl: 1.25rem; --text-2xl: 1.5rem; --text-3xl: 1.8rem;
+  --text-figure: 2.5rem; --text-figure-s: 1.75rem; --text-code: 0.78rem;
+  --text-display-s: 1.25rem; --text-display: 1.8rem; --text-section: 1rem; --text-title: 0.875rem; --text-lead: 0.875rem;
+
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1); --ease-in: cubic-bezier(0.7, 0, 0.84, 0); --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --dur-micro: 120ms; --dur-short: 220ms; --dur-long: 420ms;
+  --container: 1360px; --gutter: 40px; --sidebar: 232px; --control: 34px; --control-s: 28px;
+  --z-base: 1; --z-raised: 10; --z-dropdown: 100; --z-sticky: 200; --z-sticky-nav: 300; --z-modal: 400; --z-toast: 500; --z-tooltip: 600;
+
+  --color-paper: oklch(98.6% 0.005 250); --color-paper-2: oklch(96.2% 0.008 252); --color-paper-3: oklch(93% 0.011 252);
+  --color-ink: oklch(21% 0.028 262); --color-ink-2: oklch(36% 0.022 260); --color-muted: oklch(50% 0.018 258);
+  --color-rule: oklch(90% 0.009 252); --color-rule-2: oklch(83% 0.012 252);
+  --color-graphite: oklch(21% 0.024 262); --color-graphite-2: oklch(26.5% 0.026 262); --color-graphite-ink: oklch(93% 0.010 250); --color-graphite-muted: oklch(69% 0.022 256);
+  --color-accent: oklch(52% 0.19 258); --color-accent-2: oklch(76% 0.13 254); --color-accent-wash: oklch(95% 0.028 256); --color-accent-ink: oklch(98.6% 0.005 250); --color-focus: oklch(52% 0.19 258);
+  --color-accent-deep: oklch(43% 0.2 262); --color-accent-edge: oklch(39% 0.16 260);
+  --color-glyph-1: oklch(89% 0.025 254); --color-glyph-2: oklch(81% 0.045 255); --color-glyph-3: oklch(70% 0.085 256); --color-glyph-4: oklch(60% 0.13 257);
+  --color-key-face: oklch(99.4% 0.003 250); --color-key-edge: oklch(80% 0.016 254);
+
+  /* Status. Text tones hold 4.5:1 on paper; the -wash tones are for banners and selected rows. */
+  --color-success: oklch(48% 0.12 150); --color-warning: oklch(52% 0.12 62); --color-error: oklch(52% 0.19 27);
+  --color-success-wash: oklch(96.5% 0.025 150); --color-warning-wash: oklch(96.5% 0.035 80); --color-error-wash: oklch(96.5% 0.022 27);
+  --color-error-edge: oklch(41% 0.16 27);
+  --color-graphite-success: oklch(78% 0.13 150); --color-graphite-warning: oklch(82% 0.12 80); --color-graphite-error: oklch(74% 0.14 27);
+  /* Severity cells: graphics, not text, so they only need 3:1 together with their count. */
+  --color-sev-critical: oklch(52% 0.2 27); --color-sev-high: oklch(62% 0.17 45); --color-sev-medium: oklch(76% 0.14 80); --color-sev-low: oklch(66% 0.09 230); --color-sev-info: var(--color-rule-2);
+
+  --font-display: "Familjen Grotesk", system-ui, sans-serif; --font-body: "IBM Plex Sans", system-ui, sans-serif;
+  --font-outlier: "JetBrains Mono", ui-monospace, monospace;
+  --radius-card: 8px; --radius-input: 6px; --radius-pill: 999px;
+  --cell-w: 8px; --cell-h: 16px; --cut: 8px; --cut-l: 16px;
+  --rule-hair: 1px; --shadow-card: 0 1px 2px oklch(21% 0.028 262 / 0.06);
+  --shadow-key: 0 3px 0 0 var(--color-key-edge), 0 6px 8px -4px oklch(21% 0.028 262 / 0.28), inset 0 1px 0 oklch(100% 0 0 / 0.9);
+  --shadow-key-accent: 0 3px 0 0 var(--color-accent-edge), 0 6px 8px -4px oklch(30% 0.12 260 / 0.45), inset 0 1px 0 oklch(100% 0 0 / 0.22);
+  --shadow-key-error: 0 3px 0 0 var(--color-error-edge), 0 6px 8px -4px oklch(30% 0.12 27 / 0.4), inset 0 1px 0 oklch(100% 0 0 / 0.22);
+  --shadow-key-press: inset 0 1px 2px oklch(21% 0.028 262 / 0.14);
+  --shadow-float: 0 12px 32px -12px oklch(21% 0.028 262 / 0.35);
+  --color-scrim: oklch(21% 0.024 262 / 0.42);
+  --tracking-display: -0.028em; --display-weight: 600;
+
+  /* The dashboard's own names, kept so every component reads the same system. */
+  --bg: var(--color-paper); --surface: var(--color-key-face); --surface-2: var(--color-paper-2);
+  --border: var(--color-rule); --border-strong: var(--color-rule-2);
+  --text: var(--color-ink-2); --text-strong: var(--color-ink); --muted: var(--color-muted);
+  --link: var(--color-accent); --focus: var(--color-focus);
+  --ok: var(--color-success); --warn: var(--color-warning); --bad: var(--color-error); --info: var(--color-accent);
+  --ok-bg: var(--color-success-wash); --warn-bg: var(--color-warning-wash); --bad-bg: var(--color-error-wash); --info-bg: var(--color-accent-wash);
+  --sev-critical: var(--color-sev-critical); --sev-high: var(--color-sev-high); --sev-medium: var(--color-sev-medium); --sev-low: var(--color-sev-low); --sev-info: var(--color-sev-info);
+  --exploited: var(--color-error); --exploited-bg: var(--color-error-wash);
+  --radius: var(--radius-input);
+  --font: var(--font-body); --mono: var(--font-outlier);
+}
+
+@media (max-width: 60rem) { :root { --gutter: 24px; } }
+@media (max-width: 40rem) { :root { --gutter: 16px; } }

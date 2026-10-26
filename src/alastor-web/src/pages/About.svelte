@@ -10,7 +10,7 @@
 <div class="page-head">
   <div>
     <h1>About Alastor</h1>
-    {#if about}<p class="sub">Version {about.version} · {about.license} license</p>{/if}
+    {#if about}<p class="sub byline"><span>Version <span class="mono">{about.version}</span></span><span>{about.license} license</span></p>{/if}
   </div>
 </div>
 
@@ -32,10 +32,10 @@
         <tbody>
           {#each about.bundledTools as t (t.id)}
             <tr>
-              <td><a href={t.homepage} target="_blank" rel="noopener noreferrer">{t.name}</a><div class="muted small">{t.description}</div></td>
+              <td><a class="name" href={t.homepage} target="_blank" rel="noopener noreferrer">{t.name}</a><div class="muted small">{t.description}</div></td>
               <td>{t.capability}</td>
               <td class="mono small nowrap">{t.license}</td>
-              <td>
+              <td class="status">
                 {#if t.implemented}<span class="pill ok">integrated</span>{:else}<span class="pill muted">planned</span>{/if}
                 {#if t.optIn}<span class="pill info">opt-in</span>{/if}
               </td>
@@ -44,14 +44,20 @@
           <tr>
             <td>Svelte, Vite, @microsoft/signalr, yaml<div class="muted small">Dashboard libraries</div></td>
             <td>Dashboard</td>
-            <td class="mono small">MIT · ISC</td>
-            <td><span class="pill ok">bundled</span></td>
+            <td class="mono small nowrap"><span class="lic"><span>MIT</span><span>ISC</span></span></td>
+            <td class="status"><span class="pill ok">bundled</span></td>
+          </tr>
+          <tr>
+            <td>Familjen Grotesk, IBM Plex Sans, JetBrains Mono<div class="muted small">Dashboard typefaces</div></td>
+            <td>Dashboard</td>
+            <td class="mono small nowrap">OFL-1.1</td>
+            <td class="status"><span class="pill ok">bundled</span></td>
           </tr>
           <tr>
             <td>.NET, ASP.NET Core, EF Core, Serilog, YamlDotNet, Cronos<div class="muted small">Server and agent libraries</div></td>
             <td>Platform</td>
-            <td class="mono small">MIT · Apache-2.0</td>
-            <td><span class="pill ok">bundled</span></td>
+            <td class="mono small nowrap"><span class="lic"><span>MIT</span><span>Apache-2.0</span></span></td>
+            <td class="status"><span class="pill ok">bundled</span></td>
           </tr>
         </tbody>
       </table>
@@ -60,6 +66,13 @@
 {/if}
 
 <style>
-  .m0 { margin: 0; }
-  .notes { margin: 12px 0 0; padding-left: 18px; color: var(--muted); }
+  .byline { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2xs) var(--space-sm); }
+  .byline > span + span { padding-left: var(--space-sm); border-left: var(--rule-hair) solid var(--border-strong); }
+  .m0 { margin: 0; max-width: 75ch; }
+  .notes { display: flex; flex-direction: column; gap: var(--space-2xs); margin: var(--space-sm) 0 0; padding-left: var(--space-md); color: var(--muted); max-width: 75ch; }
+  .name { font-weight: 500; }
+  .status { white-space: nowrap; }
+  .status :global(.pill + .pill) { margin-left: var(--space-2xs); }
+  .lic { display: inline-flex; gap: var(--space-xs); }
+  .lic > span + span { padding-left: var(--space-xs); border-left: var(--rule-hair) solid var(--border-strong); }
 </style>

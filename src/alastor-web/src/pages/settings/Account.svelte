@@ -2,6 +2,7 @@
   import { api, errorText } from '../../lib/api';
   import { session } from '../../lib/session.svelte';
   import { toast } from '../../lib/toast.svelte';
+  import Icon from '../../lib/ui/Icon.svelte';
 
   let current = $state('');
   let next = $state('');
@@ -33,11 +34,12 @@
     <label>Current password <input class="field" type="password" bind:value={current} autocomplete="current-password" required /></label>
     <label>New password <input class="field" type="password" bind:value={next} autocomplete="new-password" minlength="12" required /></label>
     <label>Repeat new password <input class="field" type="password" bind:value={repeat} autocomplete="new-password" required /></label>
-    {#if error}<div class="banner bad" role="alert"><p>{error}</p></div>{/if}
+    {#if error}<div class="banner bad" role="alert"><Icon name="error" /><p>{error}</p></div>{/if}
     <div class="form-actions"><button class="btn primary" disabled={busy}>Change password</button></div>
   </form>
 </section>
 
 <style>
   .narrow { max-width: 420px; }
+  .banner > :global(.icon) { margin-top: var(--space-3xs); color: var(--bad); }
 </style>

@@ -7,6 +7,7 @@
   import { route } from '../lib/router.svelte';
   import { canWrite } from '../lib/session.svelte';
   import { toast } from '../lib/toast.svelte';
+  import Icon from '../lib/ui/Icon.svelte';
   import Severity from '../lib/ui/Severity.svelte';
   import Time from '../lib/ui/Time.svelte';
   import VulnBadge from '../lib/ui/VulnBadge.svelte';
@@ -89,15 +90,27 @@
 <div class="page-head">
   <div>
     <h1>Vulnerabilities</h1>
-    <p class="sub">
-      {#if data}{scanned.length} of {data.hosts.length} host{data.hosts.length === 1 ? '' : 's'} scanned · {data.totalCves} CVE{data.totalCves === 1 ? '' : 's'} match{/if}
-    </p>
   </div>
   <div class="seg" role="group" aria-label="View">
     <button class:on={view === 'cves'} aria-pressed={view === 'cves'} onclick={() => (view = 'cves')}>By CVE</button>
     <button class:on={view === 'hosts'} aria-pressed={view === 'hosts'} onclick={() => (view = 'hosts')}>By host</button>
   </div>
 </div>
+
+{#if data}
+  <section class="summary card" aria-label="Vulnerability summary">
+    <div class="ledger strip">
+      <div>
+        <span class="figure-label">Hosts scanned</span>
+        <span class="figure-value">{scanned.length}<span class="figure-of">/ {data.hosts.length}</span></span>
+      </div>
+      <div>
+        <span class="figure-label">{data.totalCves === 1 ? 'CVE matches' : 'CVEs match'}</span>
+        <span class="figure-value">{data.totalCves}</span>
+      </div>
+    </div>
+  </section>
+{/if}
 
 {#if error}<div class="banner bad" role="alert"><p>{error}</p></div>{/if}
 
@@ -144,12 +157,12 @@
               <tr>
                 <td class="vuln">
                   <a class="mono" href={vulnUrl(c.id)} target="_blank" rel="noreferrer">{c.id}</a>
-                  {#if c.kev}<span class="pill bad" title="In CISA's Known Exploited Vulnerabilities catalog">exploited{c.ransomware ? ' · ransomware' : ''}</span>{/if}
+                  {#if c.kev}<span class="kev" title="In CISA's Known Exploited Vulnerabilities catalog"><Icon name="alert" />exploited{#if c.ransomware}<span class="kev-extra">ransomware</span>{/if}</span>{/if}
                   {#if c.fixable}<span class="pill ok" title="A fixed package version is available on at least one host">fix available</span>{/if}
                   {#if c.title}<div class="muted small title">{c.title}</div>{/if}
                 </td>
                 <td><Severity value={c.severity} /></td>
-                <td class="num hide-sm">{c.cvss?.toFixed(1) ?? '—'}</td>
+                <td class="num hide-sm">{#if c.cvss !== null}{c.cvss.toFixed(1)}{:else}<span class="nil" aria-label="none"></span>{/if}</td>
                 <td class="num hosts">
                   <strong>{c.hostCount}</strong>
                   <div class="small host-list">
@@ -179,25 +192,25 @@
               <tr>
                 <td>
                   <a href="/hosts/{h.hostId}?tab=vulnerabilities" class="name">{h.name}</a>
-                  {#if h.groupName}<span class="pill info">{h.groupName}</span>{/if}
+                  {#if h.groupName}<span class="pill tag">{h.groupName}</span>{/if}
                   {#if h.error}<div class="small bad-text" title={h.error}>last scan failed</div>{/if}
                 </td>
                 <td>
                   {#if h.total !== null}
-                    <VulnBadge critical={h.critical} high={h.high} total={h.total} /> <span class="muted small">{h.total} total</span>
-                    {#if h.images}<div class="small muted">+ {h.images} image{h.images === 1 ? '' : 's'}{#if h.imageCritical} · <span class="bad-text">{h.imageCritical} critical</span>{/if}</div>{/if}
                     {@const other = h.total - (h.critical ?? 0) - (h.high ?? 0)}
+                    <span class="open"><VulnBadge critical={h.critical} high={h.high} total={h.total} /><span class="muted small">{h.total} total</span></span>
                     <span class="sevbar" style:width="{(h.total / maxTotal) * 100}%" title="{h.critical ?? 0} critical · {h.high ?? 0} high · {other} other" aria-hidden="true">
                       {#if h.critical}<span style:flex-grow={h.critical} class="c"></span>{/if}
                       {#if h.high}<span style:flex-grow={h.high} class="h"></span>{/if}
                       {#if other > 0}<span style:flex-grow={other} class="o"></span>{/if}
                     </span>
+                    {#if h.images}<div class="small muted">+ {h.images} image{h.images === 1 ? '' : 's'}{#if h.imageCritical} · <span class="bad-text">{h.imageCritical} critical</span>{/if}</div>{/if}
                   {:else if h.availability === 'Disabled'}<span class="muted small">no scanner installed</span>
-                  {:else}<span class="muted">—</span>{/if}
+                  {:else}<span class="nil" aria-label="none"></span>{/if}
                 </td>
                 <td class="num">{#if h.kev}<span class="pill bad">{h.kev}</span>{:else}<span class="muted">0</span>{/if}</td>
-                <td class="num hide-sm">{h.fixable ?? '—'}</td>
-                <td class="hide-sm">{#if h.scanner}<code>{h.scanner}</code>{:else}<span class="muted">—</span>{/if}</td>
+                <td class="num hide-sm">{#if h.fixable !== null}{h.fixable}{:else}<span class="nil" aria-label="none"></span>{/if}</td>
+                <td class="hide-sm">{#if h.scanner}<code>{h.scanner}</code>{:else}<span class="nil" aria-label="none"></span>{/if}</td>
                 <td class="hide-sm nowrap">{#if h.scannedAt}<Time iso={h.scannedAt} />{:else}<span class="muted">never</span>{/if}</td>
               </tr>
             {/each}
@@ -239,34 +252,44 @@
 {/if}
 
 <style>
-  .trend { margin-bottom: 16px; }
-  .trends { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px 20px; }
-  .sevbar { display: flex; gap: 2px; height: 6px; margin-top: 5px; min-width: 6px; max-width: 220px; }
+  .summary { margin-bottom: var(--space-md); }
+  .strip { display: flex; flex-wrap: wrap; }
+  .strip > div { flex: 1 1 176px; }
+  .filterbar .check { display: inline-flex; min-height: var(--control); }
+  .open { display: inline-flex; align-items: center; gap: var(--space-xs); white-space: nowrap; }
+  .trend { margin-bottom: var(--space-md); }
+  .trends { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--space-md) var(--space-lg); }
+  /* Open findings per host as one bar scaled to the fleet's worst: critical, high, then everything else. */
+  .sevbar { display: flex; gap: 2px; height: 6px; margin-top: var(--space-2xs); min-width: 6px; max-width: 220px; }
   .sevbar span { min-width: 3px; }
-  .sevbar span:last-child { border-radius: 0 3px 3px 0; }
+  .sevbar span:first-child { border-radius: 2px 0 0 2px; }
+  .sevbar span:last-child { border-radius: 0 2px 2px 0; }
+  .sevbar span:only-child { border-radius: 2px; }
   .sevbar .c { background: var(--chart-sev-critical); }
   .sevbar .h { background: var(--chart-sev-high); }
   .sevbar .o { background: var(--chart-sev-info); }
-  .check { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--muted); white-space: nowrap; }
   .vuln { min-width: 220px; max-width: 460px; }
-  .vuln .pill { margin-left: 6px; }
-  .title { margin-top: 2px; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; line-clamp: 2; -webkit-box-orient: vertical; }
+  .vuln .pill, .vuln .kev { margin-left: var(--space-xs); }
+  .kev { display: inline-flex; align-items: center; gap: var(--space-2xs); color: var(--color-error); font-family: var(--font-display); font-weight: 500; font-size: var(--text-sm); white-space: nowrap; vertical-align: middle; }
+  .kev-extra { margin-left: var(--space-2xs); padding-left: var(--space-xs); border-left: var(--rule-hair) solid var(--color-rule-2); }
+  .title { margin-top: var(--space-3xs); overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; line-clamp: 2; -webkit-box-orient: vertical; }
   .hosts { white-space: nowrap; }
-  .host-list { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 0 6px; max-width: 220px; margin-left: auto; white-space: normal; }
-  .name { font-weight: 600; margin-right: 6px; }
+  .hosts strong { font-family: var(--font-display); font-weight: 600; }
+  .host-list { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 0 var(--space-xs); max-width: 220px; margin-left: auto; white-space: normal; }
+  .name { font-weight: 500; margin-right: var(--space-xs); }
   .bad-text { color: var(--bad); }
-  .more { padding: 8px 16px; border-top: 1px solid var(--border); }
-  .dbs { margin-top: 16px; }
-  .db-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; padding: 12px 16px 16px; }
-  .db { display: flex; flex-direction: column; gap: 8px; padding: 12px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--bg); }
+  .dbs { margin-top: var(--space-md); }
+  .db-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr)); gap: var(--space-sm); padding: var(--space-md); }
+  .db { display: flex; flex-direction: column; gap: var(--space-xs); padding: var(--space-sm) var(--space-md) var(--space-md); border-radius: var(--radius-input); background: var(--color-paper-2); }
   .db p { margin: 0; }
   .db .btn { align-self: flex-start; }
-  .db-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-  .kv { display: grid; grid-template-columns: max-content 1fr; gap: 3px 12px; margin: 0; }
-  .kv dt { color: var(--muted); }
-  .kv dd { margin: 0; overflow-wrap: anywhere; }
-  .src { font-size: 11.5px; }
+  .db-head { display: flex; align-items: center; justify-content: space-between; gap: var(--space-xs); min-height: 28px; }
+  .db-head strong { font-family: var(--font-display); font-weight: 600; font-size: var(--text-lg); }
+  .kv { gap: var(--space-2xs) var(--space-sm); }
+  .src { font-size: var(--text-xs); }
   @media (max-width: 640px) {
     .vuln { min-width: 0; }
+    .strip > div { flex: 1 1 50%; min-width: 0; }
+    .strip .figure-value { font-size: var(--text-figure-s); }
   }
 </style>

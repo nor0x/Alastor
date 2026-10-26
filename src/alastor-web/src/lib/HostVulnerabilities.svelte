@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { untrack } from 'svelte';
   import { api, errorText, severities, vulnUrl, type Command, type HostVulnerabilities, type Severity as Sev, type VulnFinding } from './api';
   import { layerValue, setLayerKey } from './baseline';
   import { on, refreshOn } from './live.svelte';
@@ -6,6 +7,7 @@
   import { toast } from './toast.svelte';
   import { confirm } from './ui/confirm.svelte';
   import CopyButton from './ui/CopyButton.svelte';
+  import Icon from './ui/Icon.svelte';
   import Severity from './ui/Severity.svelte';
   import Time from './ui/Time.svelte';
 
@@ -39,7 +41,8 @@
 
   $effect(() => {
     void hostId;
-    load();
+    // load() reads `data` before its first await; untracked, so a response doesn't re-run this effect.
+    untrack(load);
     const offs = [
       on('hostUpdated', (h: { id: string }) => { if (h.id === hostId) load(); }),
       refreshOn(['policyChanged'], load, 60_000),
@@ -185,28 +188,30 @@
 {:else}
   <div class="stack">
     <section class="card summary">
-      <div class="figure">
-        <span class="big" class:bad-text={counts.Critical + counts.High > 0}>{data.scannedAt ? counts.Critical + counts.High : '—'}</span>
-        <span class="muted small">critical &amp; high</span>
+      <div class="lead">
+        <span class="figure-label">Critical &amp; high</span>
+        <span class="figure-value" class:bad={counts.Critical + counts.High > 0}>{#if data.scannedAt}{counts.Critical + counts.High}{:else}<span class="nil" aria-label="none"></span>{/if}</span>
       </div>
       <div class="counts">
         {#if data.scannedAt}
-          {#each severities.filter((s) => s !== 'Info' || counts.Info) as s (s)}
-            <button class="chip" class:on={minSeverity === s} onclick={() => (minSeverity = minSeverity === s ? '' : s)} title="Show {s} and above">
-              <Severity value={s} /> <strong class="n">{counts[s]}</strong>
-            </button>
-          {/each}
-          <span><strong class="n">{fixableCount}</strong> fixable by updating</span>
-          {#if acceptedCount}<span class="muted">{acceptedCount} accepted</span>{/if}
+          <span class="chips">
+            {#each severities.filter((s) => s !== 'Info' || counts.Info) as s (s)}
+              <button class="chip" class:on={minSeverity === s} onclick={() => (minSeverity = minSeverity === s ? '' : s)} title="Show {s} and above">
+                <Severity value={s} /> <strong class="n">{counts[s]}</strong>
+              </button>
+            {/each}
+          </span>
+          <span class="pair"><strong class="n">{fixableCount}</strong> fixable by updating</span>
+          {#if acceptedCount}<span class="pair"><strong class="n">{acceptedCount}</strong> accepted</span>{/if}
         {/if}
       </div>
       <div class="meta">
-        <span class="muted small">
-          {#if data.scanner.active}<code>{data.scanner.active}</code>{data.scanner.version ? ` ${data.scanner.version}` : ''}{/if}
-          {#if data.dbUpdatedAt} · database <Time iso={data.dbUpdatedAt} />{/if}
-          {#if data.scannedAt} · scanned <Time iso={data.scannedAt} />{:else} · not scanned yet{/if}
+        <span class="meta-facts">
+          {#if data.scanner.active}<span><code>{data.scanner.active}</code>{data.scanner.version ? ` ${data.scanner.version}` : ''}</span>{/if}
+          {#if data.dbUpdatedAt}<span>Database <Time iso={data.dbUpdatedAt} /></span>{/if}
+          {#if data.scannedAt}<span>Scanned <Time iso={data.scannedAt} /></span>{:else}<span>Not scanned yet</span>{/if}
         </span>
-        {#if canWrite() && !noScanner}<button class="btn small" onclick={scan} disabled={scanning}>{scanning ? 'Scanning…' : 'Scan now'}</button>{/if}
+        <span class="keys">{#if canWrite() && !noScanner}<button class="btn small" onclick={scan} disabled={scanning}>{scanning ? 'Scanning…' : 'Scan now'}</button>{/if}</span>
       </div>
     </section>
 
@@ -230,12 +235,14 @@
 
     {#if data.lastScanSucceeded === false}
       <div class="banner bad" role="alert">
+        <Icon name="error" />
         <p><strong>The last scan failed</strong>{#if data.lastAttemptAt} (<Time iso={data.lastAttemptAt} />){/if}: <span class="mono small">{data.lastScanError}</span>{data.scannedAt ? ' The list below is from the last successful scan.' : ''}</p>
       </div>
     {/if}
 
     {#if kevOpen.length}
       <div class="banner bad">
+        <Icon name="alert" />
         <p>
           <strong>{kevOpen.length} vulnerabilit{kevOpen.length === 1 ? 'y is' : 'ies are'} being exploited in the wild</strong> (CISA's Known Exploited Vulnerabilities catalog):
           {kevOpen.slice(0, 5).map((g) => g.id).join(', ')}{kevOpen.length > 5 ? ' …' : ''}.
@@ -292,7 +299,7 @@
           {#if acceptedCount}<label class="check"><input type="checkbox" bind:checked={showAccepted} /> Show accepted</label>{/if}
         </div>
         {#if filtered.length === 0}
-          <div class="empty">{groups.length ? 'Nothing matches these filters.' : 'No known vulnerabilities in the installed packages. 🎉'}</div>
+          <div class="empty">{groups.length ? 'Nothing matches these filters.' : 'No known vulnerabilities in the installed packages.'}</div>
         {:else}
           <div class="table-wrap">
             <table class="table">
@@ -301,13 +308,15 @@
                 {#each filtered.slice(0, limit) as g (g.id)}
                   <tr class:accepted={g.accepted}>
                     <td class="vuln">
-                      <a class="mono" href={vulnUrl(g.id)} target="_blank" rel="noreferrer">{g.id}</a>
-                      {#if g.kev}<span class="pill bad" title="In CISA's Known Exploited Vulnerabilities catalog{g.ransomware ? '; used in ransomware campaigns' : ''}">exploited{g.ransomware ? ' · ransomware' : ''}</span>{/if}
-                      {#if g.accepted}<span class="pill muted">accepted</span>{/if}
+                      <span class="vuln-head">
+                        <a class="mono" href={vulnUrl(g.id)} target="_blank" rel="noreferrer">{g.id}</a>
+                        {#if g.kev}<span class="pill bad" title="In CISA's Known Exploited Vulnerabilities catalog{g.ransomware ? '; used in ransomware campaigns' : ''}">exploited{g.ransomware ? ' · ransomware' : ''}</span>{/if}
+                        {#if g.accepted}<span class="pill muted">accepted</span>{/if}
+                      </span>
                       {#if g.title}<div class="muted small title">{g.title}</div>{/if}
                     </td>
                     <td><Severity value={g.severity} /></td>
-                    <td class="num hide-sm">{g.cvss?.toFixed(1) ?? '—'}</td>
+                    <td class="num hide-sm">{#if g.cvss != null}{g.cvss.toFixed(1)}{:else}<span class="nil" aria-label="none"></span>{/if}</td>
                     <td class="pkgs">
                       {#each g.packages.slice(0, 4) as p, i (i)}
                         <div class="pkg" title={p.path ?? ''}>
@@ -321,7 +330,7 @@
                       {#if g.packages.length > 4}<div class="muted small">and {g.packages.length - 4} more</div>{/if}
                     </td>
                     {#if canWrite()}
-                      <td class="hide-sm nowrap">
+                      <td class="hide-sm nowrap actions">
                         {#if g.accepted}<button class="btn ghost small" onclick={() => unaccept(g)}>Stop accepting</button>
                         {:else}<button class="btn ghost small" onclick={() => accept(g)}>Accept risk</button>{/if}
                       </td>
@@ -339,20 +348,20 @@
 
       <section class="card pad stack-sm">
         <h2 class="h-sm">Scan settings</h2>
-        <p class="muted small">
-          {data.scanner.setting === 'auto' ? 'Scanner: Trivy if installed, else Grype' : `Scanner: ${data.scanner.setting}`} ·
-          {data.scanner.languagePackages ? 'OS and language packages' : 'OS packages only'} ·
-          alerts on new fixable findings at <strong>{data.scanner.alertSeverity}</strong>{data.scanner.alertSeverity === 'off' ? '' : ' and above'} ·
-          schedule <code>{data.schedule.value}</code>{data.schedule.isDefault ? ' (default)' : ''}.
-          Known-exploited CVEs always alert.
+        <p class="muted small facts">
+          <span>{data.scanner.setting === 'auto' ? 'Scanner: Trivy if installed, else Grype' : `Scanner: ${data.scanner.setting}`}</span>
+          <span>{data.scanner.languagePackages ? 'OS and language packages' : 'OS packages only'}</span>
+          <span>Alerts on new fixable findings at <strong>{data.scanner.alertSeverity}</strong>{data.scanner.alertSeverity === 'off' ? '' : ' and above'}</span>
+          <span>Schedule <code>{data.schedule.value}</code>{data.schedule.isDefault ? ' (default)' : ''}</span>
         </p>
+        <p class="muted small">Known-exploited CVEs always alert.</p>
         {#if ignoredTotal}
           <p class="muted small">
             Not listed: {Object.entries(data.ignored).map(([p, n]) => `${n} in ${p}`).join(', ')} (<code>vulnerabilities.ignorePackages</code>{data.ignored['linux-libc-dev'] ? '; kernel headers carry every kernel CVE, but no kernel code runs from them' : ''}).
           </p>
         {/if}
         {#if data.truncated}<p class="note small">This host had more findings than a report holds; the least severe were left out.</p>{/if}
-        <p class="small"><a href="/policies/host/{hostId}">Change for this host</a> · <a href="/policies/global">for all hosts</a></p>
+        <p class="small links"><a href="/policies/host/{hostId}">Change for this host</a><a href="/policies/global">for all hosts</a></p>
       </section>
     {:else if !noScanner && data.lastScanSucceeded !== false}
       <div class="empty empty-dashed">
@@ -364,37 +373,67 @@
 {/if}
 
 <style>
-  .summary { display: flex; flex-wrap: wrap; align-items: center; gap: 16px 32px; padding: 16px; }
-  .figure { display: flex; flex-direction: column; min-width: 96px; }
-  .figure .big { font-size: 34px; font-weight: 600; line-height: 1; font-variant-numeric: tabular-nums; color: var(--text-strong); }
-  .figure .big.bad-text { color: var(--bad); }
-  .counts { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 16px; color: var(--muted); }
-  .counts .n { color: var(--text-strong); font-variant-numeric: tabular-nums; }
-  .chip { display: inline-flex; align-items: center; gap: 6px; padding: 2px 6px; border-radius: 6px; border: 1px solid transparent; background: none; color: inherit; cursor: pointer; font: inherit; }
-  .chip:hover { background: var(--surface-2); }
-  .chip.on { border-color: var(--border-strong, var(--border)); background: var(--surface-2); }
-  .meta { margin-left: auto; display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
-  .pad { padding: 14px 16px 16px; }
-  .pad-x { padding: 0 16px; }
-  .stack-sm { display: flex; flex-direction: column; gap: 8px; }
+  /* The summary ledger, the same strip on every host tab: lead figure | counts | when + keys, parted by hairlines. */
+  .summary { display: grid; grid-template-columns: minmax(200px, max-content) minmax(0, 1fr) minmax(0, max-content); overflow: hidden; }
+  .summary > * { display: flex; flex-direction: column; justify-content: center; gap: var(--space-2xs); min-width: 0; padding: var(--space-md); }
+  .summary > * + * { box-shadow: inset 1px 0 0 var(--border); }
+  .lead .figure-value { display: inline-flex; align-items: baseline; }
+  .lead .figure-value .nil { width: 24px; height: 2px; align-self: center; }
+  .counts { flex-direction: row; flex-wrap: wrap; align-items: center; align-content: center; justify-content: flex-start; gap: var(--space-xs) var(--space-lg); color: var(--muted); }
+  .pair { display: inline-flex; align-items: baseline; gap: var(--space-2xs); color: var(--muted); }
+  .pair .n { font-family: var(--font-display); font-weight: 600; font-size: var(--text-lg); line-height: 1; color: var(--text-strong); font-variant-numeric: tabular-nums; }
+  .meta { align-items: flex-end; text-align: right; }
+  .meta-facts { display: flex; flex-direction: column; align-items: inherit; gap: var(--space-3xs); font-size: var(--text-sm); color: var(--muted); }
+  .keys { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: var(--space-xs); margin-top: var(--space-2xs); }
+  .keys:empty { display: none; }
+  @media (max-width: 760px) {
+    .summary { grid-template-columns: minmax(0, 1fr); }
+    .summary > * + * { box-shadow: inset 0 1px 0 var(--border); }
+    .counts:empty { display: none; }
+    .meta { align-items: flex-start; text-align: left; }
+    .keys { justify-content: flex-start; }
+  }
+  /* Severity counts are toggles on the ledger: pressing one filters the list to that level and above. */
+  .chips { display: inline-flex; flex-wrap: wrap; gap: var(--space-2xs); }
+  .chip {
+    display: inline-flex; align-items: center; gap: var(--space-xs);
+    min-height: var(--control-s); padding: 0 var(--space-xs);
+    border: var(--rule-hair) solid transparent; border-radius: 4px;
+    background: none; color: inherit; font: inherit; cursor: pointer;
+    transition: background-color var(--dur-micro) var(--ease-out), border-color var(--dur-micro) var(--ease-out);
+  }
+  .chip:hover { background: var(--color-paper-2); }
+  .chip:active { background: var(--color-paper-3); }
+  .chip:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; }
+  .chip.on { border-color: var(--color-rule-2); background: var(--color-paper-2); box-shadow: var(--shadow-key-press); }
+  .chip .n { font-family: var(--font-display); font-weight: 600; font-size: var(--text-lg); line-height: 1; color: var(--text-strong); font-variant-numeric: tabular-nums; }
+  .meta-facts code { font-size: var(--text-code); }
+
+  .pad { padding: var(--space-md); }
+  .pad-x { padding: 0 var(--space-md); }
+  .stack-sm { display: flex; flex-direction: column; gap: var(--space-xs); }
   .stack-sm p, .stack-sm h2 { margin: 0; }
-  .h-sm { font-size: 14px; }
-  .check { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--muted); white-space: nowrap; }
-  .vuln { min-width: 200px; max-width: 420px; }
-  .vuln .pill { margin-left: 6px; }
-  .title { margin-top: 2px; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; line-clamp: 2; -webkit-box-orient: vertical; }
-  .pkgs { min-width: 220px; }
-  .pkg { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 8px; }
-  .pkg + .pkg { margin-top: 3px; }
-  .ok-text { color: var(--ok); }
-  tr.accepted td { opacity: 0.6; }
-  .more { padding: 8px 16px; border-top: 1px solid var(--border); }
+  .stack-sm h2 { font-size: var(--text-section); text-wrap: balance; }
+  .stack-sm h2.h-sm { font-size: var(--text-md); }
+  .commands { display: flex; flex-direction: column; gap: var(--space-xs); }
+  .facts { display: flex; flex-wrap: wrap; gap: var(--space-2xs) var(--space-sm); }
+  .facts span + span { padding-left: var(--space-sm); box-shadow: inset 1px 0 0 var(--border); }
+  .links { display: flex; flex-wrap: wrap; gap: var(--space-xs) var(--space-sm); }
+  .links a + a { padding-left: var(--space-sm); box-shadow: inset 1px 0 0 var(--border); }
   .note { color: var(--warn); }
-  .commands { display: flex; flex-direction: column; gap: 6px; }
-  .cmd { display: flex; align-items: flex-start; gap: 8px; }
-  .cmd code { flex: 1; min-width: 0; padding: 6px 8px; border-radius: 6px; background: var(--surface-2); font-size: 12px; overflow-wrap: anywhere; white-space: pre-wrap; }
+  .filterbar { margin: var(--space-sm) 0; }
+  .check { display: inline-flex; align-items: center; gap: var(--space-xs); font-size: var(--text-sm); color: var(--muted); white-space: nowrap; }
+
+  .vuln { min-width: 200px; max-width: 420px; }
+  .vuln-head { display: inline-flex; flex-wrap: wrap; align-items: center; gap: var(--space-2xs) var(--space-xs); }
+  .title { margin-top: var(--space-3xs); overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; line-clamp: 2; -webkit-box-orient: vertical; }
+  .pkgs { min-width: 220px; }
+  .pkg { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--space-3xs) var(--space-xs); }
+  .pkg + .pkg { margin-top: var(--space-2xs); }
+  .ok-text { color: var(--ok); }
+  tr.accepted td { color: var(--muted); }
+  tr.accepted td a { color: var(--color-ink-2); }
   @media (max-width: 640px) {
-    .meta { margin-left: 0; }
     .vuln { min-width: 0; }
     .pkgs { min-width: 0; }
   }

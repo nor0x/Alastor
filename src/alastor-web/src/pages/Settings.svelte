@@ -48,14 +48,15 @@
 </div>
 
 <style>
-  .layout { display: grid; grid-template-columns: 180px minmax(0, 1fr); gap: 24px; align-items: start; }
-  .side { display: flex; flex-direction: column; gap: 2px; position: sticky; top: 70px; }
-  .side a { padding: 6px 12px; border-radius: var(--radius); color: var(--text); }
-  .side a:hover { background: var(--surface-2); text-decoration: none; }
-  .side a.on { background: var(--surface-2); color: var(--text-strong); font-weight: 600; box-shadow: inset 2px 0 0 #f78166; }
+  .layout { display: grid; grid-template-columns: 184px minmax(0, 1fr); gap: var(--space-lg); align-items: start; }
+  .side { display: flex; flex-direction: column; gap: var(--space-3xs); position: sticky; top: var(--space-lg); padding-right: var(--space-md); box-shadow: inset -1px 0 0 var(--border); }
+  .side a { display: flex; align-items: center; min-height: 36px; padding: 0 var(--space-sm); border-radius: var(--radius-input); color: var(--color-ink-2); font-family: var(--font-display); font-weight: 500; white-space: nowrap; }
+  .side a:hover { background: var(--color-paper-2); color: var(--text-strong); text-decoration: none; }
+  .side a:active { background: var(--color-paper-3); }
+  .side a:focus-visible { outline-offset: -2px; }
+  .side a.on { background: var(--color-accent-wash); color: var(--color-accent-deep); }
   @media (max-width: 760px) {
-    .layout { grid-template-columns: 1fr; }
-    .side { position: static; flex-direction: row; overflow-x: auto; border-bottom: 1px solid var(--border); padding-bottom: 8px; }
-    .side a { white-space: nowrap; }
+    .layout { grid-template-columns: minmax(0, 1fr); }
+    .side { position: static; flex-direction: row; overflow-x: auto; padding: 0 0 var(--space-xs); box-shadow: inset 0 -1px 0 var(--border); }
   }
 </style>

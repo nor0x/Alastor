@@ -5,6 +5,7 @@
   } from '../../lib/api';
   import { toast } from '../../lib/toast.svelte';
   import { confirm } from '../../lib/ui/confirm.svelte';
+  import Icon from '../../lib/ui/Icon.svelte';
   import Modal from '../../lib/ui/Modal.svelte';
   import Time from '../../lib/ui/Time.svelte';
 
@@ -173,18 +174,18 @@
           <li class:disabled={!c.enabled}>
             <div class="info">
               <div class="title">
-                <strong>{c.name}</strong>
+                <strong class="cname">{c.name}</strong>
                 <span class="pill muted">{typeLabel[c.type]}</span>
                 {#if !c.enabled}<span class="pill muted">paused</span>
                 {:else if c.lastError}<span class="pill bad" title={c.lastError}>failing</span>
                 {:else if c.lastSuccessAt}<span class="pill ok">working</span>{/if}
               </div>
-              <div class="muted small target">{target(c)}</div>
-              <div class="muted small">
-                {#if c.immediate}{c.minSeverity} and above{c.capabilities.length ? ` · ${c.capabilities.join(', ')}` : ''}{:else}No immediate alerts{/if}
-                {#if c.digestSchedule !== 'off'} · digest {c.digestSchedule}{#if c.nextDigestAt}, next <Time iso={c.nextDigestAt} />{/if}{/if}
+              <div class="mono target">{target(c)}</div>
+              <div class="facts muted small">
+                {#if c.immediate}<span>{c.minSeverity} and above</span>{#if c.capabilities.length}<span>{c.capabilities.join(', ')}</span>{/if}{:else}<span>No immediate alerts</span>{/if}
+                {#if c.digestSchedule !== 'off'}<span>digest <span class="mono">{c.digestSchedule}</span>{#if c.nextDigestAt}, next <Time iso={c.nextDigestAt} />{/if}</span>{/if}
               </div>
-              {#if c.lastError}<div class="err small">{c.lastError}</div>{/if}
+              {#if c.lastError}<div class="err small"><Icon name="error" /><span>{c.lastError}</span></div>{/if}
             </div>
             <div class="acts">
               <button class="btn small" disabled={testing === c.id} onclick={() => test(c)}>{testing === c.id ? 'Sending…' : 'Send test'}</button>
@@ -201,7 +202,7 @@
   </section>
 
   <section class="card table-wrap">
-    <header><h2>Recent deliveries</h2><span class="hint">newest first · last 1000 kept</span></header>
+    <header><h2>Recent deliveries</h2><span class="hint facts"><span>newest first</span><span>last 1000 kept</span></span></header>
     {#if deliveries.length}
       <table class="table">
         <thead><tr><th>When</th><th class="hide-sm">Channel</th><th>Message</th><th class="hide-sm">Kind</th><th>Result</th></tr></thead>
@@ -211,10 +212,10 @@
               <td class="nowrap"><Time iso={d.at} /></td>
               <td class="nowrap hide-sm">{d.channelName}</td>
               <td class="msg"><span class="chan muted small">{d.channelName}</span>{d.title}{#if d.error}<div class="err small">{d.error}</div>{/if}</td>
-              <td class="hide-sm nowrap">{d.kind}{d.eventCount > 1 ? ` · ${d.eventCount} events` : ''}</td>
+              <td class="hide-sm nowrap"><span class="facts"><span>{d.kind}</span>{#if d.eventCount > 1}<span>{d.eventCount} events</span>{/if}</span></td>
               <td class="nowrap">
-                {#if d.success}<span class="pill ok">sent</span>{:else}<span class="pill bad">failed</span>{/if}
-                {#if d.attempts > 1}<span class="muted small">{d.attempts} tries</span>{/if}
+                <span class="result">{#if d.success}<span class="pill ok">sent</span>{:else}<span class="pill bad">failed</span>{/if}
+                {#if d.attempts > 1}<span class="muted small">{d.attempts} tries</span>{/if}</span>
               </td>
             </tr>
           {/each}
@@ -288,7 +289,7 @@
           {/if}
         </div>
         {#if errors.immediate}<span class="err small">{errors.immediate}</span>{/if}
-        <div class="lbl">Only these capabilities <span class="small">(none selected = all)</span></div>
+        <div class="lbl caps-lbl">Only these capabilities <span class="muted hint">(none selected = all)</span></div>
         <div class="caps">
           {#each capabilities as cap (cap)}
             <label class="check cap"><input type="checkbox" checked={draft.capabilities.includes(cap)} onchange={() => toggleCap(cap)} /> {cap}</label>
@@ -305,24 +306,34 @@
 </Modal>
 
 <style>
-  .m0 { margin: 0; }
-  .add { display: flex; gap: 6px; flex-wrap: wrap; }
-  .channels { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--border); }
-  .channels li { display: flex; gap: 12px 16px; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; padding: 12px 16px; border-bottom: 1px solid var(--border); }
+  .m0 { margin: 0; max-width: 80ch; line-height: 1.6; }
+  .add { display: flex; gap: var(--space-2xs); flex-wrap: wrap; }
+  .channels { list-style: none; margin: 0; padding: 0; border-top: var(--rule-hair) solid var(--border); }
+  .channels li { display: flex; gap: var(--space-sm) var(--space-md); justify-content: space-between; align-items: flex-start; flex-wrap: wrap; padding: var(--space-sm) var(--space-md); border-bottom: var(--rule-hair) solid var(--border); }
   .channels li:last-child { border-bottom: 0; }
   .channels li.disabled .info { opacity: 0.6; }
-  .info { display: flex; flex-direction: column; gap: 3px; min-width: 0; flex: 1 1 280px; }
-  .title { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
-  .target { overflow-wrap: anywhere; }
-  .acts { display: flex; gap: 6px; flex-wrap: wrap; }
+  .info { display: flex; flex-direction: column; gap: var(--space-2xs); min-width: 0; flex: 1 1 280px; }
+  .title { display: flex; gap: var(--space-xs); align-items: center; flex-wrap: wrap; }
+  .cname { font-family: var(--font-display); font-weight: 600; font-size: var(--text-lg); color: var(--text-strong); }
+  .target { overflow-wrap: anywhere; color: var(--color-ink-2); }
+  .facts { display: inline-flex; flex-wrap: wrap; align-items: center; gap: var(--space-2xs) var(--space-xs); }
+  .facts > span + span { padding-left: var(--space-xs); border-left: var(--rule-hair) solid var(--border-strong); }
+  .acts { display: flex; gap: var(--space-2xs); flex-wrap: wrap; }
   .err { color: var(--bad); overflow-wrap: anywhere; }
+  div.err { display: flex; gap: var(--space-2xs); align-items: flex-start; }
+  div.err > :global(.icon) { margin-top: var(--space-3xs); }
+  .result { display: inline-flex; align-items: center; gap: var(--space-xs); }
   .msg { overflow-wrap: anywhere; min-width: 180px; }
   .chan { display: none; }
   @media (max-width: 640px) { .chan { display: block; } }
   .grow { flex: 2 1 220px !important; }
-  fieldset { border: 1px solid var(--border); border-radius: var(--radius); padding: 10px 14px 14px; margin: 0; display: flex; flex-direction: column; gap: 12px; }
-  legend { color: var(--text-strong); font-size: 13px; padding: 0 4px; }
-  .row .check { align-self: flex-end; padding-bottom: 8px; }
-  .caps { display: flex; flex-wrap: wrap; gap: 6px 16px; }
-  .cap { font-size: 13px; }
+  fieldset { display: flex; flex-direction: column; gap: var(--space-sm); margin: 0; padding: var(--space-md) 0 0; border: 0; border-top: var(--rule-hair) solid var(--border); }
+  legend { float: left; width: 100%; padding: 0; font-family: var(--font-display); font-weight: 600; font-size: var(--text-lg); color: var(--text-strong); }
+  legend + * { clear: both; }
+  .row .check { align-self: flex-end; min-height: var(--control); }
+  .caps-lbl { flex-direction: row; flex-wrap: wrap; align-items: baseline; }
+  .hint { font-family: var(--font-body); font-weight: 400; }
+  .field.mono { font-family: var(--mono); font-size: var(--text-code); }
+  .caps { display: flex; flex-wrap: wrap; gap: var(--space-xs) var(--space-md); }
+  .cap { font-size: var(--text-sm) !important; }
 </style>

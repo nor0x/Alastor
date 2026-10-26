@@ -5,6 +5,7 @@
   import { number } from './format';
   import FeedRow from './FeedRow.svelte';
   import SourceHealth from './SourceHealth.svelte';
+  import Icon from './ui/Icon.svelte';
 
   const PAGE_SIZE = 25;
 
@@ -159,23 +160,23 @@
 </script>
 
 <section class="feed">
-  <div class="head">
+  <div class="page-head">
     <div>
       <h1>Threat feed</h1>
       <p class="sub">New CVEs from NVD, CISA's Known Exploited Vulnerabilities and security news, in one timeline.</p>
     </div>
-    <SourceHealth {sources} {now} />
+    <div class="actions"><SourceHealth {sources} {now} /></div>
   </div>
 
   <div class="filters" role="search">
     <div class="row">
       <label class="search">
         <span class="visually-hidden">Search</span>
-        <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path fill="currentColor" d="M10.68 11.74a6 6 0 1 1 1.06-1.06l3.04 3.04a.75.75 0 1 1-1.06 1.06ZM11.5 7a4.5 4.5 0 1 0-9 0 4.5 4.5 0 0 0 9 0Z" /></svg>
+        <Icon name="search" size={14} />
         <input class="field" type="search" placeholder="Search titles, products, CVE ids…" bind:value={search} />
       </label>
 
-      <div class="segmented" role="group" aria-label="Type">
+      <div class="seg" role="group" aria-label="Type">
         {#each [['', 'All'], ['cve', 'CVEs'], ['news', 'News']] as [value, label] (value)}
           <button class:on={filters.type === value} aria-pressed={filters.type === value} onclick={() => update({ type: value as Filters['type'] })}>{label}</button>
         {/each}
@@ -210,23 +211,24 @@
       <div class="tags" aria-label="Filter by tag">
         {#each shownTags as tag (tag)}
           {@const on = filters.tags.some((t) => t.toLowerCase() === tag.toLowerCase())}
-          <button class="tag" class:on aria-pressed={on} onclick={() => toggleTag(tag)}>{tag}{#if on}<span aria-hidden="true"> ×</span>{/if}</button>
+          <button class="tag" class:on aria-pressed={on} onclick={() => toggleTag(tag)}>{tag}{#if on}<Icon name="close" size={12} />{/if}</button>
         {/each}
         {#if active}
-          <button class="clear" onclick={clear}>Clear filters</button>
+          <button class="btn ghost small" onclick={clear}>Clear filters</button>
         {/if}
       </div>
     {/if}
   </div>
 
   {#if pending > 0}
-    <button class="new" onclick={showNew}>{number.format(pending)} new {pending === 1 ? 'item' : 'items'} · Show</button>
+    <button class="new" onclick={showNew}><span class="nowrap">{number.format(pending)} new {pending === 1 ? 'item' : 'items'}</span><span class="show">Show</span></button>
   {/if}
 
   {#if error}
-    <div class="error" role="alert">
-      Couldn't load the feed: {error}
-      <button class="btn" onclick={load}>Retry</button>
+    <div class="banner bad error" role="alert">
+      <Icon name="error" />
+      <p>Couldn't load the feed: {error}</p>
+      <button class="btn small" onclick={load}>Retry</button>
     </div>
   {/if}
 
@@ -235,20 +237,20 @@
       {#if data.total === 0}
         No items
       {:else}
-        {number.format((data.page - 1) * PAGE_SIZE + 1)}–{number.format(Math.min(data.page * PAGE_SIZE, data.total))} of {number.format(data.total)}
+        {number.format((data.page - 1) * PAGE_SIZE + 1)} to {number.format(Math.min(data.page * PAGE_SIZE, data.total))} of {number.format(data.total)}
       {/if}
     </p>
 
-    <ol class="list" class:dim={loading}>
+    <ol class="list card" class:dim={loading}>
       {#each data.items as item (item.id)}
         <FeedRow {item} {now} activeTags={filters.tags} onTag={toggleTag} />
       {/each}
     </ol>
 
     {#if data.total === 0 && !loading}
-      <div class="empty">
+      <div class="empty empty-dashed">
         {#if active}
-          Nothing matches these filters. <button class="link" onclick={clear}>Clear filters</button>
+          Nothing matches these filters. <button class="btn ghost small" onclick={clear}>Clear filters</button>
         {:else if sources.every((s) => !s.lastSuccessAt)}
           The first fetch is still running. Items appear here as sources respond.
         {:else}
@@ -259,116 +261,123 @@
 
     {#if pages > 1}
       <nav class="pager" aria-label="Pagination">
-        <button class="btn" disabled={filters.page <= 1} onclick={() => goTo(filters.page - 1)}>← Newer</button>
-        <span>Page {filters.page} of {number.format(pages)}</span>
-        <button class="btn" disabled={filters.page >= pages} onclick={() => goTo(filters.page + 1)}>Older →</button>
+        <button class="btn" disabled={filters.page <= 1} onclick={() => goTo(filters.page - 1)}>Newer</button>
+        <span class="figure-label">Page {filters.page} of {number.format(pages)}</span>
+        <button class="btn" disabled={filters.page >= pages} onclick={() => goTo(filters.page + 1)}>Older</button>
       </nav>
     {/if}
   {:else if loading}
-    <ol class="list skeleton" aria-busy="true">
+    <ol class="list card skeleton" aria-busy="true">
       {#each Array(6) as _, i (i)}<li></li>{/each}
     </ol>
   {/if}
 </section>
 
 <style>
-  .feed { max-width: 1040px; margin: 0 auto; }
-  .head { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; flex-wrap: wrap; margin-bottom: 16px; }
-  h1 { margin: 0; font-size: 22px; color: var(--text-strong); }
-  .sub { margin: 4px 0 0; color: var(--muted); }
+  .feed { max-width: 1040px; }
 
   .filters {
     position: sticky;
-    top: 49px;
-    z-index: 5;
+    top: 0;
+    z-index: var(--z-raised);
     display: flex;
     flex-direction: column;
-    gap: 10px;
-    padding: 12px;
-    margin: 0 -12px 8px;
+    gap: var(--space-xs);
+    padding: var(--space-sm) 0;
+    margin-bottom: var(--space-xs);
     background: var(--bg);
-    border-bottom: 1px solid var(--border);
+    border-bottom: var(--rule-hair) solid var(--border);
   }
-  .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  .row { display: flex; flex-wrap: wrap; gap: var(--space-xs); align-items: center; }
   .search { position: relative; flex: 1 1 240px; display: flex; }
-  .search svg { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: var(--muted); }
-  .search input { width: 100%; padding-left: 30px; }
-
-  .segmented { display: inline-flex; border: 1px solid var(--border-strong); border-radius: var(--radius); overflow: hidden; }
-  .segmented button { padding: 5px 12px; border: 0; background: var(--bg); cursor: pointer; color: var(--muted); }
-  .segmented button + button { border-left: 1px solid var(--border-strong); }
-  .segmented button.on { background: var(--surface-2); color: var(--text-strong); }
+  .search :global(.icon) { position: absolute; left: var(--space-sm); top: 50%; translate: 0 -50%; color: var(--muted); pointer-events: none; }
+  .search input { width: 100%; padding-left: var(--space-xl); }
+  .seg { align-self: center; }
 
   .toggle {
     display: inline-flex;
     align-items: center;
-    gap: 6px;
-    padding: 5px 10px;
-    border: 1px solid var(--border-strong);
-    border-radius: var(--radius);
+    gap: var(--space-xs);
+    min-height: var(--control);
+    padding: 0 var(--space-sm);
+    border: var(--rule-hair) solid var(--color-rule-2);
+    border-radius: var(--radius-input);
+    background: var(--color-key-face);
+    color: var(--color-ink-2);
+    font-family: var(--font-display);
+    font-weight: 500;
     cursor: pointer;
-    color: var(--muted);
     white-space: nowrap;
   }
-  .toggle.on { color: var(--exploited); border-color: var(--exploited); background: var(--exploited-bg); }
-  .toggle input { accent-color: var(--sev-critical); margin: 0; }
+  .toggle:hover { border-color: var(--color-ink-2); }
+  .toggle.on { color: var(--exploited); border-color: color-mix(in oklab, var(--exploited) 45%, var(--border)); background: var(--exploited-bg); }
+  .toggle input { accent-color: var(--exploited); }
+  .toggle:has(input:focus-visible) { outline: 2px solid var(--focus); outline-offset: 2px; }
 
-  .tags { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+  .tags { display: flex; flex-wrap: wrap; gap: var(--space-2xs); align-items: center; }
   .tag {
-    padding: 1px 9px;
-    border: 1px solid var(--border-strong);
-    border-radius: 999px;
-    background: transparent;
-    color: var(--muted);
-    font-size: 12px;
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2xs);
+    min-height: 24px;
+    padding: 0 var(--space-xs);
+    border: var(--rule-hair) solid transparent;
+    border-radius: 4px;
+    background: var(--color-paper-3);
+    color: var(--color-ink-2);
+    font-size: var(--text-xs);
+    font-weight: 500;
     cursor: pointer;
+    transition: background-color var(--dur-micro) var(--ease-out), color var(--dur-micro) var(--ease-out);
   }
-  .tag:hover { color: var(--text-strong); }
-  .tag.on { background: rgba(56, 139, 253, 0.15); border-color: var(--link); color: var(--link); }
-  .clear, .link { border: 0; background: none; color: var(--link); cursor: pointer; font-size: 12px; padding: 0 4px; }
-  .link { font-size: inherit; }
+  .tag:hover { color: var(--text-strong); background: var(--color-rule); }
+  .tag:active { background: var(--color-rule-2); }
+  .tag.on { background: var(--color-accent-wash); border-color: color-mix(in oklab, var(--color-accent) 35%, var(--border)); color: var(--color-accent-deep); }
 
   .new {
-    display: block;
-    width: 100%;
-    margin: 8px 0;
-    padding: 8px;
-    border: 1px solid var(--focus);
-    border-radius: var(--radius);
-    background: rgba(31, 111, 235, 0.12);
-    color: var(--link);
-    cursor: pointer;
-    font-weight: 500;
-  }
-  .error {
     display: flex;
-    justify-content: space-between;
+    justify-content: center;
     align-items: center;
-    gap: 12px;
-    margin: 8px 0;
-    padding: 10px 12px;
-    border: 1px solid var(--sev-critical);
-    border-radius: var(--radius);
-    background: var(--exploited-bg);
+    gap: var(--space-sm);
+    width: 100%;
+    margin: var(--space-xs) 0;
+    min-height: var(--control);
+    padding: var(--space-xs) var(--space-md);
+    border: var(--rule-hair) solid color-mix(in oklab, var(--color-accent) 40%, var(--border));
+    border-radius: var(--radius-input);
+    background: var(--color-accent-wash);
+    color: var(--color-accent-deep);
+    font-family: var(--font-display);
+    font-weight: 500;
+    cursor: pointer;
   }
-  .count { margin: 8px 0; color: var(--muted); font-size: 12px; }
+  .new:hover { border-color: var(--color-accent); }
+  .new:active { background: var(--color-paper-3); }
+  .new .show { padding-left: var(--space-sm); border-left: var(--rule-hair) solid color-mix(in oklab, var(--color-accent) 40%, var(--border)); text-decoration: underline; text-underline-offset: 0.16em; }
+  .error { align-items: center; margin: var(--space-xs) 0; }
+  .error p { flex: 1; }
+  .error :global(.icon) { color: var(--bad); }
+  .count { margin: var(--space-sm) 0 var(--space-xs); color: var(--muted); font-family: var(--font-display); font-weight: 500; font-size: var(--text-sm); font-variant-numeric: tabular-nums; }
 
-  .list { list-style: none; margin: 0; padding: 0; border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; transition: opacity 0.15s; }
+  .list { list-style: none; margin: 0; padding: 0; overflow: hidden; transition: opacity var(--dur-short) var(--ease-out); }
   .list:empty { display: none; }
   .list.dim { opacity: 0.55; }
-  .skeleton li { height: 104px; border-bottom: 1px solid var(--border); background: linear-gradient(90deg, var(--surface) 0%, var(--surface-2) 50%, var(--surface) 100%); background-size: 200% 100%; animation: shimmer 1.4s infinite; }
+  .skeleton li { height: 104px; border-bottom: var(--rule-hair) solid var(--border); background: linear-gradient(90deg, var(--color-paper-2) 0%, var(--color-paper-3) 50%, var(--color-paper-2) 100%); background-size: 200% 100%; animation: shimmer 1.4s linear infinite; }
+  .skeleton li:last-child { border-bottom: 0; }
   @keyframes shimmer { to { background-position: -200% 0; } }
   @media (prefers-reduced-motion: reduce) { .skeleton li { animation: none; } }
 
-  .empty { padding: 48px 16px; text-align: center; color: var(--muted); border: 1px dashed var(--border-strong); border-radius: var(--radius); }
+  .empty .btn { vertical-align: baseline; }
 
-  .pager { display: flex; justify-content: center; align-items: center; gap: 16px; margin: 20px 0; color: var(--muted); }
+  .pager { display: flex; justify-content: center; align-items: center; gap: var(--space-md); margin: var(--space-lg) 0; font-variant-numeric: tabular-nums; }
 
+  @media (max-width: 60rem) {
+    /* Under 60rem the shell has its own sticky bar, and the wrapped filters would cover half the screen. */
+    .filters { position: static; }
+  }
   @media (max-width: 640px) {
-    /* On a phone the wrapped filter bar would cover half the screen if it stayed pinned. */
-    .filters { position: static; margin: 0 -16px 8px; padding: 10px 16px; }
-    .row > label:not(.search), .segmented { flex: 1 1 auto; }
+    .row > label:not(.search), .seg { flex: 1 1 auto; }
     .row select { width: 100%; }
-    .segmented button { flex: 1; }
+    .seg button { flex: 1; }
   }
 </style>

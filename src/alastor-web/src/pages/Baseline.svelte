@@ -125,22 +125,24 @@
   <div class="skeleton-block"></div>
 {:else}
   <section class="summary card" aria-label="Baseline summary">
-    <div class="stat">
-      <span class="label">Average score</span>
-      <span class="big {scoreTone(data.averageScore)}">{data.averageScore ?? '—'}<span class="of">/ 100</span></span>
+    <div class="ledger strip">
+      <div class="stat">
+        <span class="figure-label">Average score</span>
+        <span class="figure-value {scoreTone(data.averageScore)}">{#if data.averageScore !== null}{data.averageScore}{:else}<span class="nil" aria-label="none"></span>{/if}<span class="figure-of">/ 100</span></span>
+      </div>
+      <div class="stat">
+        <span class="figure-label">Hosts checked</span>
+        <span class="figure-value">{data.hostsReported}<span class="figure-of">/ {data.hostsTotal}</span></span>
+      </div>
+      <div class="stat">
+        <span class="figure-label">Checks failing somewhere</span>
+        <span class="figure-value" class:bad={failingChecks > 0}>{failingChecks}<span class="figure-of">/ {data.checks.length}</span></span>
+      </div>
+      <p class="muted small explain">
+        The score weighs failures by severity (critical 10, high 6, medium 3, low 1). Accepted risks and checks that
+        don't apply are left out. Agents check every hour by default; change it with <code>baseline.checkSchedule</code> in the <a href="/policies/global">policy</a>.
+      </p>
     </div>
-    <div class="stat">
-      <span class="label">Hosts checked</span>
-      <span class="big">{data.hostsReported}<span class="of">/ {data.hostsTotal}</span></span>
-    </div>
-    <div class="stat">
-      <span class="label">Checks failing somewhere</span>
-      <span class="big">{failingChecks}<span class="of">/ {data.checks.length}</span></span>
-    </div>
-    <p class="muted small explain">
-      The score weighs failures by severity (critical 10, high 6, medium 3, low 1). Accepted risks and checks that
-      don't apply are left out. Agents check every hour by default; change it with <code>baseline.checkSchedule</code> in the <a href="/policies/global">policy</a>.
-    </p>
   </section>
 
   {#if data.hostsTotal === 0}
@@ -155,9 +157,14 @@
         {@const total = reported(fc)}
         <details class="row">
           <summary>
-            <span class="title">
-              <strong>{c.title}</strong>
-              <span class="muted small">{categoryLabels[c.category]} · {c.fix === 'Policy' ? 'agent can fix' : 'manual fix'}{appliedFleetWide(c) ? ' · fix applied fleet-wide' : ''}{acceptedFleetWide(c) ? ' · accepted fleet-wide' : ''}</span>
+            <span class="check-title">
+              <span class="name">{c.title}</span>
+              <span class="meta muted small">
+                <span>{categoryLabels[c.category]}</span>
+                <span>{c.fix === 'Policy' ? 'agent can fix' : 'manual fix'}</span>
+                {#if appliedFleetWide(c)}<span class="applied">fix applied fleet-wide</span>{/if}
+                {#if acceptedFleetWide(c)}<span>accepted fleet-wide</span>{/if}
+              </span>
             </span>
             <span class="dist" aria-label="{fc.failing} failing, {fc.passing} passing, {fc.accepted} accepted">
               {#if total > 0}
@@ -168,9 +175,9 @@
                 </span>
               {/if}
               <span class="nums">
-                {#if fc.failing}<span class="fail-n">{fc.failing} failing</span>{/if}
-                {#if fc.passing}<span>{fc.passing} pass</span>{/if}
-                {#if fc.accepted}<span>{fc.accepted} accepted</span>{/if}
+                {#if fc.failing}<span class="fail-n"><b>{fc.failing}</b> failing</span>{/if}
+                {#if fc.passing}<span><b>{fc.passing}</b> pass</span>{/if}
+                {#if fc.accepted}<span><b>{fc.accepted}</b> accepted</span>{/if}
                 {#if !total}<span class="muted">{fc.notApplicable ? 'n/a' : fc.unknown ? 'unknown' : 'not checked'}</span>{/if}
               </span>
             </span>
@@ -181,11 +188,11 @@
             <dl class="kv">
               <dt>Expected</dt><dd class="mono small">{c.expected}</dd>
               <dt>Fix</dt><dd>{c.remediation}</dd>
-              {#if fc.unknown || fc.notApplicable}<dt>Other</dt><dd class="muted small">{fc.unknown ? `${fc.unknown} unknown` : ''}{fc.unknown && fc.notApplicable ? ' · ' : ''}{fc.notApplicable ? `${fc.notApplicable} not applicable` : ''}</dd>{/if}
+              {#if fc.unknown || fc.notApplicable}<dt>Other</dt><dd class="meta muted small">{#if fc.unknown}<span>{`${fc.unknown} unknown`}</span>{/if}{#if fc.notApplicable}<span>{`${fc.notApplicable} not applicable`}</span>{/if}</dd>{/if}
             </dl>
             {#if fc.failingHosts.length}
               <div class="hosts">
-                <span class="muted small">Failing on</span>
+                <span class="label">Failing on</span>
                 <ul>
                   {#each fc.failingHosts as h (h.id)}
                     <li><a href="/hosts/{h.id}?tab=baseline">{h.name}</a> <span class="mono small muted">{h.actual}</span></li>
@@ -213,7 +220,7 @@
           </div>
         </details>
       {:else}
-        <div class="empty">No check fails on any host. 🎉</div>
+        <div class="empty">No check fails on any host.</div>
       {/each}
     </section>
   {:else}
@@ -227,10 +234,10 @@
                 <span class="dot" class:ok={h.isOnline} class:bad={!h.isOnline} title={h.isOnline ? 'Online' : 'Offline'}></span>
                 <a href="/hosts/{h.id}?tab=baseline">{h.name}</a>
               </td>
-              <td class="hide-sm">{#if h.groupName}<span class="pill info">{h.groupName}</span>{:else}<span class="muted">—</span>{/if}</td>
-              <td class="num">{#if h.score !== null}<span class="pill {scoreTone(h.score)}">{h.score}</span>{:else}<span class="muted">—</span>{/if}</td>
-              <td class="num">{h.checkedAt ? h.failing : '—'}</td>
-              <td class="num hide-sm">{#if h.failingHighOrCritical}<span class="bad-text">{h.failingHighOrCritical}</span>{:else}<span class="muted">{h.checkedAt ? 0 : '—'}</span>{/if}</td>
+              <td class="hide-sm">{#if h.groupName}<span class="pill tag">{h.groupName}</span>{:else}<span class="nil" aria-label="none"></span>{/if}</td>
+              <td class="num">{#if h.score !== null}<span class="pill {scoreTone(h.score)}">{h.score}</span>{:else}<span class="nil" aria-label="none"></span>{/if}</td>
+              <td class="num">{#if h.checkedAt}{h.failing}{:else}<span class="nil" aria-label="none"></span>{/if}</td>
+              <td class="num hide-sm">{#if h.failingHighOrCritical}<span class="bad-text">{h.failingHighOrCritical}</span>{:else if h.checkedAt}<span class="muted">0</span>{:else}<span class="nil" aria-label="none"></span>{/if}</td>
               <td class="nowrap">{#if h.checkedAt}<Time iso={h.checkedAt} />{:else}<span class="muted">not yet</span>{/if}</td>
             </tr>
           {/each}
@@ -243,41 +250,47 @@
 {/if}
 
 <style>
-  .summary { display: flex; flex-wrap: wrap; gap: 16px 40px; align-items: flex-end; padding: 16px; margin-bottom: 16px; }
-  .stat { display: flex; flex-direction: column; gap: 4px; }
-  .stat .label { color: var(--muted); font-size: 12px; }
-  .stat .big { font-size: 28px; font-weight: 600; line-height: 1; font-variant-numeric: tabular-nums; color: var(--text-strong); }
-  .stat .big.ok { color: var(--ok); }
-  .stat .big.warn { color: var(--warn); }
-  .stat .big.bad { color: var(--bad); }
-  .of { font-size: 14px; color: var(--muted); font-weight: 400; margin-left: 4px; }
-  .explain { flex: 1 1 320px; margin: 0; }
-  .filterbar { display: flex; gap: 12px; margin-bottom: 12px; }
-  .check-label { display: inline-flex; gap: 6px; align-items: center; color: var(--muted); font-size: 13px; }
-  .row { border-bottom: 1px solid var(--border); }
+  .summary { margin-bottom: var(--space-md); }
+  .strip { display: flex; flex-wrap: wrap; }
+  .strip > .stat { flex: 0 0 auto; min-width: 176px; }
+  .strip > .explain { display: block; flex: 1 1 320px; align-self: stretch; margin: 0; }
+  .check-label { display: inline-flex; gap: var(--space-xs); align-items: center; color: var(--color-ink-2); font-size: var(--text-sm); cursor: pointer; }
+  .row { border-bottom: var(--rule-hair) solid var(--border); }
   .row:last-child { border-bottom: 0; }
-  .row > summary { display: grid; grid-template-columns: 1fr minmax(160px, 260px) 72px; align-items: center; gap: 16px; padding: 10px 16px; cursor: pointer; list-style: none; }
+  .row > summary { display: grid; grid-template-columns: minmax(0, 1fr) minmax(160px, 260px) 96px; align-items: center; gap: var(--space-md); min-height: 56px; padding: var(--space-xs) var(--space-md); cursor: pointer; list-style: none; }
   .row > summary::-webkit-details-marker { display: none; }
-  .row > summary:hover { background: var(--surface-2); }
-  .title { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
-  .dist { display: flex; flex-direction: column; gap: 4px; }
-  .bar { display: flex; gap: 2px; height: 6px; }
-  .bar span { border-radius: 3px; min-width: 4px; }
+  .row > summary:hover { background: var(--color-paper-2); }
+  .row > summary:focus-visible { outline-offset: -2px; }
+  .row[open] > summary { background: var(--color-paper-2); }
+  .row > summary:active { background: var(--color-paper-3); }
+  .check-title { display: flex; flex-direction: column; gap: var(--space-3xs); min-width: 0; }
+  .check-title .name { font-weight: 500; color: var(--text-strong); }
+  .meta { display: flex; flex-wrap: wrap; gap: var(--space-3xs) var(--space-xs); }
+  .meta > span + span { padding-left: var(--space-xs); border-left: var(--rule-hair) solid var(--color-rule-2); }
+  .meta .applied { color: var(--ok); }
+  .dist { display: flex; flex-direction: column; gap: var(--space-2xs); }
+  .bar {
+    display: flex; height: 10px; background: var(--color-paper-3);
+    -webkit-mask: repeating-linear-gradient(90deg, var(--color-ink) 0 4px, transparent 4px 6px);
+    mask: repeating-linear-gradient(90deg, var(--color-ink) 0 4px, transparent 4px 6px);
+  }
+  .bar span { min-width: 4px; }
   .seg-fail { background: var(--bad); }
-  .seg-acc { background: var(--muted); opacity: 0.6; }
-  .seg-pass { background: var(--ok); }
-  .nums { display: flex; gap: 10px; font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
-  .fail-n, .bad-text { color: var(--bad); }
-  .body { padding: 4px 16px 16px; display: flex; flex-direction: column; gap: 10px; }
-  .body p { margin: 0; }
-  .kv { display: grid; grid-template-columns: max-content 1fr; gap: 4px 14px; margin: 0; font-size: 13px; }
-  .kv dt { color: var(--muted); }
-  .kv dd { margin: 0; }
-  .hosts ul { margin: 4px 0 0; padding-left: 18px; columns: 2 260px; font-size: 13px; }
-  .actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
-  td .dot { margin-right: 6px; }
+  .seg-acc { background: var(--color-rule-2); }
+  .seg-pass { background: color-mix(in oklab, var(--ok) 50%, var(--color-paper-3)); }
+  .nums { display: flex; flex-wrap: wrap; gap: var(--space-sm); font-size: var(--text-xs); color: var(--muted); font-variant-numeric: tabular-nums; }
+  .nums b { font-family: var(--font-display); font-weight: 600; font-size: var(--text-sm); color: var(--text-strong); }
+  .fail-n, .fail-n b, .bad-text { color: var(--bad); }
+  .body { display: flex; flex-direction: column; gap: var(--space-sm); padding: var(--space-sm) var(--space-md) var(--space-md); border-top: var(--rule-hair) solid var(--border); background: var(--color-paper-2); }
+  .body p { margin: 0; max-width: 75ch; }
+  .hosts { display: flex; flex-direction: column; gap: var(--space-2xs); }
+  .hosts ul { margin: 0; padding-left: var(--space-md); columns: 2 260px; font-size: var(--text-sm); }
+  .actions { display: flex; flex-wrap: wrap; gap: var(--space-xs); align-items: center; }
+  td .dot { margin-right: var(--space-xs); }
   @media (max-width: 640px) {
-    .row > summary { grid-template-columns: 1fr auto; }
+    .row > summary { grid-template-columns: minmax(0, 1fr) auto; }
     .dist { grid-column: 1 / -1; grid-row: 2; }
+    .strip > .stat { flex: 1 1 50%; min-width: 0; }
+    .strip > .stat .figure-value { font-size: var(--text-figure-s); }
   }
 </style>
