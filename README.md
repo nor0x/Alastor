@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="art/svg/logo.svg" alt="Alastor logo" width="96" height="96">
+</p>
+
 # Alastor
 
 **Constant vigilance for your servers.**
