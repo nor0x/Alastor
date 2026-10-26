@@ -28,6 +28,7 @@ public sealed class ServerApiTests : IClassFixture<ServerApiTests.Factory>
             builder.UseSetting("SecureCookies", "false");
             builder.UseSetting("ThreatFeedEnabled", "false"); // no internet in tests; ThreatFeedTests drives the feed itself
             builder.UseSetting("OsvEnabled", "false");
+            builder.UseSetting("UpdateCheckEnabled", "false"); // no GitHub calls in tests; UpdateCheckTests drive the check itself
             builder.UseSetting("BlocklistsEnabled", "false"); // no list downloads in tests; BlocklistApiTests drives them itself
             builder.UseSetting("VulnDbEnabled", "false"); // no scanner database downloads in tests
             builder.UseSetting("AuthRateLimitPerMinute", "1000"); // every test signs in and enrolls; the default 10/min is for real clients
@@ -100,6 +101,7 @@ public sealed class ServerApiTests : IClassFixture<ServerApiTests.Factory>
         Assert.Equal(HttpStatusCode.Unauthorized, (await c.GetAsync("/api/hosts")).StatusCode);
         Assert.Equal(HttpStatusCode.Unauthorized, (await c.GetAsync("/api/agent/desired-state")).StatusCode);
         Assert.Equal(HttpStatusCode.OK, (await c.GetAsync("/api/about")).StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, (await c.GetAsync("/api/about/update")).StatusCode);
         Assert.Equal(HttpStatusCode.Unauthorized, (await c.PostAsJsonAsync("/api/auth/login", new { username = "admin", password = "wrong" })).StatusCode);
     }
 

@@ -120,6 +120,14 @@ public sealed class AlastorOptions
     /// <summary>Look up installed package versions on OSV.dev (only names and versions are sent). Turn off for air-gapped servers.</summary>
     public bool OsvEnabled { get; set; } = true;
 
+    // ---- update check ----
+
+    /// <summary>Check GitHub for a newer Alastor release twice a day. Only the release list is fetched; nothing about this server is sent. Turn off for air-gapped servers.</summary>
+    public bool UpdateCheckEnabled { get; set; } = true;
+
+    /// <summary>GitHub repository (owner/name) whose releases the update check looks at.</summary>
+    public string UpdateRepository { get; set; } = "nor0x/Alastor";
+
     // ---- vulnerability databases ----
 
     /// <summary>Mirror the Trivy/Grype databases for agents. Only scanners some agent asks for are fetched. Turn off for air-gapped servers and place the files by hand.</summary>
@@ -199,6 +207,7 @@ public sealed class AlastorOptions
         Check(nameof(BlocklistRefreshInterval), BlocklistRefreshInterval, TimeSpan.FromHours(1), TimeSpan.FromDays(7));
         Check(nameof(VulnDbRefreshInterval), VulnDbRefreshInterval, TimeSpan.FromHours(1), TimeSpan.FromDays(7));
         if (!Uri.TryCreate(GrypeDbUrl, UriKind.Absolute, out var g) || g.Scheme != Uri.UriSchemeHttps) errors.Add("GrypeDbUrl must be an https:// URL.");
+        if (!System.Text.RegularExpressions.Regex.IsMatch(UpdateRepository ?? "", @"^[A-Za-z0-9-]+/[A-Za-z0-9._-]+$")) errors.Add("UpdateRepository must be a GitHub repository like owner/name.");
         if (!Alastor.Server.Services.Vulnerabilities.OciReference.TryParse(TrivyDbRepository, out _)) errors.Add("TrivyDbRepository must look like registry/repository:tag, e.g. ghcr.io/aquasecurity/trivy-db:2.");
         Check(nameof(AlertDedupWindow), AlertDedupWindow, TimeSpan.FromMinutes(1), TimeSpan.FromDays(7));
         if (AlertBurst is < 1 or > 100) errors.Add("AlertBurst must be between 1 and 100.");
