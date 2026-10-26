@@ -1,7 +1,7 @@
 <script lang="ts">
   import { api, ApiError, type Me } from './api';
   import Icon from './ui/Icon.svelte';
-  import Logo from './ui/Logo.svelte';
+  import BrandSpell from './ui/BrandSpell.svelte';
 
   let { onLogin }: { onLogin: (me: Me) => void } = $props();
 
@@ -26,10 +26,9 @@
 
 <div class="wrap">
   <form onsubmit={submit}>
-    <h1>
-      <Logo size={24} />
-      Alastor
-    </h1>
+    <BrandSpell size={24} placement="inline">
+      {#snippet label()}<h1>Alastor</h1>{/snippet}
+    </BrandSpell>
     <label>Username <input class="field" bind:value={username} autocomplete="username" required /></label>
     <label>Password <input class="field" type="password" bind:value={password} autocomplete="current-password" required /></label>
     {#if error}<p class="error" role="alert"><Icon name="error" />{error}</p>{/if}
@@ -53,8 +52,7 @@
     box-shadow: var(--shadow-float);
   }
   @supports (corner-shape: bevel) { form { border-radius: var(--cut-l) 4px; corner-shape: bevel round; } }
-  h1 { display: flex; align-items: center; gap: var(--space-xs); font-size: var(--text-2xl); }
-  h1 :global(svg) { color: var(--color-accent); }
+  h1 { font-size: var(--text-2xl); }
   label { display: flex; flex-direction: column; gap: var(--space-2xs); font-family: var(--font-display); font-weight: 500; font-size: var(--text-sm); color: var(--color-ink-2); }
   label .field { font-family: var(--font-body); font-weight: 400; font-size: var(--text-md); min-height: 40px; }
   .error { display: flex; gap: var(--space-xs); align-items: flex-start; color: var(--bad); }
