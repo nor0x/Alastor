@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { untrack } from 'svelte';
   import CopyButton from './ui/CopyButton.svelte';
   import { api, errorText, type Command, type HostUpdates, type PendingUpdate } from './api';
   import { setLayerKey } from './baseline';
@@ -6,6 +7,7 @@
   import { canWrite } from './session.svelte';
   import { toast } from './toast.svelte';
   import { confirm } from './ui/confirm.svelte';
+  import Icon from './ui/Icon.svelte';
   import Time from './ui/Time.svelte';
 
   let { hostId, isOnline }: { hostId: string; isOnline: boolean } = $props();
@@ -31,7 +33,8 @@
 
   $effect(() => {
     void hostId;
-    load();
+    // load() reads `data` before its first await; untracked, so a response doesn't re-run this effect.
+    untrack(load);
     const offs = [
       on('hostUpdated', (h: { id: string }) => { if (h.id === hostId) load(); }),
       refreshOn(['policyChanged'], load, 60_000),
@@ -93,36 +96,40 @@
 {:else}
   <div class="stack">
     <section class="card summary">
-      <div class="figure">
-        <span class="big" class:bad-text={!!report && (report.security ?? report.pending) > 0}>{report ? (report.security ?? report.pending) : '—'}</span>
-        <span class="muted small">{unknownSecurity ? 'pending updates' : 'security updates'}</span>
+      <div class="lead">
+        <span class="figure-label">{unknownSecurity ? 'Pending updates' : 'Security updates'}</span>
+        <span class="figure-value" class:bad={!!report && (report.security ?? report.pending) > 0}>{#if report}{report.security ?? report.pending}{:else}<span class="nil" aria-label="none"></span>{/if}</span>
       </div>
       <div class="counts">
         {#if report}
-          <span><strong class="n">{report.pending}</strong> pending in total</span>
-          <span class="muted">via <code>{report.manager}</code></span>
+          <span class="pair"><strong class="n">{report.pending}</strong> pending in total</span>
+          <span class="pair">via <code>{report.manager}</code></span>
           {#if report.rebootRequired}<span class="pill warn" title={report.rebootPackages.join(', ')}>reboot required</span>{/if}
         {/if}
       </div>
       <div class="meta">
-        {#if data.checkedAt}<span class="muted small">Checked <Time iso={data.checkedAt} /></span>{:else}<span class="muted small">Not checked yet</span>{/if}
-        {#if canWrite()}
-          <button class="btn small" onclick={() => run('check')} disabled={!!busy}>{busy === 'check' ? 'Checking…' : 'Check now'}</button>
-          <button class="btn small primary" onclick={() => run('apply')} disabled={!!busy || !report || (report.security ?? report.pending) === 0}>
-            {busy === 'apply' ? 'Installing…' : unknownSecurity ? 'Install updates now' : 'Install security updates now'}
-          </button>
-        {/if}
+        <span class="meta-facts">{#if data.checkedAt}<span>Checked <Time iso={data.checkedAt} /></span>{:else}<span>Not checked yet</span>{/if}</span>
+        <span class="keys">
+          {#if canWrite()}
+            <button class="btn small" onclick={() => run('check')} disabled={!!busy}>{busy === 'check' ? 'Checking…' : 'Check now'}</button>
+            <button class="btn small primary" onclick={() => run('apply')} disabled={!!busy || !report || (report.security ?? report.pending) === 0}>
+              {busy === 'apply' ? 'Installing…' : unknownSecurity ? 'Install updates now' : 'Install security updates now'}
+            </button>
+          {/if}
+        </span>
       </div>
     </section>
 
     {#if data.lastCheckSucceeded === false}
       <div class="banner bad" role="alert">
+        <Icon name="error" />
         <p><strong>The last check failed:</strong> <span class="mono small">{data.lastCheckError}</span>{report ? ' The list below is from the last successful check.' : ''}</p>
       </div>
     {/if}
 
     {#if report?.rebootRequired}
       <div class="banner warn">
+        <Icon name="alert" />
         <p>
           <strong>This host needs a reboot</strong> to finish installing{report.rebootPackages.length ? `: ${report.rebootPackages.join(', ')}` : ' updates'}.
           Until then the old kernel or libraries keep running. Alastor never reboots hosts; schedule a reboot when it suits you.
@@ -158,7 +165,7 @@
           <span class="hint">{report.pending ? (unknownSecurity ? 'Alpine doesn\'t mark security updates' : 'security updates first') : ''}</span>
         </header>
         {#if report.pending === 0}
-          <div class="empty">Everything is up to date. 🎉</div>
+          <div class="empty">Everything is up to date.</div>
         {:else}
           <div class="table-wrap">
             <table class="table">
@@ -167,11 +174,13 @@
                 {#each visible as p (p.name)}
                   <tr>
                     <td>
-                      <span class="mono">{p.name}</span>
-                      {#if p.security === true}<span class="pill bad">security</span>{/if}
+                      <span class="pkg">
+                        <span class="mono">{p.name}</span>
+                        {#if p.security === true}<span class="pill bad">security</span>{/if}
+                      </span>
                     </td>
-                    <td class="mono small muted hide-sm">{p.installed ?? '—'}</td>
-                    <td class="mono small"><span class="dot {tone(p)}" aria-hidden="true"></span>{p.candidate}</td>
+                    <td class="mono small muted hide-sm">{#if p.installed}{p.installed}{:else}<span class="nil" aria-label="none"></span>{/if}</td>
+                    <td class="mono small"><span class="avail"><span class="dot {tone(p)}" aria-hidden="true"></span>{p.candidate}</span></td>
                     <td class="small muted hide-sm src">{p.source ?? ''}</td>
                   </tr>
                 {/each}
@@ -198,9 +207,9 @@
               <p><span class="pill bad">failed</span> <span class="mono small">{a.error}</span></p>
             {/if}
             {#if a.logTail}
-              <details>
-                <summary class="muted small">Package manager output</summary>
-                <pre class="log">{a.logTail}</pre>
+              <details class="output">
+                <summary>Package manager output</summary>
+                <pre class="code-block log">{a.logTail}</pre>
               </details>
             {/if}
           </div>
@@ -221,8 +230,8 @@
         </p>
         {#if canWrite()}
           <form class="sched" onsubmit={(e) => { e.preventDefault(); saveSchedule(scheduleDraft.trim() || 'off'); }}>
-            <label for="apply-sched" class="small">Schedule for this host</label>
-            <input id="apply-sched" class="mono" bind:value={scheduleDraft} placeholder={'off, every 12h or "0 4 * * *"'} />
+            <label for="apply-sched" class="label">Schedule for this host</label>
+            <input id="apply-sched" class="field mono" bind:value={scheduleDraft} placeholder={'off, every 12h or "0 4 * * *"'} />
             <button class="btn small" type="submit" disabled={savingSchedule}>Save</button>
             <button class="btn ghost small" type="button" disabled={savingSchedule} onclick={() => saveSchedule(undefined)}>Inherit</button>
           </form>
@@ -234,31 +243,42 @@
 {/if}
 
 <style>
-  .restart { margin-bottom: 16px; }
-  .restart p { margin: 0 0 8px; }
-  .svc { margin: 0 0 10px; padding-left: 18px; columns: 2; }
-  .cmd { display: flex; align-items: flex-start; gap: 8px; }
-  .cmd code { flex: 1; min-width: 0; padding: 6px 8px; border-radius: 6px; background: var(--surface-2); font-size: 12px; overflow-wrap: anywhere; }
-  .summary { display: flex; flex-wrap: wrap; align-items: center; gap: 16px 32px; padding: 16px; }
-  .figure { display: flex; flex-direction: column; min-width: 96px; }
-  .figure .big { font-size: 34px; font-weight: 600; line-height: 1; font-variant-numeric: tabular-nums; color: var(--text-strong); }
-  .figure .big.bad-text { color: var(--bad); }
-  .counts { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 20px; color: var(--muted); }
-  .counts .n { color: var(--text-strong); font-variant-numeric: tabular-nums; margin-right: 2px; }
-  .meta { margin-left: auto; display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
-  .pad { padding: 12px 16px 16px; }
-  .stack-sm { display: flex; flex-direction: column; gap: 8px; }
-  .stack-sm p { margin: 0; }
-  td .pill { margin-left: 6px; }
-  .src { max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; vertical-align: 1px; background: var(--border); }
-  .dot.bad { background: var(--bad); }
-  .dot.warn { background: var(--warn); }
-  .more { padding: 8px 16px; border-top: 1px solid var(--border); }
-  .log { max-height: 320px; overflow: auto; margin: 6px 0 0; padding: 8px 10px; border-radius: 6px; background: var(--surface-2); font-size: 12px; white-space: pre-wrap; overflow-wrap: anywhere; }
-  .sched { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
-  .sched input { flex: 1; min-width: 180px; max-width: 280px; }
-  @media (max-width: 640px) {
-    .meta { margin-left: 0; }
+  .restart .card-body { display: flex; flex-direction: column; gap: var(--space-sm); }
+  .svc { margin: 0; padding-left: var(--space-lg); columns: 2; column-gap: var(--space-lg); }
+  .svc li { padding: var(--space-3xs) 0; }
+  @media (max-width: 640px) { .svc { columns: 1; } }
+  /* The summary ledger, the same strip on every host tab: lead figure | counts | when + keys, parted by hairlines. */
+  .summary { display: grid; grid-template-columns: minmax(200px, max-content) minmax(0, 1fr) minmax(0, max-content); overflow: hidden; }
+  .summary > * { display: flex; flex-direction: column; justify-content: center; gap: var(--space-2xs); min-width: 0; padding: var(--space-md); }
+  .summary > * + * { box-shadow: inset 1px 0 0 var(--border); }
+  .lead .figure-value { display: inline-flex; align-items: baseline; }
+  .lead .figure-value .nil { width: 24px; height: 2px; align-self: center; }
+  .counts { flex-direction: row; flex-wrap: wrap; align-items: center; align-content: center; justify-content: flex-start; gap: var(--space-xs) var(--space-lg); color: var(--muted); }
+  .pair { display: inline-flex; align-items: baseline; gap: var(--space-2xs); color: var(--muted); }
+  .pair .n { font-family: var(--font-display); font-weight: 600; font-size: var(--text-lg); line-height: 1; color: var(--text-strong); font-variant-numeric: tabular-nums; }
+  .meta { align-items: flex-end; text-align: right; }
+  .meta-facts { display: flex; flex-direction: column; align-items: inherit; gap: var(--space-3xs); font-size: var(--text-sm); color: var(--muted); }
+  .keys { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: var(--space-xs); margin-top: var(--space-2xs); }
+  .keys:empty { display: none; }
+  @media (max-width: 760px) {
+    .summary { grid-template-columns: minmax(0, 1fr); }
+    .summary > * + * { box-shadow: inset 0 1px 0 var(--border); }
+    .counts:empty { display: none; }
+    .meta { align-items: flex-start; text-align: left; }
+    .keys { justify-content: flex-start; }
   }
+  .pair code { font-size: var(--text-code); }
+
+  .pad { padding: var(--space-md); }
+  .stack-sm { display: flex; flex-direction: column; gap: var(--space-xs); }
+  .stack-sm p { margin: 0; }
+  .pkg, .avail { display: inline-flex; align-items: center; flex-wrap: wrap; gap: var(--space-xs); }
+  .src { max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .output > summary { width: fit-content; cursor: pointer; font-family: var(--font-display); font-weight: 500; font-size: var(--text-sm); color: var(--color-ink-2); }
+  .output > summary:hover { color: var(--text-strong); }
+  .output[open] > summary { margin-bottom: var(--space-xs); }
+  .log { max-height: 320px; }
+  .sched { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-xs); }
+  .sched .label { margin-right: var(--space-2xs); }
+  .sched .field { flex: 1; min-width: 180px; max-width: 280px; font-size: var(--text-code); }
 </style>

@@ -31,6 +31,7 @@
   import MetricChart from '../lib/ui/MetricChart.svelte';
   import Modal from '../lib/ui/Modal.svelte';
   import Time from '../lib/ui/Time.svelte';
+  import Icon from '../lib/ui/Icon.svelte';
 
   let { id }: { id: string } = $props();
 
@@ -207,7 +208,7 @@
   // ---- Capability matrix helpers ----
   function toolState(t: ToolStatus): { tone: string; label: string } {
     if (!t.implemented) return { tone: 'muted', label: 'coming later' };
-    if (t.availability === 'Disabled') return { tone: 'muted', label: t.optIn ? 'opt-in · off' : 'disabled' };
+    if (t.availability === 'Disabled') return { tone: 'muted', label: t.optIn ? 'opt-in, off' : 'disabled' };
     if (t.availability === 'Unavailable') return { tone: 'bad', label: 'unavailable' };
     if (!t.installed) return { tone: 'warn', label: 'not installed' };
     if (!t.running) return { tone: 'bad', label: 'stopped' };
@@ -231,27 +232,27 @@
 
 {#if notFound}
   <div class="empty empty-dashed">
-    This host doesn't exist (it may have been removed). <a href="/hosts">Back to hosts</a>
+    This host doesn’t exist (it may have been removed). <a href="/hosts">Back to hosts</a>
   </div>
 {:else if error && !host}
-  <div class="banner bad" role="alert"><p>Couldn't load the host: {error}</p></div>
+  <div class="banner bad" role="alert"><Icon name="error" /><p>Couldn’t load the host: {error}</p></div>
 {:else if !host}
   <div class="skeleton-block"></div>
 {:else}
   {@const s = host.summary}
   <div class="crumbs"><a href="/hosts">Hosts</a> /</div>
   <div class="page-head">
-    <div>
-      <h1 class="title">
-        {s.name}
-        {#if s.isOnline}<span class="pill ok"><span class="dot ok"></span>online</span>
-        {:else}<span class="pill bad"><span class="dot bad"></span>offline · last seen <Time iso={s.lastSeenAt} /></span>{/if}
-      </h1>
-      <p class="sub">
-        {s.osPrettyName} · {s.architecture} · agent {s.agentVersion}
-        {#if s.groupName} · group <span class="pill info">{s.groupName}</span>{/if}
-        {#each s.tags as t (t)}<span class="pill muted tag">{t}</span>{/each}
-      </p>
+    <div class="head-text">
+      <h1>{s.name}</h1>
+      <div class="sysline">
+        {#if s.isOnline}<span class="pill ok">online</span>
+        {:else}<span class="pill bad">offline, last seen <Time iso={s.lastSeenAt} /></span>{/if}
+        <span>{s.osPrettyName}</span>
+        <span class="mono">{s.architecture}</span>
+        <span>agent <span class="mono">{s.agentVersion}</span></span>
+        {#if s.groupName}<span>group <span class="pill tag">{s.groupName}</span></span>{/if}
+        {#if s.tags.length}<span class="tags">{#each s.tags as t (t)}<span class="pill tag">{t}</span>{/each}</span>{/if}
+      </div>
     </div>
     {#if canWrite()}
       <div class="actions">
@@ -265,12 +266,14 @@
 
   {#if host.policyApplySuccess === false}
     <div class="banner bad spaced" role="alert">
-      <p><strong>The last policy apply failed.</strong> The agent rolled back to the previous working config. See the Policy tab for the tool's error.</p>
+      <Icon name="error" />
+      <p><strong>The last policy apply failed.</strong> The agent rolled back to the previous working config. See the Policy tab for the tool’s error.</p>
     </div>
   {/if}
   {#if implemented.some((t) => t.configState === 'Drifted')}
     <div class="banner warn spaced">
-      <p><strong>Managed config was edited by hand.</strong> Alastor won't overwrite it until you reclaim it.</p>
+      <Icon name="alert" />
+      <p><strong>Managed config was edited by hand.</strong> Alastor won’t overwrite it until you reclaim it.</p>
       {#if canWrite()}<button class="btn small" onclick={() => action('reclaim', 'Reclaim')}>Reclaim</button>{/if}
     </div>
   {/if}
@@ -281,7 +284,7 @@
         {label}
         {#if t === 'baseline' && s.baselineFailing}<span class="count">{s.baselineFailing}</span>{/if}
         {#if t === 'updates' && (s.securityUpdates ?? s.pendingUpdates)}<span class="count">{s.securityUpdates ?? s.pendingUpdates}</span>{/if}
-        {#if t === 'network' && isExposed(s.sshExposure, s.sshExposureAccepted)}<span class="count" title="SSH reachable from the internet">!</span>{/if}
+        {#if t === 'network' && isExposed(s.sshExposure, s.sshExposureAccepted)}<span class="count alert" title="SSH reachable from the internet"><Icon name="alert" size={12} label="SSH reachable from the internet" /></span>{/if}
         {#if t === 'integrity' && (s.integrityChanges || s.rootkitWarnings)}<span class="count" title="Files changed since the baseline, and open rkhunter warnings">{(s.integrityChanges ?? 0) + (s.rootkitWarnings ?? 0)}</span>{/if}
         {#if t === 'malware' && s.malwareFindings}<span class="count" title="Infected files found by ClamAV">{s.malwareFindings}</span>{/if}
         {#if t === 'hardening' && s.hardeningWarnings}<span class="count">{s.hardeningWarnings}</span>{/if}
@@ -296,7 +299,7 @@
     <div class="stack">
       {#if hostIssues?.items.length}
         <section class="card">
-          <header><h2>Open issues</h2><a class="hint" href="/issues?hostId={id}">History →</a></header>
+          <header><h2>Open issues</h2><a class="hint" href="/issues?hostId={id}">History</a></header>
           <IssueList issues={hostIssues.items} showHost={false} onchange={() => { loadIssues(); refreshIssues(); }} />
         </section>
       {/if}
@@ -309,21 +312,21 @@
             {/each}
           </div>
         </header>
-        <div class="card-body charts">
+        <div class="charts">
           <MetricChart title="CPU" points={series('cpu')} max={100} />
-          <MetricChart title="Memory · {bytes(host.memoryUsedBytes)} of {bytes(host.memoryTotalBytes)}" points={series('memory')} max={100} />
-          <MetricChart title="Disk · {bytes(host.diskUsedBytes)} of {bytes(host.diskTotalBytes)}" points={series('disk')} max={100} />
+          <MetricChart title="Memory" detail="{bytes(host.memoryUsedBytes)} of {bytes(host.memoryTotalBytes)}" points={series('memory')} max={100} />
+          <MetricChart title="Disk" detail="{bytes(host.diskUsedBytes)} of {bytes(host.diskTotalBytes)}" points={series('disk')} max={100} />
           <MetricChart title="Load (1 min)" points={series('load1')} unit="" />
         </div>
       </section>
 
       <section class="card">
-        <header><h2>Security posture</h2><span class="hint">events and bans on this host · 90-day trends</span></header>
-        <div class="card-body posture-bars">
+        <header><h2>Security posture</h2><span class="hint">events and bans on this host, 90-day trends</span></header>
+        <div class="charts posture-bars">
           {#if eventStats}<StackedBars title="Events per day · 14 days" series={severitySeries} buckets={eventBuckets(eventStats)} height={140} empty="No events in the last 14 days." />{/if}
           <StackedBars title="Bans per hour · 24 hours" series={banSeries} buckets={banBuckets(banHours)} height={140} empty="No bans or auth failures in the last 24 hours." />
         </div>
-        <div class="card-body posture">
+        <div class="charts posture">
           <MetricChart title="Baseline score" points={trend(posture, (p) => p.baselineScore)} max={100} daily height={96} format={counts} />
           <MetricChart title="Critical + high CVEs" points={trend(posture, (p) => (p.vulnCritical === null ? null : p.vulnCritical + (p.vulnHigh ?? 0)))} daily height={96} format={counts} />
           <MetricChart title="Pending security updates" points={trend(posture, (p) => p.securityUpdates)} daily height={96} format={counts} />
@@ -331,7 +334,7 @@
         </div>
       </section>
 
-      <div class="grid-2">
+      <div class="overview-grid">
         <section class="card">
           <header><h2>Capability matrix</h2><span class="hint">what the agent runs on this host</span></header>
           <ul class="tools">
@@ -339,9 +342,9 @@
               {@const st = toolState(t)}
               <li>
                 <div class="tool-head">
-                  <div>
+                  <div class="tool-name">
                     <strong>{t.displayName}</strong>
-                    <span class="muted small">· {t.capability}{t.version ? ` · v${t.version}` : ''}</span>
+                    <span class="tool-sub"><span>{t.capability}</span>{#if t.version}<span class="mono">v{t.version}</span>{/if}</span>
                   </div>
                   <span class="pill {st.tone}">{st.label}</span>
                 </div>
@@ -350,35 +353,37 @@
                     <span class="pill muted" title={t.ownership === 'Adopted' ? 'Was installed before Alastor; the agent manages only its own files.' : 'Installed by Alastor.'}>{t.ownership === 'Adopted' ? 'adopted existing install' : 'installed by Alastor'}</span>
                     <span class="pill {configTone[t.configState]}" title={configHelp[t.configState]}>config: {t.configState === 'InSync' ? 'in sync' : t.configState.toLowerCase()}</span>
                   {/if}
-                  {#each Object.entries(t.details) as [k, v] (k)}<span class="muted small">{k}: <span class="mono">{v}</span></span>{/each}
+                  {#each Object.entries(t.details) as [k, v] (k)}<span class="detail">{k} <span class="mono">{v}</span></span>{/each}
                 </div>
                 {#if t.unavailableReason && t.availability !== 'Available'}<p class="note">{t.unavailableReason}</p>{/if}
                 {#if configHelp[t.configState] && t.configState !== 'InSync' && t.installed}<p class="note">{configHelp[t.configState]}</p>{/if}
-                {#if t.lastError}<p class="note bad">⚠ {t.lastError}</p>{/if}
-                {#each t.warnings as w (w)}<p class="note warn">⚠ {w}</p>{/each}
+                {#if t.lastError}<p class="note bad"><Icon name="error" />{t.lastError}</p>{/if}
+                {#each t.warnings as w (w)}<p class="note warn"><Icon name="alert" />{w}</p>{/each}
               </li>
             {/each}
           </ul>
           {#if planned.length}
             <details class="planned">
               <summary>{planned.length} more integrations planned</summary>
-              <p class="muted small">{planned.map((t) => t.displayName).join(' · ')}</p>
+              <p class="muted small">{planned.map((t) => t.displayName).join(', ')}</p>
             </details>
           {/if}
         </section>
 
         <section class="card">
           <header><h2>System</h2></header>
-          <dl class="facts">
+          <dl class="kv facts">
             <dt>Hostname</dt><dd class="mono">{s.hostname}</dd>
-            <dt>IP addresses</dt><dd class="mono">{host.ipAddresses.join(', ') || '—'}</dd>
+            <dt>IP addresses</dt><dd class="mono">{#if host.ipAddresses.length}{host.ipAddresses.join(', ')}{:else}<span class="nil" aria-label="none"></span>{/if}</dd>
             <dt>OS</dt><dd>{s.osPrettyName} <span class="muted">({host.osId} {host.osVersion})</span></dd>
             <dt>Kernel</dt><dd class="mono">{host.kernelVersion}</dd>
             <dt>Uptime</dt><dd>{uptime(host.uptimeSeconds)}</dd>
-            <dt>Load</dt><dd class="mono">{s.load1.toFixed(2)} · {host.load5.toFixed(2)} · {host.load15.toFixed(2)}</dd>
+            <dt>Load</dt><dd class="mono load"><span title="1 min">{s.load1.toFixed(2)}</span><span title="5 min">{host.load5.toFixed(2)}</span><span title="15 min">{host.load15.toFixed(2)}</span></dd>
             <dt>Enrolled</dt><dd>{fullDate(host.enrolledAt)}</dd>
             <dt>Last heartbeat</dt><dd><Time iso={s.lastSeenAt} /></dd>
-            <dt>Machine ID</dt><dd class="mono small">{host.machineId ?? '—'}</dd>
+            <dt>Machine ID</dt><dd class="mono small">{#if host.machineId}{host.machineId}{:else}<span class="nil" aria-label="none"></span>{/if}</dd>
+          </dl>
+          <dl class="kv facts posture">
             <dt>Baseline</dt>
             <dd>
               {#if s.baselineScore !== null}
@@ -414,8 +419,8 @@
             </dd>
             <dt>Policy</dt>
             <dd>
-              {#if s.policySync === 'in-sync'}<span class="pill ok">✓ in sync</span>{:else if s.policySync === 'failed'}<span class="pill bad">✕ failed</span>{:else}<span class="pill info">… pending</span>{/if}
-              <span class="mono small muted">rev {host.appliedRevision ?? '—'}</span>
+              {#if s.policySync === 'in-sync'}<span class="pill ok">in sync</span>{:else if s.policySync === 'failed'}<span class="pill bad">failed</span>{:else}<span class="pill info">pending</span>{/if}
+              <span class="mono small muted">rev {host.appliedRevision ?? 'none'}</span>
             </dd>
           </dl>
         </section>
@@ -438,7 +443,7 @@
     <HostMalware hostId={id} isOnline={s.isOnline} osId={host.osId} />
   {:else if tab === 'events'}
     <section class="card">
-      <header><h2>Events</h2><a class="hint" href="/events?hostId={id}">Open in event timeline →</a></header>
+      <header><h2>Events</h2><a class="hint" href="/events?hostId={id}">Open in event timeline</a></header>
       {#if events.length}
         <EventList {events} showHost={false} />
         {#if eventsNext}<div class="more"><button class="btn" onclick={() => loadEvents(true)}>Load older</button></div>{/if}
@@ -459,29 +464,31 @@
       {/if}
     </section>
   {:else if tab === 'policy'}
-    <div class="grid-2">
+    <div class="policy-grid">
       <section class="card">
         <header>
           <h2>Last apply</h2>
           {#if host.policyAppliedAt}<span class="hint"><Time iso={host.policyAppliedAt} /></span>{/if}
         </header>
         <div class="card-body stack">
-          <dl class="facts tight">
+          <dl class="kv">
             <dt>Desired revision</dt><dd class="mono">{host.desiredRevision}</dd>
-            <dt>Applied revision</dt><dd class="mono">{host.appliedRevision ?? '—'}</dd>
+            <dt>Applied revision</dt><dd class="mono">{#if host.appliedRevision}{host.appliedRevision}{:else}<span class="nil" aria-label="none"></span>{/if}</dd>
           </dl>
           {#if host.policyReport}
-            {#each host.policyReport.tools as r (r.toolId)}
-              <div class="report">
-                <div class="tool-head">
-                  <strong>{r.toolId}</strong>
-                  <span class="pill {r.success ? configTone[r.state] : 'bad'}">{r.success ? (r.state === 'InSync' ? 'in sync' : r.state.toLowerCase()) : 'failed'}</span>
-                </div>
-                {#if r.error}<pre class="err">{r.error}</pre>{/if}
-                {#if r.changes.length}<ul class="small">{#each r.changes as c (c)}<li>{c}</li>{/each}</ul>{:else}<p class="muted small">No changes needed.</p>{/if}
-                {#each r.warnings as w (w)}<p class="note warn">⚠ {w}</p>{/each}
-              </div>
-            {/each}
+            <ul class="reports">
+              {#each host.policyReport.tools as r (r.toolId)}
+                <li>
+                  <div class="tool-head">
+                    <strong class="mono">{r.toolId}</strong>
+                    <span class="pill {r.success ? configTone[r.state] : 'bad'}">{r.success ? (r.state === 'InSync' ? 'in sync' : r.state.toLowerCase()) : 'failed'}</span>
+                  </div>
+                  {#if r.error}<pre class="code-block err">{r.error}</pre>{/if}
+                  {#if r.changes.length}<ul class="changes small">{#each r.changes as c (c)}<li>{c}</li>{/each}</ul>{:else}<p class="muted small">No changes needed.</p>{/if}
+                  {#each r.warnings as w (w)}<p class="note warn"><Icon name="alert" />{w}</p>{/each}
+                </li>
+              {/each}
+            </ul>
           {:else}
             <p class="muted">The agent has not reported an apply yet.</p>
           {/if}
@@ -490,17 +497,22 @@
       <section class="card">
         <header>
           <h2>Effective policy</h2>
-          <a class="hint" href="/policies/host/{id}">{canWrite() ? 'Edit host overrides →' : 'View host layer →'}</a>
+          <a class="hint" href="/policies/host/{id}">{canWrite() ? 'Edit host overrides' : 'View host layer'}</a>
         </header>
         <div class="card-body">
           {#if effective}
-            <p class="muted small layers">
-              Merged from:
-              {#each effective.layers as l, i (l.layerId)}
-                {i ? ' → ' : ''}<a href={l.scope === 'Global' ? '/policies/global' : `/policies/${l.scope.toLowerCase()}/${l.targetId}`}>{l.scope === 'Global' ? 'global' : l.scope === 'Group' ? `group ${s.groupName ?? ''}` : 'this host'} v{l.version}</a>
-              {/each}
-            </p>
-            <pre class="yaml">{effective.yaml}</pre>
+            <div class="layers">
+              <span class="muted small">Merged from</span>
+              <ol>
+                {#each effective.layers as l (l.layerId)}
+                  <li><a href={l.scope === 'Global' ? '/policies/global' : `/policies/${l.scope.toLowerCase()}/${l.targetId}`}>{l.scope === 'Global' ? 'global' : l.scope === 'Group' ? `group ${s.groupName ?? ''}` : 'this host'} <span class="mono">v{l.version}</span></a></li>
+                {/each}
+              </ol>
+            </div>
+            <div class="doc">
+              <div class="doc-head"><span class="mono">effective.yaml</span><span class="mono">{effective.revision}</span></div>
+              <pre class="code-block yaml">{effective.yaml}</pre>
+            </div>
           {:else}
             <div class="skeleton-block"></div>
           {/if}
@@ -516,7 +528,7 @@
           <tbody>
             {#each commands as c (c.id)}
               <tr>
-                <td><span class="mono">{c.type}</span> {#if c.payload.target}<span class="mono muted">{c.payload.target}</span>{/if}</td>
+                <td class="nowrap"><span class="mono">{c.type}</span> {#if c.payload.target}<span class="mono muted">{c.payload.target}</span>{/if}</td>
                 <td><span class="pill {commandTone[c.status]}">{c.status.toLowerCase()}</span></td>
                 <td class="hide-sm">{c.createdBy}</td>
                 <td class="nowrap"><Time iso={c.createdAt} /></td>
@@ -555,36 +567,60 @@
 {/if}
 
 <style>
-  .logins { margin-top: 16px; }
-  .posture-bars { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 18px 28px; }
-  .posture { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 18px 24px; border-top: 1px solid var(--border); }
-  .title { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-  .title .pill { font-size: 12px; font-weight: 400; }
-  .tag { margin-left: 4px; }
-  .spaced { margin-bottom: 12px; justify-content: space-between; align-items: center; }
-  .seg { display: inline-flex; border: 1px solid var(--border-strong); border-radius: var(--radius); overflow: hidden; }
-  .seg button { padding: 2px 10px; border: 0; background: var(--bg); color: var(--muted); cursor: pointer; font-size: 12px; }
-  .seg button + button { border-left: 1px solid var(--border-strong); }
-  .seg button.on { background: var(--surface-2); color: var(--text-strong); }
-  .charts { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr)); gap: 20px; }
+  .logins { margin-top: var(--space-md); }
+  .posture-bars { grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr)); }
+  .posture { border-top: var(--rule-hair) solid var(--border); }
+  .head-text { display: flex; flex-direction: column; gap: var(--space-sm); min-width: 0; }
+  .sysline { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-xs) 0; color: var(--muted); }
+  .sysline > * + * { margin-left: var(--space-sm); padding-left: var(--space-sm); box-shadow: inset 1px 0 0 var(--border-strong); }
+  .sysline .mono { color: var(--text-strong); }
+  .tags { display: inline-flex; gap: var(--space-2xs); }
+  .spaced { margin-bottom: var(--space-sm); align-items: center; }
+  .spaced p { flex: 1; }
+  .spaced :global(svg) { color: var(--c, currentColor); }
+  .banner.bad { --c: var(--bad); }
+  .banner.warn { --c: var(--warn); }
+  .count.alert { display: inline-grid; place-items: center; background: var(--bad-bg); color: var(--bad); }
+  .charts { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr)); }
+  .charts > :global(*) { padding: var(--space-md); box-shadow: 1px 0 0 var(--border), 0 1px 0 var(--border); }
+  .charts { overflow: hidden; }
+  .overview-grid { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: var(--space-md); align-items: start; }
+  .policy-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr); gap: var(--space-md); align-items: start; }
   .tools { list-style: none; margin: 0; padding: 0; }
-  .tools li { padding: 12px 16px; border-bottom: 1px solid var(--border); }
-  .tool-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
-  .tool-meta { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; margin-top: 6px; }
-  .note { margin: 6px 0 0; font-size: 12.5px; color: var(--muted); }
+  .tools li { padding: var(--space-sm) var(--space-md); border-bottom: var(--rule-hair) solid var(--border); }
+  .tool-head { display: flex; justify-content: space-between; align-items: center; gap: var(--space-xs); }
+  .tool-name { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--space-2xs) var(--space-xs); min-width: 0; }
+  .tool-name strong { font-family: var(--font-display); font-weight: 600; font-size: var(--text-lg); color: var(--text-strong); }
+  .tool-sub { display: inline-flex; font-size: var(--text-sm); color: var(--muted); }
+  .tool-sub > * + * { margin-left: var(--space-xs); padding-left: var(--space-xs); box-shadow: inset 1px 0 0 var(--border-strong); }
+  .tool-meta { display: flex; flex-wrap: wrap; gap: var(--space-2xs) var(--space-sm); align-items: center; margin-top: var(--space-xs); }
+  .detail { font-size: var(--text-sm); color: var(--muted); }
+  .detail .mono { color: var(--text-strong); }
+  .note { display: flex; gap: var(--space-xs); align-items: flex-start; margin: var(--space-xs) 0 0; font-size: var(--text-sm); color: var(--muted); }
+  .note :global(svg) { margin-top: var(--space-3xs); }
   .note.bad { color: var(--bad); }
   .note.warn { color: var(--warn); }
-  .planned { padding: 10px 16px; }
-  .planned summary { cursor: pointer; color: var(--muted); font-size: 12.5px; }
-  .planned p { margin: 6px 0 0; }
-  .facts { display: grid; grid-template-columns: max-content 1fr; gap: 8px 16px; margin: 0; padding: 16px; font-size: 13px; }
-  .facts.tight { padding: 0; }
-  .facts dt { color: var(--muted); }
-  .facts dd { margin: 0; overflow-wrap: anywhere; }
-  .report { padding: 12px; border: 1px solid var(--border); border-radius: var(--radius); }
-  .report ul { margin: 8px 0 0; padding-left: 18px; }
-  .err { margin-top: 8px; padding: 8px; border-radius: 6px; background: var(--bad-bg); color: var(--bad); }
-  .yaml { padding: 12px; border-radius: 6px; background: var(--bg); border: 1px solid var(--border); max-height: 520px; overflow: auto; }
-  .layers { margin: 0 0 10px; }
-  .more { padding: 12px; text-align: center; border-top: 1px solid var(--border); }
+  .planned { padding: var(--space-sm) var(--space-md); }
+  .planned summary { cursor: pointer; color: var(--muted); font-size: var(--text-sm); }
+  .planned p { margin: var(--space-xs) 0 0; }
+  .facts { padding: var(--space-md); }
+  .facts.posture { border-top: var(--rule-hair) solid var(--border); background: var(--color-paper); }
+  .facts.posture dd { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-xs); }
+  .load { display: flex; gap: var(--space-sm); }
+  .reports { list-style: none; margin: 0; padding: 0; border-top: var(--rule-hair) solid var(--border); }
+  .reports > li { padding: var(--space-sm) 0; border-bottom: var(--rule-hair) solid var(--border); }
+  .changes { margin: var(--space-xs) 0 0; padding-left: var(--space-md); }
+  .err { margin-top: var(--space-xs); color: var(--color-graphite-error); }
+  .layers { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-xs); margin-bottom: var(--space-sm); }
+  .layers ol { display: flex; flex-wrap: wrap; gap: var(--space-2xs); margin: 0; padding: 0; list-style: none; counter-reset: layer; }
+  .layers li { counter-increment: layer; display: inline-flex; align-items: center; gap: var(--space-2xs); }
+  .layers li::before { content: counter(layer); font-family: var(--font-display); font-weight: 600; font-size: var(--text-xs); color: var(--muted); }
+  .layers li + li { padding-left: var(--space-xs); box-shadow: inset 1px 0 0 var(--border-strong); }
+  .doc-head { display: flex; justify-content: space-between; gap: var(--space-sm); padding: var(--space-xs) var(--space-md); background: var(--color-graphite-2); color: var(--color-graphite-muted); border-radius: var(--radius-input) var(--radius-input) 0 0; }
+  .doc .yaml { max-height: 560px; border-top-left-radius: 0; border-top-right-radius: 0; }
+  @supports (corner-shape: bevel) {
+    .doc-head { border-radius: var(--cut) 2px 0 0; corner-shape: bevel round; }
+    .doc .yaml { border-radius: 0 0 var(--cut) 2px; corner-shape: bevel round; }
+  }
+  @media (max-width: 1100px) { .overview-grid, .policy-grid { grid-template-columns: minmax(0, 1fr); } }
 </style>

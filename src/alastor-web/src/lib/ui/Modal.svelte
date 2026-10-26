@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { Snippet } from 'svelte';
+  import Icon from './Icon.svelte';
 
   let { open = $bindable(false), title, wide = false, children, footer }: {
     open?: boolean;
@@ -23,7 +24,7 @@
   {#if open}
     <header>
       <h2>{title}</h2>
-      <button class="x" aria-label="Close" onclick={() => (open = false)}>×</button>
+      <button class="x" aria-label="Close" onclick={() => (open = false)}><Icon name="close" /></button>
     </header>
     <div class="body">{@render children()}</div>
     {#if footer}<footer>{@render footer()}</footer>{/if}
@@ -32,21 +33,23 @@
 
 <style>
   dialog {
-    width: min(520px, calc(100vw - 32px));
-    max-height: calc(100vh - 48px);
+    width: 520px; max-width: calc(100% - 2 * var(--space-md));
+    max-height: calc(100dvh - 2 * var(--space-lg));
     padding: 0;
-    border: 1px solid var(--border-strong);
-    border-radius: 10px;
-    background: var(--surface);
+    border: var(--rule-hair) solid var(--border);
+    border-radius: var(--radius-card);
+    background: var(--color-key-face);
     color: var(--text);
-    box-shadow: 0 16px 48px rgba(0, 0, 0, 0.5);
+    box-shadow: var(--shadow-float);
   }
-  dialog.wide { width: min(820px, calc(100vw - 32px)); }
-  dialog::backdrop { background: rgba(1, 4, 9, 0.7); }
-  header { display: flex; justify-content: space-between; align-items: center; padding: 14px 18px; border-bottom: 1px solid var(--border); }
-  h2 { margin: 0; font-size: 16px; }
-  .x { border: 0; background: none; font-size: 22px; line-height: 1; color: var(--muted); cursor: pointer; padding: 0 4px; }
-  .x:hover { color: var(--text-strong); }
-  .body { padding: 18px; }
-  footer { display: flex; justify-content: flex-end; gap: 8px; padding: 12px 18px; border-top: 1px solid var(--border); flex-wrap: wrap; }
+  @supports (corner-shape: bevel) { dialog { border-radius: var(--cut-l) 4px; corner-shape: bevel round; } }
+  dialog.wide { width: 820px; }
+  dialog::backdrop { background: var(--color-scrim); }
+  header { display: flex; justify-content: space-between; align-items: center; gap: var(--space-sm); padding: var(--space-md) var(--space-md) var(--space-md) var(--space-lg); border-bottom: var(--rule-hair) solid var(--border); }
+  h2 { margin: 0; font-size: var(--text-xl); }
+  .x { display: inline-grid; place-items: center; width: 32px; height: 32px; border: 0; border-radius: var(--radius-input); background: none; color: var(--muted); cursor: pointer; }
+  .x:hover { color: var(--text-strong); background: var(--color-paper-2); }
+  .x:active { background: var(--color-paper-3); }
+  .body { padding: var(--space-lg); }
+  footer { display: flex; justify-content: flex-end; gap: var(--space-xs); padding: var(--space-sm) var(--space-lg) var(--space-md); border-top: var(--rule-hair) solid var(--border); background: var(--color-paper); flex-wrap: wrap; }
 </style>

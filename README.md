@@ -194,9 +194,20 @@ curl -fsSL -H "Authorization: Bearer $GITHUB_TOKEN" https://raw.githubuserconten
 
 Agents need no token: they download the agent from your server. Binaries come from GitHub releases, built by
 `.github/workflows/release.yml` when a `v*` tag is pushed. `ALASTOR_DOWNLOAD_BASE=https://…` makes both scripts download
-`<base>/<version>/<asset>` instead, for a mirror or a future website. Without a release, build the binaries yourself
-(see [Build & test](#build--test)) and pass them in:
-`sudo bash install/install.sh --binary artifacts/server/alastor-server --agent-dir <dir with alastor-agent-linux-x64>`.
+`<base>/<version>/<asset>` instead, for a mirror or a future website.
+
+**From a clone,** the script builds and installs that checkout instead of downloading a release (needs the .NET 10
+SDK and Node.js 22+; clang and zlib1g-dev give a Native AOT agent, otherwise it builds a JIT one). The build runs as
+the checkout's owner, into `artifacts/install/`. All options work the same, and `--version vX.Y.Z` installs that
+release instead:
+
+```bash
+git clone https://github.com/nor0x/Alastor && cd Alastor
+sudo ./install/install.sh --with-agent
+```
+
+Prebuilt binaries can also be passed in directly:
+`sudo ./install/install.sh --binary path/to/alastor-server --agent-dir <dir with alastor-agent-linux-x64>`.
 
 ### Docker
 
