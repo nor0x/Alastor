@@ -278,7 +278,8 @@ public sealed class ServerApiTests : IClassFixture<ServerApiTests.Factory>
 
         var fleet = await admin.GetFromJsonAsync<JsonElement>("/api/baseline", Json);
         var fleetFw = fleet.GetProperty("checks").EnumerateArray().Single(c => c.GetProperty("check").GetProperty("id").GetString() == "firewall-active");
-        Assert.Contains(fleetFw.GetProperty("failingHosts").EnumerateArray(), h => h.GetProperty("id").GetGuid() == hostId);
+        var fleetHost = fleetFw.GetProperty("failingHosts").EnumerateArray().Single(h => h.GetProperty("id").GetGuid() == hostId);
+        Assert.Equal("sudo ufw --force enable", fleetHost.GetProperty("commands")[0].GetString()); // per-host commands reach the fleet view
         var overview = await admin.GetFromJsonAsync<JsonElement>("/api/overview", Json);
         Assert.True(overview.GetProperty("hostsFailingBaselineHigh").GetInt32() >= 1);
 

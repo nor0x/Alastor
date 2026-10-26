@@ -184,7 +184,7 @@ public sealed record HostBaselineDto(
     string? PolicyRevision,
     IReadOnlyList<BaselineCheckDto> Checks);
 
-public sealed record BaselineHostRef(Guid Id, string Name, string Actual);
+public sealed record BaselineHostRef(Guid Id, string Name, string Actual, IReadOnlyList<string> Commands);
 
 public sealed record BaselineHostDto(
     Guid Id,

@@ -1,6 +1,7 @@
 <script lang="ts">
   import { errorText } from './api';
-  import { fixValue, layerHref, setLayerKey, type BaselineCheck, type ScopeOption } from './baseline';
+  import { fixValue, layerHref, setLayerKey, type BaselineCheck, type CommandGroup, type ScopeOption } from './baseline';
+  import FixCommands from './FixCommands.svelte';
   import { toast } from './toast.svelte';
   import Modal from './ui/Modal.svelte';
 
@@ -8,8 +9,9 @@
     open = $bindable(false),
     check,
     scopes,
+    manual = [],
     onDone,
-  }: { open?: boolean; check: BaselineCheck | null; scopes: ScopeOption[]; onDone?: () => void } = $props();
+  }: { open?: boolean; check: BaselineCheck | null; scopes: ScopeOption[]; manual?: CommandGroup[]; onDone?: () => void } = $props();
 
   let choice = $state('');
   let busy = $state(false);
@@ -63,6 +65,13 @@
           Adds <code>{yamlLine}</code> to the <a href={layerHref(selected.layer)}>{selected.label.toLowerCase()} policy</a> as a new version you can revert.
         </p>
       {/if}
+      {#if manual.length}
+        <section class="by-hand" aria-label="Fix by hand">
+          <h3>Or run it yourself</h3>
+          <p class="muted small">Same result without a policy change. The agent won't undo it, and the check passes on its next run.</p>
+          <FixCommands groups={manual} />
+        </section>
+      {/if}
     </div>
   {/if}
   {#snippet footer()}
@@ -74,6 +83,8 @@
 <style>
   .stack-sm { display: flex; flex-direction: column; gap: var(--space-sm); }
   .stack-sm p { margin: 0; }
+  .by-hand { display: flex; flex-direction: column; gap: var(--space-xs); margin-top: var(--space-xs); padding-top: var(--space-sm); border-top: var(--rule-hair) solid var(--border); }
+  .by-hand h3 { margin: 0; font-family: var(--font-display); font-weight: 500; font-size: var(--text-sm); color: var(--text-strong); }
   .scopes { border: 0; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-xs); }
   .scopes legend { margin-bottom: var(--space-2xs); font-family: var(--font-display); font-weight: 500; font-size: var(--text-sm); color: var(--muted); }
   .scope { display: flex; gap: var(--space-sm); align-items: flex-start; padding: var(--space-sm); border: var(--rule-hair) solid var(--border-strong); border-radius: var(--radius-input); background: var(--color-key-face); cursor: pointer; }

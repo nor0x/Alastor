@@ -61,7 +61,8 @@ public static class BaselineEvaluator
         return new(id, CheckStatus.Fail, summary, f.SshdIncludesDropIns ? null : "sshd_config doesn't include sshd_config.d/*.conf, so a drop-in has no effect. Add the setting to sshd_config itself.")
         {
             Commands = f.SshdIncludesDropIns
-                ? [$"printf '{conf}\\n' | sudo tee /etc/ssh/sshd_config.d/01-hardening.conf && sudo sshd -t && sudo systemctl reload {SshService(f)}"]
+                // Appends, so fixing several SSH checks by hand keeps every setting.
+                ? [$"printf '{conf}\\n' | sudo tee -a /etc/ssh/sshd_config.d/01-hardening.conf && sudo sshd -t && sudo systemctl reload {SshService(f)}"]
                 : [$"sudoedit /etc/ssh/sshd_config   # set: {string.Join(", ", settings.Select(s => $"{s.Keyword} {s.Value}"))}", $"sudo sshd -t && sudo systemctl reload {SshService(f)}"],
         };
     }
@@ -76,7 +77,8 @@ public static class BaselineEvaluator
         var conf = string.Join("\\n", failing.Select(kv => $"{kv.Key} = {kv.Value.Value}"));
         return new(id, CheckStatus.Fail, string.Join(", ", failing.Select(kv => $"{kv.Key} = {f.Sysctl[kv.Key]}")))
         {
-            Commands = [$"printf '{conf}\\n' | sudo tee -a /etc/sysctl.d/99-hardening.conf && sudo sysctl --system"],
+            // "99-zz-" sorts after Debian's 99-sysctl.conf, like the agent's own drop-in.
+            Commands = [$"printf '{conf}\\n' | sudo tee -a /etc/sysctl.d/99-zz-hardening.conf && sudo sysctl --system"],
         };
     }
 
@@ -84,7 +86,17 @@ public static class BaselineEvaluator
     {
         true => new("ssh-brute-force-protection", CheckStatus.Pass, "fail2ban sshd jail is active"),
         false when f.Sshd is null && f.SshdError is null => new("ssh-brute-force-protection", CheckStatus.NotApplicable, "No SSH server installed"),
-        false => new("ssh-brute-force-protection", CheckStatus.Fail, "No active fail2ban sshd jail"),
+        false => new("ssh-brute-force-protection", CheckStatus.Fail, "No active fail2ban sshd jail")
+        {
+            // The systemd backend reads sshd's journal, so it works without /var/log/auth.log (Debian 12+, RHEL).
+            Commands =
+            [
+                f.Family == DistroFamily.RedHat
+                    ? "sudo dnf install -y epel-release && sudo dnf install -y fail2ban fail2ban-systemd   # fail2ban comes from EPEL"
+                    : "sudo apt-get install -y fail2ban python3-systemd",
+                $"printf '[sshd]\\nenabled = true\\nport = {SshPort(f)}\\nbackend = systemd\\n' | sudo tee /etc/fail2ban/jail.d/sshd.local && sudo systemctl enable fail2ban && sudo systemctl restart fail2ban",
+            ],
+        },
         null => new("ssh-brute-force-protection", CheckStatus.Unknown, "Could not query fail2ban"),
     };
 

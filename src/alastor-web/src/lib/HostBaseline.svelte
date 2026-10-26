@@ -9,7 +9,7 @@
   import { toast } from './toast.svelte';
   import { confirm } from './ui/confirm.svelte';
   import ApplyFixDialog from './ApplyFixDialog.svelte';
-  import CopyButton from './ui/CopyButton.svelte';
+  import FixCommands from './FixCommands.svelte';
   import Icon from './ui/Icon.svelte';
   import Severity from './ui/Severity.svelte';
   import Time from './ui/Time.svelte';
@@ -137,14 +137,14 @@
           {#if c.commands.length}
             <details class="by-hand">
               <summary>Or fix it by hand</summary>
-              {@render commandList(c.commands)}
+              <FixCommands groups={[{ hosts: [], commands: c.commands }]} />
             </details>
           {/if}
         </div>
       {:else if c.status === 'Fail' && (c.fix === 'Manual' || c.enforced)}
         <div class="fix">
           <p><strong>Fix:</strong> {c.remediation}</p>
-          {#if c.commands.length}{@render commandList(c.commands)}{/if}
+          {#if c.commands.length}<FixCommands groups={[{ hosts: [], commands: c.commands }]} />{/if}
           {#if canWrite() && !c.accepted}
             <div class="row-actions"><button class="btn small" onclick={() => accept(c)}>Accept risk</button></div>
           {/if}
@@ -159,15 +159,6 @@
       {/if}
     </div>
   </details>
-{/snippet}
-
-{#snippet commandList(commands: string[])}
-  <div class="commands">
-    {#each commands as cmd, i (i)}
-      <div class="cmd"><code>{cmd}</code><CopyButton text={cmd.replace(/\s+#.*$/, '')} /></div>
-    {/each}
-    <p class="muted small">Run on the host as an admin. Lines after <code>#</code> are notes and aren't copied.</p>
-  </div>
 {/snippet}
 
 {#if error && !data}
@@ -242,7 +233,7 @@
     {/if}
   </div>
 
-  <ApplyFixDialog bind:open={fixOpen} check={fixFor} {scopes} />
+  <ApplyFixDialog bind:open={fixOpen} check={fixFor} {scopes} manual={fixFor?.commands.length ? [{ hosts: [], commands: fixFor.commands }] : []} />
 {/if}
 
 <style>
@@ -295,8 +286,6 @@
   /* The fix is a paper-2 well inside the panel, not a second box. */
   .fix { display: flex; flex-direction: column; gap: var(--space-sm); padding: var(--space-sm) var(--space-md); border-radius: var(--radius-input); background: var(--color-paper-2); }
   .row-actions { display: flex; gap: var(--space-xs); flex-wrap: wrap; }
-  .commands { display: flex; flex-direction: column; gap: var(--space-xs); }
-  .commands p { margin: 0; }
   .by-hand > summary { width: fit-content; cursor: pointer; font-family: var(--font-display); font-weight: 500; font-size: var(--text-sm); color: var(--color-ink-2); }
   .by-hand > summary:hover { color: var(--text-strong); }
   .by-hand[open] > summary { margin-bottom: var(--space-xs); }

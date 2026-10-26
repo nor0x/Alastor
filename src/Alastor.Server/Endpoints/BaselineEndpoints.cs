@@ -56,7 +56,7 @@ public static class BaselineEndpoints
                     r.Count(x => x.Status == CheckStatus.Unknown),
                     r.Count(x => x.Status == CheckStatus.NotApplicable),
                     r.Count(x => x.Enforced),
-                    r.Where(IsOpenFailure).Select(x => new BaselineHostRef(x.HostId, names[x.HostId], x.Actual)).OrderBy(x => x.Name).ToList());
+                    r.Where(IsOpenFailure).Select(x => new BaselineHostRef(x.HostId, names[x.HostId], x.Actual, x.Commands)).OrderBy(x => x.Name).ToList());
             }).ToList();
 
             var scored = hosts.Where(h => h.BaselineScore is not null).ToList();

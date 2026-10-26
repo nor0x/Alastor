@@ -183,6 +183,9 @@ public class BaselineIntegrationTests
         Assert.Contains(r["firewall-active"].Commands, c => c.Contains("ufw allow 2222/tcp"));
         Assert.Contains("sshd_config.d/", Assert.Single(r["ssh-x11-forwarding"].Commands));
         Assert.Contains("systemctl reload ssh", r["ssh-x11-forwarding"].Commands[0]); // Debian names the unit "ssh"
+        Assert.Contains("sudo tee -a ", r["ssh-x11-forwarding"].Commands[0]); // appends, so a second SSH fix keeps the first
+        Assert.Contains("/etc/sysctl.d/99-zz-hardening.conf", Assert.Single(r["net-redirects"].Commands));
+        Assert.Contains(r["ssh-brute-force-protection"].Commands, c => c.Contains("jail.d/sshd.local") && c.Contains("port = 2222"));
         Assert.Contains(r["updates-automatic"].Commands, c => c.Contains("APT::Periodic::Enable"));
         Assert.Empty(r["ssh-root-login"].Commands); // passing checks carry no commands
     }
