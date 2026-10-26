@@ -45,6 +45,11 @@ public sealed record HostSummaryDto(
 {
     public int? IntegrityChanges { get; init; }
     public int? RootkitWarnings { get; init; }
+
+    /// <summary>As of <see cref="LastSeenAt"/>; the dashboard adds the time since.</summary>
+    public long UptimeSeconds { get; init; }
+    public string KernelVersion { get; init; } = "";
+    public IReadOnlyList<string> IpAddresses { get; init; } = [];
 }
 
 public sealed record ToolStatusDto(

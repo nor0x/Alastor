@@ -113,6 +113,9 @@ public static class AgentCommandTypes
 
     /// <summary>Upgrade or remove one package. Payload as <see cref="PackagePlan"/>. Acknowledged at once; the outcome follows as a software report.</summary>
     public const string PackageAction = "package-action";
+
+    /// <summary>Reboot the host in one minute (<c>shutdown -r +1</c>). Acknowledged before the host goes down; a redelivered copy is ignored.</summary>
+    public const string Reboot = "reboot";
 }
 
 public sealed record AgentCommand(Guid Id, string Type, IReadOnlyDictionary<string, string> Payload, DateTime CreatedAtUtc);
