@@ -46,7 +46,26 @@ export interface BaselineFleetCheck {
   unknown: number;
   notApplicable: number;
   enforced: number;
-  failingHosts: { id: string; name: string; actual: string }[];
+  failingHosts: { id: string; name: string; actual: string; commands: string[] }[];
+}
+
+/** Commands that fix a check by hand, and the hosts they're for (empty on a host's own page). */
+export interface CommandGroup {
+  hosts: { id: string; name: string }[];
+  commands: string[];
+}
+
+/** Failing hosts grouped by identical commands, so a fleet on one distribution shows one block. */
+export function commandGroups(fc: BaselineFleetCheck): CommandGroup[] {
+  const groups = new Map<string, CommandGroup>();
+  for (const h of fc.failingHosts) {
+    if (!h.commands.length) continue;
+    const key = h.commands.join('\n');
+    const g = groups.get(key) ?? { hosts: [], commands: h.commands };
+    g.hosts.push({ id: h.id, name: h.name });
+    groups.set(key, g);
+  }
+  return [...groups.values()];
 }
 
 export interface BaselineFleetHost {

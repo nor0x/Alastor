@@ -2,7 +2,7 @@
   import { parseDocument } from 'yaml';
   import { api, errorText, type PolicyLayerDetail } from '../lib/api';
   import {
-    categoryLabels, ignorePath, scoreTone, setLayerKey, severityHelp, severityRank, weightsText,
+    categoryLabels, commandGroups, ignorePath, scoreTone, setLayerKey, severityHelp, severityRank, weightsText,
     type BaselineCheck, type BaselineFleet, type BaselineFleetCheck, type ScopeOption,
   } from '../lib/baseline';
   import { fleet } from '../lib/fleet.svelte';
@@ -12,6 +12,7 @@
   import { toast } from '../lib/toast.svelte';
   import { confirm } from '../lib/ui/confirm.svelte';
   import ApplyFixDialog from '../lib/ApplyFixDialog.svelte';
+  import FixCommands from '../lib/FixCommands.svelte';
   import FleetHardening from '../lib/FleetHardening.svelte';
   import FleetNetwork from '../lib/FleetNetwork.svelte';
   import Severity from '../lib/ui/Severity.svelte';
@@ -23,7 +24,7 @@
   const initialView = new URLSearchParams(route.search).get('view');
   let view = $state<'checks' | 'hosts' | 'lynis' | 'exposure'>(initialView === 'hosts' || initialView === 'lynis' || initialView === 'exposure' ? initialView : 'checks');
   let onlyFailing = $state(false);
-  let fixFor = $state<BaselineCheck | null>(null);
+  let fixFor = $state<BaselineFleetCheck | null>(null);
   let fixOpen = $state(false);
 
   async function load() {
@@ -66,8 +67,8 @@
     ...fleet.groups.map((g) => ({ key: g.id, layer: { scope: 'group', id: g.id }, label: `Group ${g.name}`, help: `${g.hostCount} host${g.hostCount === 1 ? '' : 's'}.` }) as ScopeOption),
   ]);
 
-  function openFix(c: BaselineCheck) {
-    fixFor = c;
+  function openFix(fc: BaselineFleetCheck) {
+    fixFor = fc;
     fixOpen = true;
   }
 
@@ -160,6 +161,7 @@
       {#each sorted as fc (fc.check.id)}
         {@const c = fc.check}
         {@const total = reported(fc)}
+        {@const manual = commandGroups(fc)}
         <details class="row">
           <summary>
             <span class="check-title">
@@ -208,8 +210,8 @@
             {#if canWrite()}
               <div class="actions">
                 {#if c.fix === 'Policy' && !appliedFleetWide(c)}
-                  <button class="btn primary small" onclick={() => openFix(c)}>Apply fix…</button>
-                {:else if c.fix === 'Manual' && fc.failing}
+                  <button class="btn primary small" onclick={() => openFix(fc)}>Apply fix…</button>
+                {:else if c.fix === 'Manual' && fc.failing && !manual.length}
                   <span class="muted small">The commands depend on each host (SSH port, users, distribution). Open a failing host to copy them.</span>
                 {/if}
                 {#if appliedFleetWide(c) && c.policyPath[0] === 'baseline'}
@@ -221,6 +223,16 @@
                   <button class="btn small" onclick={() => acceptAll(c)}>Accept risk on all hosts</button>
                 {/if}
               </div>
+            {/if}
+            {#if manual.length}
+              {#if c.fix === 'Manual'}
+                <FixCommands groups={manual} />
+              {:else}
+                <details class="by-hand">
+                  <summary>Or fix it by hand</summary>
+                  <FixCommands groups={manual} />
+                </details>
+              {/if}
             {/if}
           </div>
         </details>
@@ -251,7 +263,7 @@
     </section>
   {/if}
 
-  <ApplyFixDialog bind:open={fixOpen} check={fixFor} {scopes} />
+  <ApplyFixDialog bind:open={fixOpen} check={fixFor?.check ?? null} {scopes} manual={fixFor ? commandGroups(fixFor) : []} />
 {/if}
 
 <style>
@@ -294,6 +306,9 @@
   .hosts { display: flex; flex-direction: column; gap: var(--space-2xs); }
   .hosts ul { margin: 0; padding-left: var(--space-md); columns: 2 260px; font-size: var(--text-sm); }
   .actions { display: flex; flex-wrap: wrap; gap: var(--space-xs); align-items: center; }
+  .by-hand > summary { width: fit-content; cursor: pointer; font-family: var(--font-display); font-weight: 500; font-size: var(--text-sm); color: var(--color-ink-2); }
+  .by-hand > summary:hover { color: var(--text-strong); }
+  .by-hand[open] > summary { margin-bottom: var(--space-xs); }
   td .dot { margin-right: var(--space-xs); }
   @media (max-width: 640px) {
     .cols { display: none; }
