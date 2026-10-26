@@ -1,10 +1,12 @@
+👁️
+
 <p align="center">
   <img src="art/svg/logo.svg" alt="Alastor logo" width="96" height="96">
 </p>
 
-# Alastor
+# Alastor 🧙‍♂️
 
-**Constant vigilance for your servers.**
+🪄 **Constant vigilance for your servers.** 🪄
 
 A free, self-hosted security control plane for homelabs, VPSes and servers: one lightweight agent per machine, one
 central server, one dashboard.
@@ -90,3 +92,6 @@ Runs on x86_64 and arm64 Linux with systemd (Debian, Ubuntu, RHEL/Alma/Rocky, Fe
 
 MIT for Alastor's own code. Bundled tools are installed from your distribution and keep their own licenses, listed
 in [docs/tools.md](docs/tools.md) and on the dashboard's About page.
+
+
+👁️
