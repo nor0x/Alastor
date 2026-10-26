@@ -167,8 +167,11 @@ public static class EventKinds
     /// <summary>rkhunter reported a warning it hadn't reported before.</summary>
     public const string RootkitWarning = "malware.rootkit-warning";
 
-    // Reserved for later deliverables.
+    // Malware (ClamAV)
+    /// <summary>ClamAV matched a signature in a file, once per new file and signature.</summary>
+    public const string MalwareFound = "malware.found";
+
+    // Not emitted: CVE scans and Lynis audits use VulnerabilitiesFound and HardeningWarning instead.
     public const string VulnerabilityFound = "vuln.found";
     public const string HardeningFinding = "hardening.finding";
-    public const string MalwareFound = "malware.found";
 }
