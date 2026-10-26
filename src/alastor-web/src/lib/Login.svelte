@@ -1,6 +1,7 @@
 <script lang="ts">
   import { api, ApiError, type Me } from './api';
   import Icon from './ui/Icon.svelte';
+  import Logo from './ui/Logo.svelte';
 
   let { onLogin }: { onLogin: (me: Me) => void } = $props();
 
@@ -26,7 +27,7 @@
 <div class="wrap">
   <form onsubmit={submit}>
     <h1>
-      <Icon name="shield" size={24} />
+      <Logo size={24} />
       Alastor
     </h1>
     <label>Username <input class="field" bind:value={username} autocomplete="username" required /></label>

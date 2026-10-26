@@ -24,6 +24,7 @@
   import About from './pages/About.svelte';
   import ThreatFeed from './lib/ThreatFeed.svelte';
   import Icon from './lib/ui/Icon.svelte';
+  import Logo from './lib/ui/Logo.svelte';
 
   let checking = $state(true);
   let menuOpen = $state(false);
@@ -120,7 +121,7 @@
     <aside class="side" class:open={menuOpen}>
       <div class="bar">
         <a class="brand" href="/" aria-label="Alastor overview">
-          <Icon name="shield" size={20} />
+          <Logo size={20} />
           Alastor
         </a>
         <button class="menu-btn btn small" aria-expanded={menuOpen} aria-controls="main-nav" onclick={() => (menuOpen = !menuOpen)}>
