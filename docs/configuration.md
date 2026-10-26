@@ -28,6 +28,7 @@ The server reads environment variables. With the installer they live in `/etc/al
 | `ALASTOR_THREATFEEDENABLED` | `true` | fetch NVD, CISA KEV and security news RSS; `false` for air-gapped servers |
 | `ALASTOR_THREATFEEDINTERVAL` / `ALASTOR_THREATFEEDRETENTION` | `20m` / `30d` | |
 | `ALASTOR_NVDAPIKEY` | – | optional, free; raises NVD's rate limit tenfold |
+| `ALASTOR_UPDATECHECKENABLED` / `ALASTOR_UPDATEREPOSITORY` | `true` / `nor0x/Alastor` | twice a day, ask GitHub for the latest release and show a notice in the sidebar when it's newer than this server; `false` for air-gapped servers |
 | `ASPNETCORE_URLS` | `http://127.0.0.1:8080` | loopback by default: put Caddy/nginx with TLS or `tailscale serve` in front, or listen on the tailnet address |
 
 The network allowlists and other protections are explained in [security.md](security.md).

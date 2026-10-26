@@ -47,6 +47,7 @@ public sealed class ThreatFeedTests : IDisposable
             builder.UseSetting("SecureCookies", "false");
             builder.UseSetting("ThreatFeedEnabled", "false"); // the tests drive ThreatFeedService directly
             builder.UseSetting("OsvEnabled", "false");
+            builder.UseSetting("UpdateCheckEnabled", "false"); // no GitHub calls in tests; UpdateCheckTests drive the check itself
             builder.UseSetting("BlocklistsEnabled", "false"); // no list downloads in tests; BlocklistApiTests drives them itself
             builder.ConfigureTestServices(s =>
             {

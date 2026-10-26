@@ -5,6 +5,8 @@
   import { live, startLive, stopLive } from './lib/live.svelte';
   import { refreshFleet, wireFleet } from './lib/fleet.svelte';
   import { issues, refreshIssues, wireIssues } from './lib/issues.svelte';
+  import { dismissUpdate, pendingUpdate, refreshUpdate, wireUpdate } from './lib/update.svelte';
+  import { fullDate } from './lib/format';
   import Login from './lib/Login.svelte';
   import ConfirmHost from './lib/ui/ConfirmHost.svelte';
   import Toasts from './lib/ui/Toasts.svelte';
@@ -43,9 +45,11 @@
     session.me = me;
     wireFleet();
     wireIssues();
+    wireUpdate();
     startLive();
     refreshFleet();
     refreshIssues();
+    refreshUpdate();
   }
 
   function signedOut() {
@@ -73,6 +77,7 @@
     { href: '/settings', label: 'Settings', group: '', match: (p: string) => p.startsWith('/settings') },
   ];
   const navGroups = ['Fleet', 'Posture', 'Activity', ''].map((g) => ({ name: g, items: nav.filter((n) => n.group === g) }));
+  const newRelease = $derived(pendingUpdate());
 
   // Close the mobile menu after navigating.
   $effect(() => {
@@ -133,6 +138,9 @@
               <span class="visually-hidden">Issues: </span>{issues.summary.unacknowledged}
             </span>
           {/if}
+          {#if !menuOpen && newRelease}
+            <span class="update-dot" title="Alastor {newRelease.latest} is available"><span class="visually-hidden">Update available</span></span>
+          {/if}
         </button>
       </div>
       <nav id="main-nav" aria-label="Main">
@@ -156,6 +164,15 @@
         {/each}
       </nav>
       <div class="user">
+        {#if newRelease}
+          <div class="update">
+            <a href={newRelease.url} target="_blank" rel="noopener noreferrer"
+              title="You're running {newRelease.current}.{newRelease.publishedAt ? ` Released ${fullDate(newRelease.publishedAt)}.` : ''} Opens the release on GitHub.">
+              <Icon name="external" /><span>Alastor <span class="mono">{newRelease.latest}</span> is available</span>
+            </a>
+            <button class="dismiss" aria-label="Dismiss update notice" title="Dismiss" onclick={dismissUpdate}><Icon name="close" /></button>
+          </div>
+        {/if}
         <span class="live" class:on={live.connected} title={live.connected ? 'Live updates connected' : 'Live updates unavailable; refreshing periodically'}>
           <span class="dot" class:ok={live.connected}></span>{live.connected ? 'Live' : 'Polling'}
         </span>
@@ -237,6 +254,22 @@
   nav a.active .badge.sev-critical { background: var(--color-error-wash); }
   nav a.active { color: var(--color-accent-deep); background: var(--color-key-face); border-color: var(--border); box-shadow: var(--shadow-card); }
   .user { display: flex; flex-direction: column; gap: var(--space-xs); padding: var(--space-md); border-top: var(--rule-hair) solid var(--border); font-size: var(--text-sm); }
+  .update {
+    display: flex; align-items: center; gap: var(--space-3xs);
+    border: var(--rule-hair) solid var(--border); border-radius: var(--radius-input); background: var(--color-accent-wash);
+  }
+  .update a {
+    flex: 1; min-width: 0; display: inline-flex; align-items: center; gap: var(--space-xs); padding: var(--space-2xs) var(--space-xs);
+    color: var(--color-accent-deep); font-family: var(--font-display); font-weight: 500;
+  }
+  .update a > span:last-child { min-width: 0; overflow-wrap: anywhere; line-height: 1.3; }
+  .update a:focus-visible { outline-offset: -2px; }
+  .dismiss {
+    flex: none; display: inline-grid; place-items: center; width: 28px; height: 28px; margin-right: var(--space-3xs);
+    border: 0; border-radius: var(--radius-input); background: transparent; color: var(--muted); cursor: pointer;
+  }
+  .dismiss:hover { color: var(--text-strong); background: var(--color-paper-3); }
+  .update-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--color-accent); }
   .live { display: inline-flex; align-items: center; gap: var(--space-xs); color: var(--muted); }
   .live.on { color: var(--ok); }
   .who-row { display: flex; align-items: center; justify-content: space-between; gap: var(--space-xs); }

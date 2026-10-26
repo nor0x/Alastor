@@ -193,6 +193,14 @@ builder.Services.AddHttpClient(Alastor.Server.Services.Osv.OsvService.HttpClient
     c.DefaultRequestHeaders.UserAgent.ParseAdd($"Alastor/{typeof(Program).Assembly.GetName().Version?.ToString(3) ?? "dev"} (self-hosted; software inventory)");
 }).ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler { AutomaticDecompression = System.Net.DecompressionMethods.All });
 if (options.OsvEnabled) builder.Services.AddHostedService<OsvWorker>();
+builder.Services.AddSingleton<Alastor.Server.Services.Updates.UpdateCheckService>();
+builder.Services.AddHttpClient(Alastor.Server.Services.Updates.UpdateCheckService.HttpClientName, c =>
+{
+    c.Timeout = TimeSpan.FromSeconds(15);
+    c.MaxResponseContentBufferSize = 1024 * 1024;
+    c.DefaultRequestHeaders.UserAgent.ParseAdd($"Alastor/{typeof(Program).Assembly.GetName().Version?.ToString(3) ?? "dev"} (self-hosted; update check)");
+});
+if (options.UpdateCheckEnabled) builder.Services.AddHostedService<UpdateCheckWorker>();
 
 var app = builder.Build();
 
