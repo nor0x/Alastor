@@ -1,7 +1,6 @@
 <script lang="ts" module>
   // One 16px stroke set for the whole dashboard. Icons sit beside a word; the word carries the meaning.
   const paths = {
-    shield: 'M8 1.5 2.5 3.6v4.1c0 3.3 2.3 6 5.5 6.8 3.2-.8 5.5-3.5 5.5-6.8V3.6Z',
     check: 'm3.5 8.5 3 3 6-7',
     alert: 'M8 2.2 14.5 13.5h-13ZM8 6.5v3.2M8 11.4v.1',
     error: 'M8 2a6 6 0 1 0 0 12A6 6 0 0 0 8 2Zm-2.2 3.8 4.4 4.4m0-4.4-4.4 4.4',
