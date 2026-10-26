@@ -9,6 +9,7 @@ using Alastor.Core.Policy;
 using Alastor.Server.Auth;
 using Alastor.Server.Data;
 using Alastor.Server.Services;
+using Alastor.Server.Services.Issues;
 
 namespace Alastor.Server.Endpoints;
 
@@ -124,9 +125,9 @@ public static class AgentEndpoints
         return Results.Ok(new EnrollResponse(host.Id, $"{host.Id}.{secret}", (int)opt.Value.HeartbeatIntervalValue.TotalSeconds));
     }
 
-    /// <summary>What a heartbeat can change about a host's issues: tool health and the last policy apply.</summary>
+    /// <summary>What a heartbeat can change about a host's issues: tool health, the last policy apply and how full the disk is.</summary>
     private static string HealthSignature(ManagedHost h) =>
-        $"{h.PolicyApplySuccess}|{string.Join(',', h.Tools.Where(Dto.HasProblem).Select(t => $"{t.ToolId}:{t.Availability}:{t.Running}:{t.ConfigState}").Order(StringComparer.Ordinal))}";
+        $"{h.PolicyApplySuccess}|{IssueRules.DiskLevel(h)}|{string.Join(',', h.Tools.Where(Dto.HasProblem).Select(t => $"{t.ToolId}:{t.Availability}:{t.Running}:{t.ConfigState}").Order(StringComparer.Ordinal))}";
 
     private static async Task<IResult> Heartbeat(HeartbeatRequest hb, ClaimsPrincipal user, AlastorDbContext db, PolicyService policies,
         EventIngestService ingest, DashboardNotifier notifier, HostStateService hostState, IOptions<AlastorOptions> opt, TimeProvider time, HttpContext http, CancellationToken ct)
@@ -136,6 +137,7 @@ public static class AgentEndpoints
         var host = await db.Hosts.Include(h => h.Tools).FirstAsync(h => h.Id == hostId, ct);
         var wasOffline = !host.IsOnline;
         var healthBefore = HealthSignature(host);
+        var diskBefore = IssueRules.DiskLevel(host);
 
         host.LastSeenAt = now;
         host.IsOnline = true;
@@ -207,6 +209,23 @@ public static class AgentEndpoints
                     Id = Guid.NewGuid(), OccurredAt = now, Capability = Capability.Agent, Severity = Severity.Info,
                     SourceTool = "alastor-server", Kind = EventKinds.HostOnline, Subject = host.Name,
                     Message = $"{host.Name} is back online", DedupKey = $"host.online:{hostId}",
+                },
+            ], ct);
+        }
+        // Alert once when the root filesystem fills past 90% (and again past 95%), not on every heartbeat while it stays full.
+        var diskNow = IssueRules.DiskLevel(host);
+        if (diskNow > diskBefore && host.DiskTotalBytes > 0)
+        {
+            var pct = Dto.Percent(host.DiskUsedBytes, host.DiskTotalBytes);
+            await ingest.IngestAsync(hostId,
+            [
+                new SecurityEvent
+                {
+                    Id = Guid.NewGuid(), OccurredAt = now, Capability = Capability.Storage, Severity = diskNow > 1 ? Severity.High : Severity.Medium,
+                    SourceTool = "alastor-server", Kind = EventKinds.StorageLow, Subject = "/",
+                    Message = $"{host.Name}: the root filesystem is {pct:0}% full ({Alastor.Core.Storage.StorageIntegration.Format(host.DiskTotalBytes - host.DiskUsedBytes)} free)",
+                    DedupKey = $"storage.low:{hostId}:{diskNow}",
+                    Metadata = new Dictionary<string, string> { ["percent"] = pct.ToString(System.Globalization.CultureInfo.InvariantCulture) },
                 },
             ], ct);
         }

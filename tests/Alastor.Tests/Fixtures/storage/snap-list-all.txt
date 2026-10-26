@@ -1,0 +1,6 @@
+Name    Version          Rev    Tracking       Publisher   Notes
+core20  20240416         2318   latest/stable  canonical✓  base,disabled
+core20  20240705         2379   latest/stable  canonical✓  base
+lxd     5.21.1-2d13beb   28463  5.21/stable    canonical✓  disabled
+lxd     5.21.2-34459c8   29351  5.21/stable    canonical✓  -
+snapd   2.63             21759  latest/stable  canonical✓  snapd

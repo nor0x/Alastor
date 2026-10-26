@@ -79,6 +79,7 @@ builder.Services.AddSingleton<IToolIntegration>(sp => platform.CreateBaseline(sp
 builder.Services.AddSingleton<IToolIntegration>(sp => platform.CreateBlocklist(sp.GetRequiredService<ILogger<BlocklistIntegration>>()));
 builder.Services.AddSingleton<IToolIntegration>(sp => platform.CreateUpdates(sp.GetRequiredService<ILogger<UpdatesIntegration>>()));
 builder.Services.AddSingleton<IToolIntegration>(sp => platform.CreateSoftware(sp.GetRequiredService<ILogger<Alastor.Core.Software.SoftwareIntegration>>()));
+builder.Services.AddSingleton<IToolIntegration>(sp => platform.CreateStorage(sp.GetRequiredService<ILogger<Alastor.Core.Storage.StorageIntegration>>()));
 builder.Services.AddSingleton<IToolIntegration>(sp => platform.CreateHardening(sp.GetRequiredService<ILogger<HardeningIntegration>>()));
 builder.Services.AddSingleton<IToolIntegration>(sp => platform.CreateNetwork(sp.GetRequiredService<ILogger<NetworkIntegration>>()));
 builder.Services.AddSingleton<IToolIntegration>(sp => platform.CreateLogins(sp.GetRequiredService<ILogger<Alastor.Core.Access.LoginIntegration>>()));
@@ -191,6 +192,9 @@ internal sealed record PlatformServices(OsInfo Os, ICommandRunner Runner, IFileS
         new(Runner, Fs, PackageManagers.For(Os.Family, Runner), State, Os, logger, TimeProvider.System);
 
     public Alastor.Core.Software.SoftwareIntegration CreateSoftware(ILogger<Alastor.Core.Software.SoftwareIntegration> logger) =>
+        new(Runner, Fs, State, Os, logger, TimeProvider.System);
+
+    public Alastor.Core.Storage.StorageIntegration CreateStorage(ILogger<Alastor.Core.Storage.StorageIntegration> logger) =>
         new(Runner, Fs, State, Os, logger, TimeProvider.System);
 
     public HardeningIntegration CreateHardening(ILogger<HardeningIntegration> logger) =>
