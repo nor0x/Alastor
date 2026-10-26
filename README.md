@@ -292,6 +292,9 @@ and starts streaming ban events.
 | `ALASTOR_HEARTBEATINTERVAL` | `60s` | default heartbeat; per-host override via `agent.heartbeatInterval` |
 | `ALASTOR_RETENTIONRUNINTERVAL`, `…METRICRETENTION`, `…EVENTRETENTION`, … | `1h`, `7d`, `90d` | all server timings: see [docs/architecture.md](docs/architecture.md#timings-and-schedules) |
 | `ALASTOR_SECURECOOKIES` | `true` | set `false` only for plain-HTTP local dev |
+| `ALASTOR_DASHBOARDALLOWFROM` | `loopback,private,tailnet` | who may reach the dashboard: `any`, `loopback`, `private`, `tailnet` and CIDRs. Everyone else gets a bare 404 before sign-in |
+| `ALASTOR_AGENTALLOWFROM` | `loopback,private,tailnet` | the same for the agent API and installers (`/api/agent`, `/hubs/agent`, `/install`) |
+| `ALASTOR_AUDITRETENTION` / `ALASTOR_LOGINSOURCERETENTION` / `ALASTOR_POLICYVERSIONSKEEP` | `365d` / `365d` / `50` | retention for the audit log, known SSH login sources and policy history (see *Settings → Alastor data*) |
 | `ALASTOR_BLOCKLISTSENABLED` / `ALASTOR_BLOCKLISTREFRESHINTERVAL` | `true` / `4h` | public IP blocklists the server pulls and merges per host (*Bans → Blocklists*) |
 | `ALASTOR_OSVENABLED` | `true` | look up installed package versions on OSV.dev for the *Software* view; `false` for air-gapped servers |
 | `ALASTOR_VULNDBENABLED` / `ALASTOR_VULNDBREFRESHINTERVAL` | `true` / `12h` | mirror the Trivy/Grype databases for agents' CVE scans; `false` for air-gapped servers (place the files in `data/vulndb/`) |
@@ -301,7 +304,16 @@ and starts streaming ban events.
 | `ALASTOR_THREATFEEDENABLED` | `true` | fetch NVD, CISA KEV and security news RSS; `false` for air-gapped servers |
 | `ALASTOR_THREATFEEDINTERVAL` / `ALASTOR_THREATFEEDRETENTION` | `20m` / `30d` | |
 | `ALASTOR_NVDAPIKEY` | – | optional, free; raises NVD's rate limit tenfold |
-| `ASPNETCORE_URLS` | `http://0.0.0.0:8080` | put Caddy/nginx with TLS in front |
+| `ASPNETCORE_URLS` | `http://127.0.0.1:8080` | loopback by default: put Caddy/nginx with TLS or `tailscale serve` in front, or listen on the tailnet address |
+
+**Secure by default.** Alastor shouldn't add exposure to the machine it runs on. The server listens on loopback, only
+answers private and tailnet addresses unless told otherwise, sends CSP and frame-blocking headers, and keeps the API schema
+and its exact version behind sign-in. Sign-in locks an account after 5 failures (1 minute, doubling up to an hour), sessions
+can be revoked (signing out, a password change, or *Settings → Account*), and two-factor sign-in with an authenticator app
+is available per user (optional). *Settings → Security* runs a self-check of the server's own exposure (listening address,
+encryption, allowlists, file permissions, initial password, agents on plain HTTP) and the overview shows a banner while any
+check fails; `alastor-server security-check` prints the configuration checks from the shell. *Settings → Alastor data*
+shows what the database and mirrors take up, removes old rows and unused mirrors, and compacts SQLite.
 
 ## Build & test
 

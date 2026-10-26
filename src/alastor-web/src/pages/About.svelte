@@ -10,7 +10,7 @@
 <div class="page-head">
   <div>
     <h1>About Alastor</h1>
-    {#if about}<p class="sub byline"><span>Version <span class="mono">{about.version}</span></span><span>{about.license} license</span></p>{/if}
+    {#if about}<p class="sub byline">{#if about.version}<span>Version <span class="mono">{about.version}</span></span>{/if}<span>{about.license} license</span></p>{/if}
   </div>
 </div>
 

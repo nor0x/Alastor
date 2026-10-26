@@ -35,6 +35,17 @@ public sealed class AlastorOptions
     /// <summary>Set the session cookie's Secure flag. Turn off only for plain-HTTP local development.</summary>
     public bool SecureCookies { get; set; } = true;
 
+    // ---- network access ----
+
+    /// <summary>
+    /// Who may reach the dashboard (SPA, /api, /hubs/dashboard, /openapi): a comma list of <c>any</c>, <c>loopback</c>,
+    /// <c>private</c>, <c>tailnet</c> and CIDRs. Anyone else gets a bare 404 before authentication.
+    /// </summary>
+    public string DashboardAllowFrom { get; set; } = "loopback,private,tailnet";
+
+    /// <summary>Who may reach the agent API (/api/agent, /hubs/agent, /install): same format as <see cref="DashboardAllowFrom"/>.</summary>
+    public string AgentAllowFrom { get; set; } = "loopback,private,tailnet";
+
     // ---- timings ----
 
     /// <summary>Default agent heartbeat when the policy sets no agent.heartbeatInterval.</summary>
@@ -54,6 +65,15 @@ public sealed class AlastorOptions
 
     /// <summary>Daily posture snapshots (baseline score, CVE counts, …) behind the dashboard's trend charts.</summary>
     public string PostureRetention { get; set; } = "365d";
+
+    /// <summary>Audit log entries (logins, settings and policy changes, actions).</summary>
+    public string AuditRetention { get; set; } = "365d";
+
+    /// <summary>Known SSH login sources (user + address per host) not seen for this long are forgotten; the next login from one alerts again.</summary>
+    public string LoginSourceRetention { get; set; } = "365d";
+
+    /// <summary>Policy versions kept per layer (the current one is always kept).</summary>
+    public int PolicyVersionsKeep { get; set; } = 50;
 
     /// <summary>Default lifetime of a new enrollment token (the dashboard can choose a different one per token).</summary>
     public string EnrollmentTokenTtl { get; set; } = "24h";
@@ -134,6 +154,8 @@ public sealed class AlastorOptions
     public TimeSpan MetricRetentionValue => Parse(MetricRetention);
     public TimeSpan EventRetentionValue => Parse(EventRetention);
     public TimeSpan PostureRetentionValue => Parse(PostureRetention);
+    public TimeSpan AuditRetentionValue => Parse(AuditRetention);
+    public TimeSpan LoginSourceRetentionValue => Parse(LoginSourceRetention);
     public TimeSpan EnrollmentTokenTtlValue => Parse(EnrollmentTokenTtl);
     public TimeSpan CommandRedeliverAfterValue => Parse(CommandRedeliverAfter);
     public TimeSpan PendingCommandTtlValue => Parse(PendingCommandTtl);
@@ -163,6 +185,11 @@ public sealed class AlastorOptions
         Check(nameof(MetricRetention), MetricRetention, TimeSpan.FromHours(1), TimeSpan.FromDays(3650));
         Check(nameof(EventRetention), EventRetention, TimeSpan.FromHours(1), TimeSpan.FromDays(3650));
         Check(nameof(PostureRetention), PostureRetention, TimeSpan.FromDays(7), TimeSpan.FromDays(3650));
+        Check(nameof(AuditRetention), AuditRetention, TimeSpan.FromDays(7), TimeSpan.FromDays(3650));
+        Check(nameof(LoginSourceRetention), LoginSourceRetention, TimeSpan.FromDays(7), TimeSpan.FromDays(3650));
+        if (PolicyVersionsKeep is < 1 or > 10_000) errors.Add("PolicyVersionsKeep must be between 1 and 10000.");
+        foreach (var (name, value) in new[] { (nameof(DashboardAllowFrom), DashboardAllowFrom), (nameof(AgentAllowFrom), AgentAllowFrom) })
+            if (!Auth.NetworkAllowList.TryParse(value, out _, out var why)) errors.Add($"{name}='{value}': {why}");
         Check(nameof(EnrollmentTokenTtl), EnrollmentTokenTtl, TimeSpan.FromMinutes(5), TimeSpan.FromDays(30));
         Check(nameof(CommandRedeliverAfter), CommandRedeliverAfter, TimeSpan.FromSeconds(30), TimeSpan.FromDays(1));
         Check(nameof(PendingCommandTtl), PendingCommandTtl, TimeSpan.FromMinutes(5), TimeSpan.FromDays(30));
