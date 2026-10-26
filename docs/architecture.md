@@ -177,7 +177,7 @@ Cookie-authenticated writes must also send `X-Alastor-Request: 1` (CSRF guard on
 | `GET /api/blocklists` · `GET /api/blocklists/lookup?ip=` | R | list health and usage, per-host enforcement (backend, entries, dropped packets) · which lists contain an address |
 | `POST /api/blocklists/{id}/refresh` | A | fetch one list now |
 | `GET /api/audit` | A | audit log |
-| `GET /api/about` · `GET /healthz` · `GET /install/{agent.sh,server.sh}` · `GET /install/agent/{alastor-agent-linux-x64,…-arm64,SHA256SUMS}` | – | licenses · liveness · installers · agent binaries |
+| `GET /api/about` · `GET /healthz` · `GET /install/{agent.sh,server.sh,alastor.sh}` · `GET /install/agent/{alastor-agent-linux-x64,…-arm64,SHA256SUMS}` | – | licenses · liveness · installers · agent binaries |
 | `POST /api/agent/enroll` | – (token) | consume single-use token → `{agentId, agentSecret}` |
 | `POST /api/agent/heartbeat` | Ag | metrics + tool statuses + last apply report → `{desiredRevision, pendingCommands}` |
 | `GET /api/agent/desired-state` | Ag | effective policy + revision |

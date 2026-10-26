@@ -6,7 +6,8 @@
 #   sudo ./install/install.sh            # from a clone: builds and installs that checkout
 #
 # Installs (or upgrades, when run again) the alastor-server binary, the agent binaries it hands out to
-# new hosts, a systemd unit, and optionally Caddy for automatic HTTPS. Data and settings survive upgrades.
+# new hosts, a systemd unit, the `alastor` command (status, start, stop, restart on this machine), and optionally
+# Caddy for automatic HTTPS. Data and settings survive upgrades.
 # Run from a clone of the repository, it builds the server and agent from that checkout instead of downloading a
 # release (needs the .NET 10 SDK and Node.js; clang and zlib1g-dev for a Native AOT agent, else a JIT build).
 #
@@ -48,6 +49,7 @@ main() {
   CADDY_SNIPPET=/etc/caddy/alastor.caddy
   SERVICE_USER=alastor
   SERVE_MARK='# managed: tailscale-serve'
+  CONTROL_UNIT=/etc/systemd/system/alastor-control
 
   local access="" domain="" port="" public_url="" version="latest" version_set=0 binary="" agent_dir="" with_agent=0 uninstall=0 purge=0
   while [ $# -gt 0 ]; do
@@ -243,6 +245,7 @@ User=$SERVICE_USER
 Group=$SERVICE_USER
 EnvironmentFile=$ENV_FILE
 Environment=DOTNET_BUNDLE_EXTRACT_BASE_DIR=/var/cache/alastor
+Environment=ALASTOR_CONTROLDIR=$DATA_DIR/control
 ExecStart=$PREFIX/alastor-server
 WorkingDirectory=$DATA_DIR
 StateDirectory=alastor
@@ -291,6 +294,7 @@ EOF
     public) open_firewall "$port" ;;
     tailscale) [ "$serve" -eq 1 ] || allow_tailnet_port "$port" ;;
   esac
+  install_control "$api"
 
   if [ "$with_agent" -eq 1 ]; then
     if [ -n "$password" ]; then
@@ -308,7 +312,9 @@ EOF
   fi
   printf '  Access      %s\n' "$(access_summary "$mode" "$serve" "$listen")"
   printf '  Settings    %s\n' "$ENV_FILE"
-  printf '  Logs        journalctl -u alastor-server -f\n\n'
+  printf '  Logs        journalctl -u alastor-server -f\n'
+  [ -x /usr/local/bin/alastor ] && printf '  Control     alastor status | start | stop | restart   (or Settings → Server in the dashboard)\n'
+  printf '\n'
   case "$mode" in
     local)
       printf '  Open the dashboard from your computer through an SSH tunnel, then browse to %s:\n' "$public_url"
@@ -336,8 +342,10 @@ do_uninstall() {
   if serve_managed; then
     tailscale serve --https=443 off >/dev/null 2>&1 || warn "Could not turn off tailscale serve on port 443; check: tailscale serve status"
   fi
-  systemctl disable --now alastor-server 2>/dev/null || true
-  rm -rf "$UNIT" "$UNIT.d" /usr/local/bin/alastor-server
+  systemctl disable --now alastor-server alastor-control.path 2>/dev/null || true
+  rm -rf "$UNIT" "$UNIT.d" /usr/local/bin/alastor-server "$CONTROL_UNIT.path" "$CONTROL_UNIT.service" "$DATA_DIR/control"
+  # The `alastor` command stays while the agent still uses it.
+  [ -f /etc/systemd/system/alastor-agent.service ] || rm -f /usr/local/bin/alastor
   rm -rf "$PREFIX" /var/cache/alastor
   systemctl daemon-reload
   if [ -f "$CADDY_SNIPPET" ]; then
@@ -393,6 +401,39 @@ open_firewall() {
     firewall-cmd --reload >/dev/null
     ok "firewalld: allowed $ports/tcp"
   fi
+}
+
+# install_control API: the `alastor` command (served by the new server), and the root path unit that carries out the
+# dashboard's start/stop requests for this machine. The server itself runs unprivileged and only drops a request file.
+install_control() {
+  if ! curl -fsS --max-time 10 -o "$TMP/alastor" "$1/install/alastor.sh" 2>/dev/null; then
+    warn "This server version has no alastor command: start and stop it with systemctl."
+    return 0
+  fi
+  install -m 755 "$TMP/alastor" /usr/local/bin/alastor
+  install -d -o "$SERVICE_USER" -g "$SERVICE_USER" -m 700 "$DATA_DIR/control"
+  cat > "$CONTROL_UNIT.path" <<EOF
+[Unit]
+Description=Alastor start/stop requests from the dashboard
+
+[Path]
+PathExists=$DATA_DIR/control/request
+
+[Install]
+WantedBy=multi-user.target
+EOF
+  cat > "$CONTROL_UNIT.service" <<EOF
+[Unit]
+Description=Carry out an Alastor start/stop request from the dashboard
+
+[Service]
+Type=oneshot
+# Accepts only: server stop|restart, agent start|stop|restart.
+ExecStart=/usr/local/bin/alastor apply-request
+EOF
+  systemctl daemon-reload
+  systemctl enable --now alastor-control.path >/dev/null 2>&1 \
+    || warn "Could not enable alastor-control.path: start and stop from the dashboard won't work."
 }
 
 # allow_tailnet_port PORT: let tailnet peers through ufw to PORT, on the tailscale0 interface only.
@@ -585,7 +626,8 @@ security_check() {
   local vars=() line out
   # The service's environment, read literally like systemd's EnvironmentFile rather than sourced.
   while IFS= read -r line; do case "$line" in [A-Za-z_]*=*) vars+=("$line") ;; esac; done < "$ENV_FILE"
-  out="$(cd / && timeout 30 runuser -u "$SERVICE_USER" -- env "${vars[@]}" DOTNET_BUNDLE_EXTRACT_BASE_DIR=/var/cache/alastor \
+  # From the service's working directory: the server watches its content root, and / would take forever.
+  out="$(cd "$DATA_DIR" && timeout 30 runuser -u "$SERVICE_USER" -- env "${vars[@]}" DOTNET_BUNDLE_EXTRACT_BASE_DIR=/var/cache/alastor \
     "$PREFIX/alastor-server" security-check 2>&1)" || true
   printf '%s\n' "$out" | grep -Eq '^(pass|info|warn|fail) ' || return 0
   printf '\n  Security check (alastor-server security-check):\n'

@@ -35,6 +35,12 @@ public sealed class AlastorOptions
     /// <summary>Set the session cookie's Secure flag. Turn off only for plain-HTTP local development.</summary>
     public bool SecureCookies { get; set; } = true;
 
+    /// <summary>
+    /// Where the dashboard drops start/stop requests for this machine's server and agent, which the installer's root
+    /// <c>alastor-control.path</c> unit carries out. Set by the installer's systemd unit; empty (Docker, dev) turns it off.
+    /// </summary>
+    public string ControlDir { get; set; } = "";
+
     // ---- network access ----
 
     /// <summary>

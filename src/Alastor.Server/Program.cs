@@ -184,6 +184,7 @@ builder.Services.AddScoped<Alastor.Server.Services.Software.SoftwareService>();
 builder.Services.AddScoped<Alastor.Server.Services.Storage.StorageService>();
 builder.Services.AddScoped<Alastor.Server.Services.Storage.ServerDataService>();
 builder.Services.AddSingleton<Alastor.Server.Services.Security.SelfCheckService>();
+builder.Services.AddSingleton<Alastor.Server.Services.LocalMachineService>();
 builder.Services.AddHostedService<Alastor.Server.Services.Security.SelfCheckStartupLogger>();
 builder.Services.AddScoped<Alastor.Server.Services.Osv.OsvService>();
 builder.Services.AddHttpClient(Alastor.Server.Services.Osv.OsvService.HttpClientName, c =>

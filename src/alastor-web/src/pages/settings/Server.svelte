@@ -1,5 +1,6 @@
 <script lang="ts">
   import { api } from '../../lib/api';
+  import ThisMachine from './ThisMachine.svelte';
 
   interface Setting { group: string; key: string; envVar: string; value: string; description: string }
   let settings = $state<Setting[]>([]);
@@ -10,6 +11,9 @@
 
   const groups = $derived([...new Set(settings.map((s) => s.group))]);
 </script>
+
+<div class="stack">
+<ThisMachine />
 
 <section class="card">
   <header><h2>Server configuration</h2><span class="hint">read-only</span></header>
@@ -34,6 +38,7 @@
     </div>
   {/each}
 </section>
+</div>
 
 <style>
   .intro { margin: 0; padding: var(--space-sm) var(--space-md); max-width: 80ch; line-height: 1.6; }

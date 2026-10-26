@@ -128,6 +128,13 @@ EOF
     "$BIN" "${args[@]}" || die "Enrollment failed. Tokens work once and expire; create a new one if needed."
   fi
 
+  # The `alastor` command (status, start, stop), from the same server; older servers don't have it.
+  local cli_from="$server"
+  [ -n "$cli_from" ] || cli_from="$(sed -n 's/.*"serverUrl": *"\([^"]*\)".*/\1/p' "$CONFIG" 2>/dev/null | head -n1)"
+  if [ -n "$cli_from" ] && "${CURL[@]}" -o "$TMP/alastor" "$cli_from/install/alastor.sh" 2>/dev/null; then
+    install -m 755 "$TMP/alastor" /usr/local/bin/alastor
+  fi
+
   systemctl enable alastor-agent >/dev/null 2>&1
   systemctl restart alastor-agent
   sleep 2
@@ -136,6 +143,7 @@ EOF
   printf '\n\033[1;32m✔ Alastor agent %s %s\033[0m\n\n' "$ver" "$([ "$enroll" -eq 1 ] && echo "installed and enrolled" || echo "upgraded")"
   printf '  This host appears in the dashboard within a minute.\n'
   printf '  Status      alastor-agent status\n'
+  [ -x /usr/local/bin/alastor ] && printf '  Control     alastor status | start | stop | restart\n'
   printf '  Logs        journalctl -u alastor-agent -f\n'
   printf '  Remove      curl -fsSL %s/install/agent.sh | sudo bash -s -- --uninstall\n' "${server:-<server>}"
 }
@@ -146,6 +154,8 @@ do_uninstall() {
   # Removes only what the agent manages; the tools themselves stay installed.
   [ -x "$BIN" ] && "$BIN" uninstall || true
   rm -f "$UNIT" "$BIN"
+  # The `alastor` command stays while the server on this machine still uses it.
+  [ -f /etc/systemd/system/alastor-server.service ] || rm -f /usr/local/bin/alastor
   rm -rf /etc/alastor-agent /var/lib/alastor-agent
   systemctl daemon-reload
   ok "Removed. Delete the host in the dashboard to drop its history."
