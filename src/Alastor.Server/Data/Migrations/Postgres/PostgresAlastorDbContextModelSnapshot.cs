@@ -1166,6 +1166,10 @@ namespace Alastor.Server.Data.Migrations.Postgres
                         .HasMaxLength(64)
                         .HasColumnType("character varying(64)");
 
+                    b.Property<string>("ObservedScheme")
+                        .HasMaxLength(8)
+                        .HasColumnType("character varying(8)");
+
                     b.Property<string>("OsId")
                         .IsRequired()
                         .HasColumnType("text");
@@ -1581,11 +1585,33 @@ namespace Alastor.Server.Data.Migrations.Postgres
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<int>("FailedLogins")
+                        .HasColumnType("integer");
+
                     b.Property<DateTime?>("LastLoginAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("LockedUntil")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("PasswordChangedAt")
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("PasswordHash")
                         .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("RecoveryCodeHashes")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime?>("TotpEnabledAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<long>("TotpLastStep")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("TotpSecret")
                         .HasColumnType("text");
 
                     b.Property<string>("Username")
@@ -1599,6 +1625,44 @@ namespace Alastor.Server.Data.Migrations.Postgres
                         .IsUnique();
 
                     b.ToTable("Users");
+                });
+
+            modelBuilder.Entity("Alastor.Server.Data.UserSession", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Address")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime>("ExpiresAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime>("LastSeenAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("RevokedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("UserAgent")
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ExpiresAt");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("Sessions");
                 });
 
             modelBuilder.Entity("Alastor.Server.Data.ActiveBan", b =>
@@ -1743,6 +1807,15 @@ namespace Alastor.Server.Data.Migrations.Postgres
                         .WithMany()
                         .HasForeignKey("HostId")
                         .OnDelete(DeleteBehavior.Cascade);
+                });
+
+            modelBuilder.Entity("Alastor.Server.Data.UserSession", b =>
+                {
+                    b.HasOne("Alastor.Server.Data.User", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("Alastor.Server.Data.ManagedHost", b =>

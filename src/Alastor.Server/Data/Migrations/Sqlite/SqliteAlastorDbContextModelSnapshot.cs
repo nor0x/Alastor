@@ -1147,6 +1147,10 @@ namespace Alastor.Server.Data.Migrations.Sqlite
                         .HasMaxLength(64)
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("ObservedScheme")
+                        .HasMaxLength(8)
+                        .HasColumnType("TEXT");
+
                     b.Property<string>("OsId")
                         .IsRequired()
                         .HasColumnType("TEXT");
@@ -1558,11 +1562,33 @@ namespace Alastor.Server.Data.Migrations.Sqlite
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("TEXT");
 
+                    b.Property<int>("FailedLogins")
+                        .HasColumnType("INTEGER");
+
                     b.Property<DateTime?>("LastLoginAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("LockedUntil")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("PasswordChangedAt")
                         .HasColumnType("TEXT");
 
                     b.Property<string>("PasswordHash")
                         .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("RecoveryCodeHashes")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("TotpEnabledAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<long>("TotpLastStep")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("TotpSecret")
                         .HasColumnType("TEXT");
 
                     b.Property<string>("Username")
@@ -1576,6 +1602,44 @@ namespace Alastor.Server.Data.Migrations.Sqlite
                         .IsUnique();
 
                     b.ToTable("Users");
+                });
+
+            modelBuilder.Entity("Alastor.Server.Data.UserSession", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Address")
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("ExpiresAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("LastSeenAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("RevokedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("UserAgent")
+                        .HasMaxLength(256)
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ExpiresAt");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("Sessions");
                 });
 
             modelBuilder.Entity("Alastor.Server.Data.ActiveBan", b =>
@@ -1720,6 +1784,15 @@ namespace Alastor.Server.Data.Migrations.Sqlite
                         .WithMany()
                         .HasForeignKey("HostId")
                         .OnDelete(DeleteBehavior.Cascade);
+                });
+
+            modelBuilder.Entity("Alastor.Server.Data.UserSession", b =>
+                {
+                    b.HasOne("Alastor.Server.Data.User", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("Alastor.Server.Data.ManagedHost", b =>

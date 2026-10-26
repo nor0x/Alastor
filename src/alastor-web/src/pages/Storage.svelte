@@ -109,7 +109,7 @@
 <div class="page-head">
   <div>
     <h1>Storage</h1>
-    <p class="sub">Disk usage across the fleet, fullest first, and what each host can clean up: package caches, old logs, unused container data.</p>
+    <p class="sub">Disk usage across the fleet, fullest first, and what each host can clean up: package caches, old logs, unused container data. The Alastor server's own database and mirrors are under <a href="/settings/data">Settings → Alastor data</a>.</p>
   </div>
 </div>
 

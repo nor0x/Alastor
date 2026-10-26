@@ -78,7 +78,7 @@ public sealed class PresenceWorker(IServiceScopeFactory scopes, IOptions<Alastor
     }
 }
 
-/// <summary>Prunes metric samples, old events, expired bans and old threat-feed items, using EF Core bulk deletes.</summary>
+/// <summary>Runs <see cref="Alastor.Server.Services.Storage.ServerDataService.PruneAsync"/> on <c>RetentionRunInterval</c>.</summary>
 public sealed class RetentionWorker(IServiceScopeFactory scopes, IOptions<AlastorOptions> options, TimeProvider time, ILogger<RetentionWorker> logger) : BackgroundService
 {
     protected override async Task ExecuteAsync(CancellationToken ct)
@@ -89,24 +89,7 @@ public sealed class RetentionWorker(IServiceScopeFactory scopes, IOptions<Alasto
             try
             {
                 await using var scope = scopes.CreateAsyncScope();
-                var db = scope.ServiceProvider.GetRequiredService<AlastorDbContext>();
-                var now = time.GetUtcNow().UtcDateTime;
-                var metricsBefore = now - options.Value.MetricRetentionValue;
-                var eventsBefore = now - options.Value.EventRetentionValue;
-                var m = await db.MetricSamples.Where(s => s.At < metricsBefore).ExecuteDeleteAsync(ct);
-                var e = await db.Events.Where(x => x.OccurredAt < eventsBefore).ExecuteDeleteAsync(ct);
-                var b = await db.Bans.Where(x => x.ExpiresAt != null && x.ExpiresAt < now).ExecuteDeleteAsync(ct);
-                var c = await db.Commands.Where(x => x.CompletedAt != null && x.CompletedAt < eventsBefore).ExecuteDeleteAsync(ct);
-                var feedBefore = now - options.Value.ThreatFeedRetentionValue;
-                var f = await db.FeedItems.Where(x => x.PublishedAt < feedBefore).ExecuteDeleteAsync(ct);
-                var postureBefore = DateOnly.FromDateTime(now - options.Value.PostureRetentionValue);
-                await db.PostureSnapshots.Where(x => x.Day < postureBefore).ExecuteDeleteAsync(ct);
-                await db.Issues.Where(x => x.ResolvedAt != null && x.ResolvedAt < eventsBefore).ExecuteDeleteAsync(ct);
-                // Drained dedup buckets carry no information once the window has long passed.
-                var bucketsBefore = now - options.Value.AlertDedupWindowValue * 4 - TimeSpan.FromDays(1);
-                await db.AlertBuckets.Where(x => x.UpdatedAt < bucketsBefore && x.Suppressed == 0).ExecuteDeleteAsync(ct);
-                if (m + e + b + c + f > 0)
-                    logger.LogInformation("Retention: removed {Metrics} samples, {Events} events, {Bans} expired bans, {Commands} commands, {FeedItems} feed items", m, e, b, c, f);
+                await scope.ServiceProvider.GetRequiredService<Alastor.Server.Services.Storage.ServerDataService>().PruneAsync(force: false, ct);
             }
             catch (Exception ex) when (ex is not OperationCanceledException) { logger.LogError(ex, "Retention run failed"); }
         } while (await timer.WaitForNextTickAsync(ct));

@@ -11,6 +11,36 @@ public sealed class User
     public required string PasswordHash { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime? LastLoginAt { get; set; }
+
+    /// <summary>Null while the password set at first start (possibly printed to the server log) is still in use.</summary>
+    public DateTime? PasswordChangedAt { get; set; }
+
+    // Lockout: consecutive failed sign-ins, and the time the account opens again.
+    public int FailedLogins { get; set; }
+    public DateTime? LockedUntil { get; set; }
+
+    // Optional TOTP two-factor sign-in. The secret is protected with the server's data-protection keys.
+    public string? TotpSecret { get; set; }
+    public DateTime? TotpEnabledAt { get; set; }
+
+    /// <summary>The last 30-second step a code was accepted for, so a code can't be used twice.</summary>
+    public long TotpLastStep { get; set; }
+
+    /// <summary>SHA-256 hashes of the unused recovery codes.</summary>
+    public List<string> RecoveryCodeHashes { get; set; } = [];
+}
+
+/// <summary>A dashboard sign-in. The session cookie's JWT carries this id; revoking the row signs that browser out.</summary>
+public sealed class UserSession
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public Guid UserId { get; set; }
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    public DateTime ExpiresAt { get; set; }
+    public DateTime? RevokedAt { get; set; }
+    public DateTime LastSeenAt { get; set; } = DateTime.UtcNow;
+    public string? Address { get; set; }
+    public string? UserAgent { get; set; }
 }
 
 /// <summary>Read-only API key. Only the SHA-256 hash is stored; the plaintext is shown once at creation.</summary>
@@ -134,6 +164,9 @@ public sealed class ManagedHost
 
     /// <summary>The address the agent's requests come from, as this server sees it. Reveals 1:1 NAT in clouds.</summary>
     public string? ObservedAddress { get; set; }
+
+    /// <summary><c>http</c> or <c>https</c>: how the agent's last heartbeat reached the server (after a local proxy).</summary>
+    public string? ObservedScheme { get; set; }
 
     // Latest network check (SSH exposure, Tailscale), denormalized for list views.
     public Alastor.Core.Network.SshExposureLevel? SshExposure { get; set; }

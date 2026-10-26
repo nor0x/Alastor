@@ -143,6 +143,57 @@ public sealed class VulnDbMirror(IHttpClientFactory httpFactory, IOptions<Alasto
         return s;
     }
 
+    /// <summary>A mirrored database no agent has asked for in this long is unused, and can be deleted to free space.</summary>
+    public static readonly TimeSpan UnusedAfter = TimeSpan.FromDays(30);
+
+    /// <summary>Downloaded databases (not ones placed by hand on an air-gapped server) that no agent asked for lately.</summary>
+    public IReadOnlyList<(string Scanner, long Bytes)> Unused()
+    {
+        if (!options.Value.VulnDbEnabled) return [];
+        var now = time.GetUtcNow().UtcDateTime;
+        return Scanners
+            .Where(s => File.Exists(FilePath(s)) && (State(s).LastRequestedAt is not { } at || now - at > UnusedAfter))
+            .Select(s => (s, new FileInfo(FilePath(s)).Length)).ToList();
+    }
+
+    /// <summary>Deletes <see cref="Unused"/> databases. They're fetched again the next time an agent asks.</summary>
+    public async Task<long> RemoveUnusedAsync(CancellationToken ct)
+    {
+        long freed = 0;
+        foreach (var (scanner, _) in Unused())
+        {
+            var gate = _locks.GetOrAdd(scanner, _ => new SemaphoreSlim(1, 1));
+            await gate.WaitAsync(ct);
+            try
+            {
+                var file = new FileInfo(FilePath(scanner));
+                if (!file.Exists) continue;
+                freed += file.Length;
+                file.Delete();
+                if (File.Exists(MetaPath(scanner))) File.Delete(MetaPath(scanner));
+                _states[scanner] = new VulnDbState();
+                logger.LogInformation("Removed the unused {Scanner} database ({Bytes} bytes)", scanner, file.Length);
+            }
+            finally { gate.Release(); }
+        }
+        return freed;
+    }
+
+    /// <summary>Partial downloads left behind by a crash or a cut-off transfer (in-flight ones are younger than an hour).</summary>
+    public long DeleteStalePartials()
+    {
+        var root = Path.Combine(options.Value.DataDir, "vulndb");
+        if (!Directory.Exists(root)) return 0;
+        var before = time.GetUtcNow().UtcDateTime - TimeSpan.FromHours(1);
+        long freed = 0;
+        foreach (var f in new DirectoryInfo(root).EnumerateFiles("*.part", SearchOption.AllDirectories).Where(f => f.LastWriteTimeUtc < before))
+        {
+            try { freed += f.Length; f.Delete(); }
+            catch (IOException) { }
+        }
+        return freed;
+    }
+
     public IReadOnlyList<VulnDbStatusDto> Status() => Scanners.Select(s =>
     {
         var st = State(s);

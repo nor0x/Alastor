@@ -13,6 +13,7 @@ namespace Alastor.Server.Data;
 public abstract class AlastorDbContext(DbContextOptions options) : DbContext(options)
 {
     public DbSet<User> Users => Set<User>();
+    public DbSet<UserSession> Sessions => Set<UserSession>();
     public DbSet<ApiKey> ApiKeys => Set<ApiKey>();
     public DbSet<EnrollmentToken> EnrollmentTokens => Set<EnrollmentToken>();
     public DbSet<HostGroup> Groups => Set<HostGroup>();
@@ -58,6 +59,14 @@ public abstract class AlastorDbContext(DbContextOptions options) : DbContext(opt
     {
         m.Entity<User>().HasIndex(u => u.Username).IsUnique();
         m.Entity<User>().Property(u => u.Username).HasMaxLength(64);
+        m.Entity<UserSession>(e =>
+        {
+            e.HasIndex(x => x.UserId);
+            e.HasIndex(x => x.ExpiresAt);
+            e.HasOne<User>().WithMany().HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Cascade);
+            e.Property(x => x.Address).HasMaxLength(64);
+            e.Property(x => x.UserAgent).HasMaxLength(256);
+        });
 
         m.Entity<ApiKey>().HasIndex(k => k.KeyHash).IsUnique();
         m.Entity<EnrollmentToken>().HasIndex(t => t.TokenHash).IsUnique();
@@ -70,6 +79,7 @@ public abstract class AlastorDbContext(DbContextOptions options) : DbContext(opt
             e.HasMany(h => h.Tools).WithOne().HasForeignKey(t => t.HostId).OnDelete(DeleteBehavior.Cascade);
             e.Property(h => h.SshExposure).HasConversion<string>().HasMaxLength(24);
             e.Property(h => h.ObservedAddress).HasMaxLength(64);
+            e.Property(h => h.ObservedScheme).HasMaxLength(8);
             e.Property(h => h.TailscaleState).HasMaxLength(32);
             e.Property(h => h.TailscaleIp).HasMaxLength(64);
             e.Property(h => h.RootkitSeverity).HasConversion<int?>();

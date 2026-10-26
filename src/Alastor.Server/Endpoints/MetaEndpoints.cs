@@ -6,16 +6,19 @@ namespace Alastor.Server.Endpoints;
 public static class MetaEndpoints
 {
     public sealed record ToolLicense(string Id, string Name, string Capability, string License, string Homepage, bool Implemented, bool OptIn, string Description);
-    public sealed record AboutDto(string Product, string Version, string License, string? Repository, IReadOnlyList<ToolLicense> BundledTools, IReadOnlyList<string> Notes);
+    public sealed record AboutDto(string Product, string? Version, string License, string? Repository, IReadOnlyList<ToolLicense> BundledTools, IReadOnlyList<string> Notes);
 
     public static void MapMetaEndpoints(this IEndpointRouteBuilder app)
     {
         app.MapGet("/healthz", () => Results.Ok(new { status = "ok" })).AllowAnonymous().WithTags("Meta");
 
-        // Public: the About page must work before login (license notices).
-        app.MapGet("/api/about", () => new AboutDto(
+        // Public: the About page must work before login (license notices). The exact version is for signed-in users only,
+        // so a scanner can't match it against advisories.
+        app.MapGet("/api/about", (System.Security.Claims.ClaimsPrincipal user) => new AboutDto(
             "Alastor",
-            Assembly.GetExecutingAssembly().GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion?.Split('+')[0] ?? "dev",
+            user.Identity?.IsAuthenticated == true
+                ? Assembly.GetExecutingAssembly().GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion?.Split('+')[0] ?? "dev"
+                : null,
             "MIT",
             null,
             ToolCatalog.All.Select(e => new ToolLicense(e.Descriptor.Id, e.Descriptor.DisplayName, e.Descriptor.Capability.ToString(), e.Descriptor.License,
