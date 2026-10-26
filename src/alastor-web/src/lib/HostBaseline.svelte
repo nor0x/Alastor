@@ -10,6 +10,7 @@
   import { confirm } from './ui/confirm.svelte';
   import ApplyFixDialog from './ApplyFixDialog.svelte';
   import CopyButton from './ui/CopyButton.svelte';
+  import Icon from './ui/Icon.svelte';
   import Severity from './ui/Severity.svelte';
   import Time from './ui/Time.svelte';
 
@@ -101,7 +102,9 @@
 {#snippet checkRow(c: BaselineCheck, open: boolean)}
   <details class="check" {open}>
     <summary>
-      <span class="status s-{c.status?.toLowerCase()}" aria-hidden="true">{c.status === 'Pass' ? '✓' : c.status === 'Fail' ? '✕' : c.status === 'Unknown' ? '?' : '–'}</span>
+      <span class="status s-{c.status?.toLowerCase()}" aria-hidden="true">
+        {#if c.status === 'Pass'}<Icon name="check" />{:else if c.status === 'Fail'}<Icon name="error" />{:else if c.status === 'Unknown'}<Icon name="alert" />{:else}<span class="nil"></span>{/if}
+      </span>
       <span class="name">
         <strong>{c.title}</strong>
         <span class="muted small mono actual">{c.actual ?? ''}</span>
@@ -174,20 +177,22 @@
 {:else}
   <div class="stack">
     <section class="card summary">
-      <div class="score {scoreTone(data.score)}">
-        <span class="big">{data.score ?? '—'}</span>
-        <span class="muted small">{data.score === null ? 'no score yet' : 'baseline score'}</span>
+      <div class="lead">
+        <span class="figure-label">{data.score === null ? 'No score yet' : 'Baseline score'}</span>
+        <span class="figure-value {scoreTone(data.score)}">{#if data.score !== null}{data.score}{:else}<span class="nil" aria-label="none"></span>{/if}</span>
       </div>
       <div class="counts">
-        <span><strong class="n bad-text">{failing.length}</strong> failing</span>
-        <span><strong class="n">{passing.length}</strong> passing</span>
-        {#if accepted.length}<span><strong class="n">{accepted.length}</strong> accepted</span>{/if}
-        {#if unknown.length}<span><strong class="n">{unknown.length}</strong> unknown</span>{/if}
-        {#if notApplicable.length}<span><strong class="n">{notApplicable.length}</strong> n/a</span>{/if}
+        <span class="pair"><strong class="n" class:bad={failing.length > 0}>{failing.length}</strong> failing</span>
+        <span class="pair"><strong class="n">{passing.length}</strong> passing</span>
+        {#if accepted.length}<span class="pair"><strong class="n">{accepted.length}</strong> accepted</span>{/if}
+        {#if unknown.length}<span class="pair"><strong class="n">{unknown.length}</strong> unknown</span>{/if}
+        {#if notApplicable.length}<span class="pair"><strong class="n">{notApplicable.length}</strong> n/a</span>{/if}
       </div>
       <div class="meta">
-        {#if data.checkedAt}<span class="muted small">Checked <Time iso={data.checkedAt} /></span>{:else}<span class="muted small">Not checked yet</span>{/if}
-        {#if canWrite()}<button class="btn small" onclick={recheck} disabled={rechecking}>{rechecking ? 'Checking…' : 'Re-check now'}</button>{/if}
+        <span class="meta-facts">
+          {#if data.checkedAt}<span>Checked <Time iso={data.checkedAt} /></span>{:else}<span>Not checked yet</span>{/if}
+        </span>
+        <span class="keys">{#if canWrite()}<button class="btn small" onclick={recheck} disabled={rechecking}>{rechecking ? 'Checking…' : 'Re-check now'}</button>{/if}</span>
       </div>
     </section>
 
@@ -198,6 +203,7 @@
     {:else}
       {#if canWrite() && policyFixable.length > 1}
         <div class="banner info">
+          <Icon name="info" />
           <p>{policyFixable.length} failing checks can be fixed by the agent. Open a check and choose <strong>Apply fix</strong>, or fix them across the fleet from the <a href="/baseline">Baseline</a> page.</p>
         </div>
       {/if}
@@ -207,7 +213,7 @@
         {#if failing.length}
           <div class="list">{#each failing as c (c.id)}{@render checkRow(c, failing.length <= 3)}{/each}</div>
         {:else}
-          <div class="empty">Every applicable check passes. 🎉</div>
+          <div class="empty">Every applicable check passes.</div>
         {/if}
       </section>
 
@@ -240,46 +246,63 @@
 {/if}
 
 <style>
-  .summary { display: flex; flex-wrap: wrap; align-items: center; gap: 16px 32px; padding: 16px; }
-  .score { display: flex; flex-direction: column; min-width: 96px; }
-  .score .big { font-size: 34px; font-weight: 600; line-height: 1; font-variant-numeric: tabular-nums; color: var(--text-strong); }
-  .score.ok .big { color: var(--ok); }
-  .score.warn .big { color: var(--warn); }
-  .score.bad .big { color: var(--bad); }
-  .counts { display: flex; flex-wrap: wrap; gap: 6px 20px; color: var(--muted); }
-  .counts .n { color: var(--text-strong); font-variant-numeric: tabular-nums; margin-right: 2px; }
-  .counts .bad-text { color: var(--bad); }
-  .meta { margin-left: auto; display: flex; align-items: center; gap: 12px; }
+  /* The summary ledger, the same strip on every host tab: lead figure | counts | when + keys, parted by hairlines. */
+  .summary { display: grid; grid-template-columns: minmax(200px, max-content) minmax(0, 1fr) minmax(0, max-content); overflow: hidden; }
+  .summary > * { display: flex; flex-direction: column; justify-content: center; gap: var(--space-2xs); min-width: 0; padding: var(--space-md); }
+  .summary > * + * { box-shadow: inset 1px 0 0 var(--border); }
+  .lead .figure-value { display: inline-flex; align-items: baseline; }
+  .lead .figure-value .nil { width: 24px; height: 2px; align-self: center; }
+  .counts { flex-direction: row; flex-wrap: wrap; align-items: center; align-content: center; justify-content: flex-start; gap: var(--space-xs) var(--space-lg); color: var(--muted); }
+  .pair { display: inline-flex; align-items: baseline; gap: var(--space-2xs); color: var(--muted); }
+  .pair .n { font-family: var(--font-display); font-weight: 600; font-size: var(--text-lg); line-height: 1; color: var(--text-strong); font-variant-numeric: tabular-nums; }
+  .pair .n.bad { color: var(--bad); }
+  .meta { align-items: flex-end; text-align: right; }
+  .meta-facts { display: flex; flex-direction: column; align-items: inherit; gap: var(--space-3xs); font-size: var(--text-sm); color: var(--muted); }
+  .keys { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: var(--space-xs); margin-top: var(--space-2xs); }
+  .keys:empty { display: none; }
+  @media (max-width: 760px) {
+    .summary { grid-template-columns: minmax(0, 1fr); }
+    .summary > * + * { box-shadow: inset 0 1px 0 var(--border); }
+    .counts:empty { display: none; }
+    .meta { align-items: flex-start; text-align: left; }
+    .keys { justify-content: flex-start; }
+  }
+  .keys .btn:disabled { cursor: not-allowed; }
+
+  /* Check rows: hairline-separated, the body indents to the title. */
   .list { display: flex; flex-direction: column; }
-  .check { border-bottom: 1px solid var(--border); }
+  .check { border-bottom: var(--rule-hair) solid var(--border); }
   .check:last-child { border-bottom: 0; }
-  .check > summary { display: flex; align-items: center; gap: 12px; padding: 10px 16px; cursor: pointer; list-style: none; }
+  .check > summary { display: flex; align-items: center; gap: var(--space-sm); min-height: 56px; padding: var(--space-xs) var(--space-md); cursor: pointer; list-style: none; }
   .check > summary::-webkit-details-marker { display: none; }
-  .check > summary:hover { background: var(--surface-2); }
-  .status { flex: none; width: 22px; height: 22px; border-radius: 50%; display: inline-grid; place-items: center; font-size: 12px; font-weight: 700; border: 1px solid currentColor; }
+  .check > summary:hover { background: var(--color-paper-2); }
+  .check > summary:active { background: var(--color-paper-3); }
+  .check > summary:focus-visible { outline-offset: -2px; }
+  .check[open] > summary { padding-bottom: var(--space-2xs); }
+  .status { flex: none; display: inline-grid; place-items: center; width: 16px; height: 16px; }
   .s-pass { color: var(--ok); }
   .s-fail { color: var(--bad); }
   .s-unknown { color: var(--warn); }
   .s-notapplicable { color: var(--muted); }
-  .name { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+  .name { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: var(--space-3xs); }
+  .name strong { font-family: var(--font-display); font-weight: 500; color: var(--text-strong); }
   .actual { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .badges { display: flex; align-items: center; gap: 6px; flex: none; }
-  .body { padding: 4px 16px 14px 50px; display: flex; flex-direction: column; gap: 10px; }
+  .badges { display: flex; align-items: center; gap: var(--space-xs); flex: none; }
+  .body { display: flex; flex-direction: column; gap: var(--space-sm); max-width: 96ch; padding: var(--space-xs) var(--space-md) var(--space-md) calc(var(--space-md) + 16px + var(--space-sm)); }
   .body p { margin: 0; }
-  .kv { display: grid; grid-template-columns: max-content 1fr; gap: 4px 14px; margin: 0; font-size: 13px; }
-  .kv dt { color: var(--muted); }
-  .kv dd { margin: 0; overflow-wrap: anywhere; }
-  .note { font-size: 12.5px; color: var(--warn); }
-  .fix { display: flex; flex-direction: column; gap: 8px; padding: 10px 12px; border-radius: var(--radius); background: var(--bg); border: 1px solid var(--border); }
-  .row-actions { display: flex; gap: 8px; flex-wrap: wrap; }
-  .commands { display: flex; flex-direction: column; gap: 6px; }
-  .cmd { display: flex; align-items: flex-start; gap: 8px; }
-  .cmd code { flex: 1; min-width: 0; padding: 6px 8px; border-radius: 6px; background: var(--surface-2); font-size: 12px; overflow-wrap: anywhere; white-space: pre-wrap; }
-  .by-hand summary { cursor: pointer; color: var(--muted); font-size: 12.5px; margin-bottom: 6px; }
+  .body .kv { font-size: var(--text-sm); }
+  .note { font-size: var(--text-sm); color: var(--warn); }
+  /* The fix is a paper-2 well inside the panel, not a second box. */
+  .fix { display: flex; flex-direction: column; gap: var(--space-sm); padding: var(--space-sm) var(--space-md); border-radius: var(--radius-input); background: var(--color-paper-2); }
+  .row-actions { display: flex; gap: var(--space-xs); flex-wrap: wrap; }
+  .commands { display: flex; flex-direction: column; gap: var(--space-xs); }
+  .commands p { margin: 0; }
+  .by-hand > summary { width: fit-content; cursor: pointer; font-family: var(--font-display); font-weight: 500; font-size: var(--text-sm); color: var(--color-ink-2); }
+  .by-hand > summary:hover { color: var(--text-strong); }
+  .by-hand[open] > summary { margin-bottom: var(--space-xs); }
   @media (max-width: 640px) {
-    .check > summary { flex-wrap: wrap; row-gap: 6px; }
-    .badges { flex-basis: 100%; padding-left: 34px; }
-    .body { padding-left: 16px; }
-    .meta { margin-left: 0; }
+    .check > summary { flex-wrap: wrap; row-gap: var(--space-xs); }
+    .badges { flex-basis: 100%; flex-wrap: wrap; padding-left: calc(16px + var(--space-sm)); }
+    .body { padding-left: var(--space-md); }
   }
 </style>

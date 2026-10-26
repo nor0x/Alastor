@@ -72,12 +72,15 @@
 </Modal>
 
 <style>
-  .stack-sm { display: flex; flex-direction: column; gap: 10px; }
+  .stack-sm { display: flex; flex-direction: column; gap: var(--space-sm); }
   .stack-sm p { margin: 0; }
-  .scopes { border: 0; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
-  .scopes legend { font-size: 12px; color: var(--muted); margin-bottom: 4px; }
-  .scope { display: flex; gap: 10px; align-items: flex-start; padding: 8px 10px; border: 1px solid var(--border); border-radius: var(--radius); cursor: pointer; }
-  .scope.on { border-color: var(--link); background: var(--surface-2); }
-  .scope input { margin-top: 3px; }
-  .scope span { display: flex; flex-direction: column; gap: 2px; }
+  .scopes { border: 0; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-xs); }
+  .scopes legend { margin-bottom: var(--space-2xs); font-family: var(--font-display); font-weight: 500; font-size: var(--text-sm); color: var(--muted); }
+  .scope { display: flex; gap: var(--space-sm); align-items: flex-start; padding: var(--space-sm); border: var(--rule-hair) solid var(--border-strong); border-radius: var(--radius-input); background: var(--color-key-face); cursor: pointer; }
+  .scope:hover { border-color: var(--color-ink-2); }
+  .scope.on { border-color: var(--color-accent); background: var(--color-accent-wash); }
+  .scope:has(input:focus-visible) { outline: 2px solid var(--focus); outline-offset: 2px; }
+  .scope input { margin-top: var(--space-3xs); }
+  .scope span { display: flex; flex-direction: column; gap: var(--space-3xs); }
+  .scope strong { font-family: var(--font-display); font-weight: 500; color: var(--text-strong); }
 </style>

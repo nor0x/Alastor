@@ -4,6 +4,7 @@
   import { canWrite } from '../../lib/session.svelte';
   import { toast } from '../../lib/toast.svelte';
   import { confirm } from '../../lib/ui/confirm.svelte';
+  import Icon from '../../lib/ui/Icon.svelte';
   import Modal from '../../lib/ui/Modal.svelte';
 
   let open = $state(false);
@@ -63,14 +64,15 @@
   </header>
   <p class="muted small intro">A host belongs to at most one group. Each group can override the global policy, for example stricter banning on public web servers.</p>
   {#if fleet.groups.length}
+    <div class="table-wrap">
     <table class="table">
       <thead><tr><th>Name</th><th class="num">Hosts</th><th>Policy</th>{#if canWrite()}<th></th>{/if}</tr></thead>
       <tbody>
         {#each fleet.groups as g (g.id)}
           <tr>
-            <td><strong>{g.name}</strong>{#if g.description}<div class="muted small">{g.description}</div>{/if}</td>
+            <td><strong class="gname">{g.name}</strong>{#if g.description}<div class="muted small">{g.description}</div>{/if}</td>
             <td class="num"><a href="/hosts?group={g.id}">{g.hostCount}</a></td>
-            <td><a href="/policies/group/{g.id}">overrides →</a></td>
+            <td><a class="nowrap" href="/policies/group/{g.id}">overrides</a></td>
             {#if canWrite()}
               <td class="actions">
                 <button class="btn small" onclick={() => edit(g)}>Edit</button>
@@ -81,6 +83,7 @@
         {/each}
       </tbody>
     </table>
+    </div>
   {:else}
     <div class="empty">No groups yet.</div>
   {/if}
@@ -90,7 +93,7 @@
   <form id="group-form" class="form" onsubmit={submit}>
     <label>Name <input class="field" bind:value={name} maxlength="64" required placeholder="web-servers" /></label>
     <label>Description <input class="field" bind:value={description} maxlength="200" placeholder="Public nginx boxes" /></label>
-    {#if error}<div class="banner bad" role="alert"><p>{error}</p></div>{/if}
+    {#if error}<div class="banner bad" role="alert"><Icon name="error" /><p>{error}</p></div>{/if}
   </form>
   {#snippet footer()}
     <button class="btn" onclick={() => (open = false)}>Cancel</button>
@@ -99,5 +102,10 @@
 </Modal>
 
 <style>
-  .intro { margin: 0; padding: 12px 16px 0; }
+  .intro { margin: 0; padding: var(--space-sm) var(--space-md); max-width: 75ch; border-bottom: var(--rule-hair) solid var(--border); }
+  .gname { font-family: var(--font-display); font-weight: 600; color: var(--text-strong); }
+  .num a { font-family: var(--font-display); font-weight: 600; font-variant-numeric: tabular-nums; }
+  .num a:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+  .num a:active { color: var(--color-accent-deep); }
+  .banner > :global(.icon) { margin-top: var(--space-3xs); color: var(--bad); }
 </style>

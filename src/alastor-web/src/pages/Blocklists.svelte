@@ -5,6 +5,7 @@
   import { refreshOn } from '../lib/live.svelte';
   import { canWrite } from '../lib/session.svelte';
   import { toast } from '../lib/toast.svelte';
+  import Icon from '../lib/ui/Icon.svelte';
   import Time from '../lib/ui/Time.svelte';
   import { parseDocument } from 'yaml';
 
@@ -153,13 +154,13 @@
             <td class="desc">
               <a href={l.homepage} target="_blank" rel="noopener noreferrer"><strong>{l.name}</strong></a>
               <div class="muted small">{l.description}</div>
-              <div class="muted small">
-                {l.terms}
-                {#if l.usedBy.length}· used by {l.usedBy.join(', ')}{/if}
+              <div class="meta muted small">
+                <span>{l.terms}</span>
+                {#if l.usedBy.length}<span>used by {l.usedBy.join(', ')}</span>{/if}
               </div>
             </td>
             <td class="num nowrap">
-              {#if l.lastSuccessAt}{number.format(l.entries)}{#if l.ipv4Addresses}<div class="muted small">{millions(l.ipv4Addresses)} IPv4 addr.</div>{/if}{:else}<span class="muted">–</span>{/if}
+              {#if l.lastSuccessAt}{number.format(l.entries)}{#if l.ipv4Addresses}<div class="muted small">{millions(l.ipv4Addresses)} IPv4 addr.</div>{/if}{:else}<span class="nil" aria-label="none"></span>{/if}
             </td>
             <td class="hide-sm nowrap">{#if l.lastChangedAt}<Time iso={l.lastChangedAt} />{:else}<span class="muted">never</span>{/if}</td>
             <td class="status">
@@ -187,7 +188,7 @@
         {#if global.extra.length}
           <ul class="chips">
             {#each global.extra as v (v)}
-              <li class="mono">{v}{#if canWrite()}<button class="x" aria-label="Remove {v}" disabled={busy} onclick={() => removeExtra(v)}>×</button>{/if}</li>
+              <li class="mono">{v}{#if canWrite()}<button class="x" aria-label="Remove {v}" disabled={busy} onclick={() => removeExtra(v)}><Icon name="close" size={14} /></button>{/if}</li>
             {/each}
           </ul>
         {/if}
@@ -239,10 +240,10 @@
               <td>
                 <span class="pill {st.tone}">{st.label}</span>
               </td>
-              <td class="hide-sm">{h.backend ?? '–'}</td>
-              <td class="nowrap">{h.active ? (h.entries ?? '–') : '–'}{#if h.active && h.lists}<div class="muted small">{h.lists}</div>{/if}</td>
-              <td class="num">{h.dropped != null ? number.format(h.dropped) : '–'}</td>
-              <td class="hide-sm nowrap">{#if h.active && h.lastAppliedAt}<Time iso={h.lastAppliedAt} />{:else}–{/if}</td>
+              <td class="hide-sm">{#if h.backend}{h.backend}{:else}<span class="nil" aria-label="none"></span>{/if}</td>
+              <td class="nowrap">{#if h.active && h.entries != null}{h.entries}{:else}<span class="nil" aria-label="none"></span>{/if}{#if h.active && h.lists}<div class="muted small">{h.lists}</div>{/if}</td>
+              <td class="num">{#if h.dropped != null}{number.format(h.dropped)}{:else}<span class="nil" aria-label="none"></span>{/if}</td>
+              <td class="hide-sm nowrap">{#if h.active && h.lastAppliedAt}<Time iso={h.lastAppliedAt} />{:else}<span class="nil" aria-label="none"></span>{/if}</td>
             </tr>
             {#if h.lastError && h.wanted && !h.active}
               <tr class="errrow"><td colspan="6"><div class="err small">{h.lastError}</div></td></tr>
@@ -260,24 +261,32 @@
 
 <style>
   .m0 { margin: 0; }
-  .card + .card, .card + .grid-2, .grid-2 + .card { margin-top: 16px; }
-  .fleet-row { display: flex; justify-content: space-between; align-items: center; gap: 12px 16px; flex-wrap: wrap; }
+  .card + .card, .card + .grid-2, .grid-2 + .card { margin-top: var(--space-md); }
+  .grid-2 > .card + .card { margin-top: 0; }
+  .banner { margin-bottom: var(--space-md); }
+  .fleet-row { display: flex; justify-content: space-between; align-items: center; gap: var(--space-sm) var(--space-md); flex-wrap: wrap; }
   .fleet-text { flex: 1 1 320px; }
-  .fleet h2 { margin: 0 0 4px; font-size: 15px; display: flex; align-items: center; gap: 8px; }
-  .fleet p { margin: 0; }
+  .fleet h2 { margin: 0 0 var(--space-2xs); font-size: var(--text-section); display: flex; align-items: center; gap: var(--space-xs); }
+  .fleet p { margin: 0; max-width: 75ch; }
   .lists .pick { width: 52px; text-align: center; }
+  .lists td.pick { padding-left: var(--space-md); }
   .lists .desc { min-width: 240px; }
-  .lists .desc div { margin-top: 2px; }
-  .lists tr.off .desc strong { font-weight: 500; }
+  .lists .desc > div { margin-top: var(--space-3xs); }
+  .lists .desc strong { font-family: var(--font-display); font-weight: 600; }
+  .lists tr.off .desc strong { font-weight: 500; color: var(--color-ink-2); }
+  .meta { display: flex; flex-wrap: wrap; gap: 0 var(--space-xs); }
+  .meta > span + span { padding-left: var(--space-xs); border-left: var(--rule-hair) solid var(--color-rule-2); }
   .status { min-width: 120px; }
+  .status > div { margin-top: var(--space-3xs); }
   .err { color: var(--bad); overflow-wrap: anywhere; max-width: 320px; }
-  .errrow td { padding-top: 0; }
+  .errrow td { height: auto; padding-top: 0; padding-bottom: var(--space-xs); }
   .errrow .err { max-width: none; }
   tr:has(+ .errrow) td { border-bottom: 0; }
-  .inline { display: flex; gap: 8px; flex-wrap: wrap; }
+  .inline { display: flex; gap: var(--space-xs); flex-wrap: wrap; }
   .inline input { flex: 1 1 180px; }
-  .chips { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; }
-  .chips li { display: inline-flex; align-items: center; gap: 4px; padding: 2px 4px 2px 8px; border: 1px solid var(--border-strong); border-radius: 999px; }
-  .chips .x { border: 0; background: none; color: var(--muted); cursor: pointer; font-size: 15px; line-height: 1; padding: 0 4px; }
-  .chips .x:hover { color: var(--bad); }
+  .chips { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: var(--space-2xs); }
+  .chips li { display: inline-flex; align-items: center; gap: var(--space-3xs); min-height: 26px; padding: 0 var(--space-3xs) 0 var(--space-xs); border-radius: 4px; background: var(--color-paper-3); color: var(--color-ink); }
+  .chips .x { display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; padding: 0; border: 0; border-radius: 3px; background: none; color: var(--muted); cursor: pointer; transition: color var(--dur-micro) var(--ease-out); }
+  .chips .x:hover:not(:disabled) { color: var(--bad); background: var(--color-paper-2); }
+  .chips .x:disabled { opacity: 0.55; cursor: not-allowed; }
 </style>

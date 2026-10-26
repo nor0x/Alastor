@@ -26,7 +26,7 @@
 <section class="card">
   <header>
     <h2>Audit log</h2>
-    <input class="field" type="search" placeholder="Filter…" bind:value={q} aria-label="Filter audit log" />
+    <input class="field filter" type="search" placeholder="Filter…" bind:value={q} aria-label="Filter audit log" />
   </header>
   <div class="table-wrap">
     <table class="table">
@@ -35,8 +35,8 @@
         {#each shown as e (e.id)}
           <tr>
             <td class="nowrap" title={fullDate(e.at)}><Time iso={e.at} /></td>
-            <td>{e.actor}</td>
-            <td class="mono small">{e.action}</td>
+            <td class="nowrap">{e.actor}</td>
+            <td class="mono small nowrap">{e.action}</td>
             <td class="small">{target(e.target)}</td>
             <td class="hide-sm small muted">{e.details ?? ''}</td>
           </tr>
@@ -50,5 +50,6 @@
 </section>
 
 <style>
-  .more { padding: 12px; text-align: center; border-top: 1px solid var(--border); }
+  h2 { white-space: nowrap; }
+  .filter { flex: 0 1 260px; min-width: 0; min-height: var(--control-s); }
 </style>

@@ -3,6 +3,7 @@
   import { fleet, hostNames } from '../../lib/fleet.svelte';
   import { toast } from '../../lib/toast.svelte';
   import CopyButton from '../../lib/ui/CopyButton.svelte';
+  import Icon from '../../lib/ui/Icon.svelte';
   import Time from '../../lib/ui/Time.svelte';
 
   let tokens = $state<EnrollmentToken[]>([]);
@@ -63,13 +64,13 @@
     <section class="card created">
       <header><h2>Token created</h2><button class="btn small" onclick={() => (created = null)}>Done</button></header>
       <div class="card-body stack">
-        <div class="banner warn"><p>This is the only time the token is shown. It works once and expires <Time iso={created.token.expiresAt} />.</p></div>
-        <div>
+        <div class="banner warn"><Icon name="alert" /><p>This is the only time the token is shown. It works once and expires <Time iso={created.token.expiresAt} />.</p></div>
+        <div class="steps">
           <div class="lbl">Run on the new server</div>
-          <div class="cmd"><pre class="mono">{created.installCommand}</pre><CopyButton text={created.installCommand} /></div>
+          <div class="cmd"><code>{created.installCommand}</code><CopyButton text={created.installCommand} /></div>
           <p class="muted small">It downloads the agent from this server, enrolls it and starts the <code>alastor-agent</code> service. The host appears under <a href="/hosts">Hosts</a> within a minute.
             If the agent is already on the machine, enroll it directly instead:</p>
-          <div class="cmd"><pre class="mono">{manual}</pre><CopyButton text={manual} /></div>
+          <div class="cmd"><code>{manual}</code><CopyButton text={manual} /></div>
           <p class="muted small">then <code>sudo systemctl enable --now alastor-agent</code>.</p>
         </div>
       </div>
@@ -91,7 +92,7 @@
       </div>
       <div class="row">
         <label>Tags <input class="field" bind:value={tags} placeholder="web, production" /></label>
-        <label>Valid for <span class="muted small">(hours, 1–720; empty = server default)</span><input class="field" type="number" min="1" max="720" bind:value={ttlHours} placeholder="24" /></label>
+        <label><span class="lbl-row">Valid for <span class="muted hint">(hours, 1 to 720; empty = server default)</span></span><input class="field" type="number" min="1" max="720" bind:value={ttlHours} placeholder="24" /></label>
       </div>
       <p class="help">The host joins the group and gets the tags on enrollment. Tokens are single-use and stored only as a hash.</p>
       <div class="form-actions"><button class="btn primary" disabled={busy}>Create token</button></div>
@@ -107,12 +108,12 @@
           {#each tokens as t (t.id)}
             {@const st = status(t)}
             <tr>
-              <td>{t.note ?? ''}{#if t.tags.length}<div class="muted small">{t.tags.join(', ')}</div>{/if}</td>
+              <td>{#if t.note}{t.note}{:else}<span class="nil" aria-label="none"></span>{/if}{#if t.tags.length}<div class="tags">{#each t.tags as tag (tag)}<span class="pill tag">{tag}</span>{/each}</div>{/if}</td>
               <td><span class="pill {st === 'active' ? 'ok' : st === 'used' ? 'info' : 'muted'}">{st}</span></td>
-              <td class="hide-sm nowrap">{t.createdBy} · <Time iso={t.createdAt} /></td>
+              <td class="hide-sm nowrap"><span class="pair"><span>{t.createdBy}</span><span><Time iso={t.createdAt} /></span></span></td>
               <td class="nowrap">
                 {#if t.consumedAt}
-                  {#if t.consumedByHostId && hostNames()[t.consumedByHostId]}<a href="/hosts/{t.consumedByHostId}">{hostNames()[t.consumedByHostId]}</a> · {/if}<Time iso={t.consumedAt} />
+                  <span class="pair">{#if t.consumedByHostId && hostNames()[t.consumedByHostId]}<a href="/hosts/{t.consumedByHostId}">{hostNames()[t.consumedByHostId]}</a>{/if}<span><Time iso={t.consumedAt} /></span></span>
                 {:else}<Time iso={t.expiresAt} />{/if}
               </td>
               <td class="actions">{#if st === 'active'}<button class="btn small danger" onclick={() => revoke(t)}>Revoke</button>{/if}</td>
@@ -127,7 +128,13 @@
 </div>
 
 <style>
-  .created { border-color: color-mix(in srgb, var(--ok) 50%, transparent); }
-  .cmd { display: flex; gap: 8px; align-items: flex-start; margin: 6px 0; }
-  .cmd pre { flex: 1; padding: 10px; border-radius: 6px; background: var(--bg); border: 1px solid var(--border); }
+  .created { border-color: color-mix(in oklab, var(--ok) 45%, var(--border)); }
+  .banner > :global(.icon) { margin-top: var(--space-3xs); color: var(--warn); }
+  .steps { display: flex; flex-direction: column; gap: var(--space-xs); }
+  .steps p { margin: 0; max-width: 75ch; }
+  .tags { display: flex; flex-wrap: wrap; gap: var(--space-2xs); margin-top: var(--space-2xs); }
+  .lbl-row { display: flex; flex-wrap: wrap; gap: var(--space-2xs); }
+  .hint { font-family: var(--font-body); font-weight: 400; }
+  .pair { display: inline-flex; align-items: center; gap: var(--space-xs); }
+  .pair > * + * { padding-left: var(--space-xs); border-left: var(--rule-hair) solid var(--border-strong); }
 </style>

@@ -41,7 +41,7 @@
           <span class="mono small">{b.scope}</span>
           {#if b.manual}<span class="pill info">manual</span>{/if}
         </td>
-        <td class="hide-sm nowrap"><Time iso={b.bannedAt} empty="—" /></td>
+        <td class="hide-sm nowrap"><Time iso={b.bannedAt} empty="unknown" /></td>
         <td class="nowrap" class:muted={!b.expiresAt}>{expires(b.expiresAt, clock.now)}</td>
         {#if canWrite()}
           <td class="actions">

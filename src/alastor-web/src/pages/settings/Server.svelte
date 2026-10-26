@@ -19,7 +19,7 @@
     Per-host timings (heartbeat, scans, update checks) live in the <a href="/policies/global">policy</a> instead, so they can differ per group or host.
   </p>
   {#each groups as g (g)}
-    <h3>{g}</h3>
+    <h3 class="grp">{g}</h3>
     <div class="table-wrap">
       <table class="table">
         <tbody>
@@ -36,8 +36,9 @@
 </section>
 
 <style>
-  .intro { margin: 0; padding: 12px 16px; }
-  h3 { margin: 8px 16px 0; font-size: 13px; color: var(--muted); font-weight: 600; }
+  .intro { margin: 0; padding: var(--space-sm) var(--space-md); max-width: 80ch; line-height: 1.6; }
+  .grp { margin: 0; padding: var(--space-sm) var(--space-md) var(--space-xs); border-top: var(--rule-hair) solid var(--border); border-bottom: var(--rule-hair) solid var(--border-strong); background: var(--color-paper-2); font-size: var(--text-sm); font-weight: 500; color: var(--color-ink-2); }
   .k { width: 65%; }
-  .v { overflow-wrap: anywhere; }
+  .k .mono { color: var(--text-strong); }
+  .v { overflow-wrap: anywhere; color: var(--color-ink); }
 </style>
