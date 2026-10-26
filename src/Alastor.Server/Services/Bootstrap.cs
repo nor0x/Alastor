@@ -29,6 +29,8 @@ public static class Bootstrap
                 password = Auth.Secrets.Generate("", 18);
                 generated = true;
             }
+            else if (password.Length < 12)
+                throw new InvalidOperationException("ALASTOR_ADMINPASSWORD must be at least 12 characters (or leave it unset to generate one).");
             var user = new User { Username = opt.AdminUser, PasswordHash = "" };
             user.PasswordHash = new PasswordHasher<User>().HashPassword(user, password);
             db.Users.Add(user);

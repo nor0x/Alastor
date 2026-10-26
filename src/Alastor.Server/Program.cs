@@ -49,13 +49,29 @@ if (options.Validate() is { Count: > 0 } configErrors)
     foreach (var e in configErrors) Log.Fatal("Invalid configuration: {Error}", e);
     return 1;
 }
+// `alastor-server security-check`: the self-check's configuration checks (listen address, TLS, allowlists, file
+// permissions) without starting the server. The installer prints it; exit code 1 when anything fails.
+if (args is ["security-check", ..])
+{
+    var urls = builder.Configuration["urls"] is { Length: > 0 } u ? u : Environment.GetEnvironmentVariable("ASPNETCORE_URLS") ?? "http://127.0.0.1:8080";
+    var checks = Alastor.Server.Services.Security.SelfChecks.Static(
+        Alastor.Server.Services.Security.SelfChecks.Gather(urls.Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries), options));
+    foreach (var c in checks)
+    {
+        Console.WriteLine($"{c.Status.ToString().ToLowerInvariant(),-5} {c.Title}: {c.Detail}");
+        if (c.Fix is not null && c.Status is Alastor.Server.Services.Security.CheckStatus.Warn or Alastor.Server.Services.Security.CheckStatus.Fail)
+            Console.WriteLine($"      fix: {c.Fix}");
+    }
+    return checks.Any(c => c.Status == Alastor.Server.Services.Security.CheckStatus.Fail) ? 1 : 0;
+}
+
 // The data dir holds the database, JWT key and data-protection keys: owner-only.
 if (OperatingSystem.IsWindows()) Directory.CreateDirectory(options.DataDir);
 else Directory.CreateDirectory(options.DataDir, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
 builder.Services.AddSingleton(Options.Create(options));
 
 if (string.IsNullOrEmpty(builder.Configuration["urls"]) && string.IsNullOrEmpty(Environment.GetEnvironmentVariable("ASPNETCORE_URLS")))
-    builder.WebHost.UseUrls("http://0.0.0.0:8080");
+    builder.WebHost.UseUrls("http://127.0.0.1:8080"); // loopback unless told otherwise: put a TLS proxy or the tailnet in front
 
 builder.Host.UseSerilog((ctx, lc) => lc
     // Sensible defaults baked in so the single binary needs no appsettings.json. Serilog config keys still override.
@@ -166,6 +182,9 @@ builder.Services.AddHttpClient(VulnDbMirror.HttpClientName, c =>
 if (options.VulnDbEnabled) builder.Services.AddHostedService<VulnDbWorker>();
 builder.Services.AddScoped<Alastor.Server.Services.Software.SoftwareService>();
 builder.Services.AddScoped<Alastor.Server.Services.Storage.StorageService>();
+builder.Services.AddScoped<Alastor.Server.Services.Storage.ServerDataService>();
+builder.Services.AddSingleton<Alastor.Server.Services.Security.SelfCheckService>();
+builder.Services.AddHostedService<Alastor.Server.Services.Security.SelfCheckStartupLogger>();
 builder.Services.AddScoped<Alastor.Server.Services.Osv.OsvService>();
 builder.Services.AddHttpClient(Alastor.Server.Services.Osv.OsvService.HttpClientName, c =>
 {
@@ -177,9 +196,19 @@ if (options.OsvEnabled) builder.Services.AddHostedService<OsvWorker>();
 
 var app = builder.Build();
 
-await Bootstrap.RunAsync(app.Services);
+try
+{
+    await Bootstrap.RunAsync(app.Services);
+}
+catch (InvalidOperationException ex) when (ex.Message.StartsWith("ALASTOR_", StringComparison.Ordinal))
+{
+    Log.Fatal("Invalid configuration: {Error}", ex.Message);
+    return 1;
+}
 
 app.UseForwardedHeaders();
+app.UseNetworkAllowLists();
+app.UseSecurityHeaders();
 app.UseExceptionHandler();
 app.UseSerilogRequestLogging(o => o.GetLevel = (ctx, _, ex) =>
     // A 503 with Retry-After is a planned "not yet" (vulnerability database still mirroring), not a failure.
@@ -207,7 +236,7 @@ app.UseAuthentication();
 app.UseCsrfHeaderCheck();
 app.UseAuthorization();
 
-app.MapOpenApi("/openapi/{documentName}.json");
+app.MapOpenApi("/openapi/{documentName}.json").RequireAuthorization(AuthPolicies.Reader);
 app.MapMetaEndpoints();
 app.MapAuthEndpoints();
 app.MapAgentEndpoints();
@@ -231,6 +260,7 @@ app.MapAccessEndpoints();
 app.MapIntegrityEndpoints();
 app.MapSoftwareEndpoints();
 app.MapStorageEndpoints();
+app.MapSystemEndpoints();
 app.MapHub<AgentHub>("/hubs/agent");
 app.MapHub<DashboardHub>("/hubs/dashboard");
 app.MapInstallScripts();

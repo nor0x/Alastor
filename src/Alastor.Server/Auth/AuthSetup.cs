@@ -40,7 +40,7 @@ public sealed class JwtIssuer(byte[] key, TimeSpan lifetime)
     public TimeSpan Lifetime { get; } = lifetime;
     public SymmetricSecurityKey SigningKey { get; } = new(key);
 
-    public string Issue(Guid userId, string username)
+    public string Issue(Guid userId, string username, Guid sessionId)
     {
         var token = new JwtSecurityToken(
             issuer: "alastor",
@@ -48,6 +48,7 @@ public sealed class JwtIssuer(byte[] key, TimeSpan lifetime)
             claims:
             [
                 new Claim(JwtRegisteredClaimNames.Sub, userId.ToString()),
+                new Claim(JwtRegisteredClaimNames.Jti, sessionId.ToString()),
                 new Claim(JwtRegisteredClaimNames.UniqueName, username),
                 new Claim(ClaimTypes.Role, Roles.Admin),
             ],
@@ -74,6 +75,8 @@ public static class AuthSetup
     public static IServiceCollection AddAlastorAuth(this IServiceCollection services, JwtIssuer issuer)
     {
         services.AddSingleton(issuer);
+        services.AddMemoryCache();
+        services.AddSingleton<SessionService>();
         JwtSecurityTokenHandler.DefaultMapInboundClaims = false;
 
         services.AddAuthentication(AuthSchemes.Dashboard)
@@ -103,6 +106,14 @@ public static class AuthSetup
                     {
                         ctx.Token = ctx.Request.Cookies[JwtIssuer.CookieName];
                         return Task.CompletedTask;
+                    },
+                    // A valid signature isn't enough: the session must still exist (not signed out or revoked).
+                    OnTokenValidated = async ctx =>
+                    {
+                        var id = ctx.Principal is { } p ? SessionService.CurrentId(p) : null;
+                        var sessions = ctx.HttpContext.RequestServices.GetRequiredService<SessionService>();
+                        if (id is null || !await sessions.IsActiveAsync(id.Value, ctx.HttpContext.RequestAborted))
+                            ctx.Fail("Session ended");
                     },
                 };
             })

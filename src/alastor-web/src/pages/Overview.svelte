@@ -1,5 +1,6 @@
 <script lang="ts">
-  import { api, type EventStats, type IssueList as IssueListDto, type Overview, type PosturePoint, type PostureMatrix as Matrix } from '../lib/api';
+  import { api, type EventStats, type IssueList as IssueListDto, type Overview, type PosturePoint, type PostureMatrix as Matrix, type SelfCheck } from '../lib/api';
+  import { canWrite } from '../lib/session.svelte';
   import { refreshOn } from '../lib/live.svelte';
   import { fleet, hostNames } from '../lib/fleet.svelte';
   import { number } from '../lib/format';
@@ -22,6 +23,8 @@
   let matrix = $state<Matrix | null>(null);
   let trendDays = $state(30);
   let error = $state('');
+  // The server's own security self-check: only failures make it onto the overview.
+  let selfFailures = $state<SelfCheck[]>([]);
 
   async function load() {
     try {
@@ -37,6 +40,10 @@
   const loadEvents = async () => (events = await api<EventStats>(`/api/stats/events?days=14&utcOffsetMinutes=${utcOffsetMinutes()}`).catch(() => events));
   const loadPosture = async () => (posture = await api<PosturePoint[]>(`/api/stats/posture?days=${trendDays}`).catch(() => posture));
   const loadMatrix = async () => (matrix = await api<Matrix>('/api/stats/matrix').catch(() => matrix));
+
+  $effect(() => {
+    if (canWrite()) api<SelfCheck[]>('/api/system/security').then((c) => (selfFailures = c.filter((x) => x.status === 'Fail'))).catch(() => {});
+  });
 
   $effect(() => {
     load();
@@ -70,6 +77,11 @@
 </div>
 
 {#if error}<div class="banner bad" role="alert"><p>Couldn’t load the overview: {error}</p></div>{/if}
+{#if selfFailures.length}
+  <div class="banner bad" role="alert">
+    <p><strong>This Alastor server adds exposure:</strong> {selfFailures.map((c) => c.title.toLowerCase()).join(', ')}. <a href="/settings/security">See the security self-check</a></p>
+  </div>
+{/if}
 
 {#if data}
   {#if data.hostsTotal === 0}
