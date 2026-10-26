@@ -95,6 +95,11 @@ public sealed class AlastorOptions
     /// <summary>How often each list in use is re-fetched (conditional GET). Providers ask for no more than hourly.</summary>
     public string BlocklistRefreshInterval { get; set; } = "4h";
 
+    // ---- OSV.dev (known vulnerabilities for the software inventory) ----
+
+    /// <summary>Look up installed package versions on OSV.dev (only names and versions are sent). Turn off for air-gapped servers.</summary>
+    public bool OsvEnabled { get; set; } = true;
+
     // ---- vulnerability databases ----
 
     /// <summary>Mirror the Trivy/Grype databases for agents. Only scanners some agent asks for are fetched. Turn off for air-gapped servers and place the files by hand.</summary>

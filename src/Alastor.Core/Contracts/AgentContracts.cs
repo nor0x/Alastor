@@ -86,6 +86,7 @@ public sealed record AgentReport(string JobId, DateTime StartedAtUtc, DateTime F
     public Alastor.Core.Malware.MalwareReport? Malware { get; init; }
     public Alastor.Core.Integrity.IntegrityReport? Integrity { get; init; }
     public Alastor.Core.Malware.RootkitReport? Rootkit { get; init; }
+    public Alastor.Core.Software.SoftwareReport? Software { get; init; }
 }
 
 public static class AgentCommandTypes
@@ -106,11 +107,21 @@ public static class AgentCommandTypes
 
     /// <summary>Run a scheduled job now. Payload: <c>job</c> = the job id (updates.check, updates.apply, …).</summary>
     public const string RunJob = "run-job";
+
+    /// <summary>Dry-run upgrading or removing one package. Payload: <c>op</c> (upgrade|remove), <c>package</c>. The plan comes back in <see cref="AgentCommandResult.Detail"/>.</summary>
+    public const string PackagePlan = "package-plan";
+
+    /// <summary>Upgrade or remove one package. Payload as <see cref="PackagePlan"/>. Acknowledged at once; the outcome follows as a software report.</summary>
+    public const string PackageAction = "package-action";
 }
 
 public sealed record AgentCommand(Guid Id, string Type, IReadOnlyDictionary<string, string> Payload, DateTime CreatedAtUtc);
 
-public sealed record AgentCommandResult(bool Success, string Message);
+public sealed record AgentCommandResult(bool Success, string Message)
+{
+    /// <summary>Structured output for commands that have some (a package dry run), as JSON.</summary>
+    public string? Detail { get; init; }
+}
 
 /// <summary>Methods the server invokes on agents over SignalR (<c>/hubs/agent</c>). All of them just mean "come and fetch".</summary>
 public static class AgentHubMethods
@@ -141,4 +152,6 @@ public static class AgentHubMethods
 [JsonSerializable(typeof(BlocklistPayload))]
 [JsonSerializable(typeof(AgentReport))]
 [JsonSerializable(typeof(Alastor.Core.Updates.UpdateApplyResult))]
+[JsonSerializable(typeof(Alastor.Core.Software.PackagePlan))]
+[JsonSerializable(typeof(Alastor.Core.Software.PackageActionResult))]
 public sealed partial class AgentJsonContext : JsonSerializerContext;

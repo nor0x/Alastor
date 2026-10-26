@@ -1,0 +1,3 @@
+(1/2) Upgrading libcrypto3 (3.3.2-r0 -> 3.3.2-r1)
+(2/2) Upgrading nginx (1.26.2-r0 -> 1.26.2-r1)
+OK: 9 MiB in 16 packages

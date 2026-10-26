@@ -430,6 +430,126 @@ export interface HostUpdates {
   schedules: { key: string; value: string; isDefault: boolean }[];
 }
 
+export interface PackageActionResult {
+  atUtc: string;
+  op: 'upgrade' | 'remove';
+  package: string;
+  success: boolean;
+  from: string | null;
+  to: string | null;
+  error: string | null;
+  logTail: string;
+}
+
+/** A known vulnerability in one installed package: from the host's own Trivy/Grype scan, or from OSV.dev. */
+export interface PackageVuln {
+  id: string;
+  severity: Severity | null;
+  cvss: number | null;
+  fixed: string | null;
+  source: 'scan' | 'osv';
+  exploited: boolean;
+  title: string | null;
+  /** The OSV advisory (DSA-…, USN-…) the CVE came from. */
+  advisory: string | null;
+}
+
+export interface SoftwarePackage {
+  name: string;
+  version: string;
+  arch: string | null;
+  source: string | null;
+  /** Installed on purpose, not as a dependency. */
+  manual: boolean;
+  /** Never uninstalled from the dashboard (essential, kernel, SSH, package manager). */
+  protected: boolean;
+  sizeKb: number | null;
+  candidate: string | null;
+  security: boolean | null;
+  vulns: PackageVuln[];
+  critical: number;
+  high: number;
+  exploited: boolean;
+  upgradeCommand: string | null;
+  removeCommand: string | null;
+}
+
+export interface HostSoftware {
+  hostId: string;
+  name: string;
+  online: boolean;
+  manager: string | null;
+  collectedAt: string | null;
+  success: boolean | null;
+  error: string | null;
+  lastAction: PackageActionResult | null;
+  osvEcosystem: string | null;
+  osvEnabled: boolean;
+  osvCheckedAt: string | null;
+  total: number;
+  manual: number;
+  packages: SoftwarePackage[];
+  schedules: { key: string; value: string; isDefault: boolean }[];
+}
+
+export interface PlannedPackage {
+  name: string;
+  action: 'upgrade' | 'remove' | 'install' | 'downgrade';
+  from: string | null;
+  to: string | null;
+}
+
+export interface PackagePlan {
+  op: 'upgrade' | 'remove';
+  package: string;
+  success: boolean;
+  error: string | null;
+  changes: PlannedPackage[];
+  /** Protected packages the transaction would remove; the agent refuses to run it. */
+  blocked: string[];
+}
+
+export interface PackagePlanResult {
+  commandId: string;
+  status: CommandStatus;
+  message: string | null;
+  plan: PackagePlan | null;
+}
+
+export interface FleetSoftwareRow {
+  name: string;
+  hosts: number;
+  manualHosts: number;
+  versions: { version: string; hosts: number }[];
+  outdated: number;
+  securityOutdated: number;
+  vulnerableHosts: number;
+  /** Distinct CVEs across the installed versions. */
+  cves: number;
+  critical: number;
+  high: number;
+  exploited: boolean;
+}
+
+export interface SoftwareHostRow {
+  hostId: string;
+  name: string;
+  online: boolean;
+  groupName: string | null;
+  manager: string | null;
+  version: string;
+  manual: boolean;
+  protected: boolean;
+  candidate: string | null;
+  security: boolean | null;
+  vulns: number;
+  critical: number;
+  high: number;
+  exploited: boolean;
+  upgradeCommand: string | null;
+  removeCommand: string | null;
+}
+
 export interface FleetUpdatesRow {
   hostId: string;
   name: string;

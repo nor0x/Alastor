@@ -8,6 +8,7 @@ public static class ScheduleDefaults
 {
     public const string UpdatesCheck = "every 6h";
     public const string UpdatesApply = "off";
+    public const string SoftwareInventory = "every 6h";
     public const string VulnerabilityScan = "0 3 * * *";
     public const string HardeningAudit = "0 5 * * 0";
     public const string MalwareScan = "off";
@@ -22,6 +23,7 @@ public static class ScheduleDefaults
     [
         Pick("updates.checkSchedule", doc.Updates?.CheckSchedule, UpdatesCheck),
         Pick("updates.applySchedule", doc.Updates?.ApplySchedule, UpdatesApply),
+        Pick("updates.inventorySchedule", doc.Updates?.InventorySchedule, SoftwareInventory),
         Pick("vulnerabilities.scanSchedule", doc.Vulnerabilities?.ScanSchedule, VulnerabilityScan),
         Pick("hardening.auditSchedule", doc.Hardening?.AuditSchedule, HardeningAudit),
         Pick("malware.scanSchedule", doc.Malware?.ScanSchedule, MalwareScan),

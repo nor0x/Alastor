@@ -15,6 +15,7 @@ public static class PolicyMerger
         {
             CheckSchedule = overlay.Updates?.CheckSchedule ?? baseDoc.Updates?.CheckSchedule,
             ApplySchedule = overlay.Updates?.ApplySchedule ?? baseDoc.Updates?.ApplySchedule,
+            InventorySchedule = overlay.Updates?.InventorySchedule ?? baseDoc.Updates?.InventorySchedule,
         },
         Vulnerabilities = Merge(baseDoc.Vulnerabilities, overlay.Vulnerabilities),
         Hardening = baseDoc.Hardening is null && overlay.Hardening is null ? null : new HardeningPolicy

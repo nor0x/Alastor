@@ -172,4 +172,8 @@ public sealed record ReconcileResult(bool Success, ConfigState State, string? Er
 
 public sealed record BanEntry(string Target, string Scope, DateTime? BannedAt, DateTime? ExpiresAt, bool Manual);
 
-public sealed record CommandOutcome(bool Success, string Message);
+public sealed record CommandOutcome(bool Success, string Message)
+{
+    /// <summary>Structured output sent back with the result (<see cref="Contracts.AgentCommandResult.Detail"/>).</summary>
+    public string? Detail { get; init; }
+}
