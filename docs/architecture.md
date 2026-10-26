@@ -135,13 +135,16 @@ Cookie-authenticated writes must also send `X-Alastor-Request: 1` (CSRF guard on
 | `GET /api/hosts/{id}/metrics?hours=` | R | downsampled CPU/mem/disk/load history |
 | `GET /api/hosts/{id}/effective-policy` · `/commands` | R | merged YAML and revision · command history |
 | `PATCH /api/hosts/{id}` · `DELETE /api/hosts/{id}` | A | rename, group, tags · remove (revokes the agent) |
-| `POST /api/hosts/{id}/actions/{reconcile\|reclaim\|refresh-bans\|recheck\|check-updates\|apply-updates\|collect-software\|scan-vulnerabilities\|run-audit\|check-network\|scan-malware\|check-integrity\|accept-integrity\|scan-rootkits\|accept-rootkits\|reboot}` | A | operator actions (`recheck` re-runs the security baseline; the update and scan actions queue a `run-job` command; `reboot` is refused with 409 while the host is offline) |
+| `POST /api/hosts/{id}/actions/{reconcile\|reclaim\|refresh-bans\|recheck\|check-updates\|apply-updates\|collect-software\|scan-storage\|scan-vulnerabilities\|run-audit\|check-network\|scan-malware\|check-integrity\|accept-integrity\|scan-rootkits\|accept-rootkits\|reboot}` | A | operator actions (`recheck` re-runs the security baseline; the update and scan actions queue a `run-job` command; `reboot` is refused with 409 while the host is offline) |
 | `GET /api/hosts/{id}/updates` | R | pending packages (security first), reboot flag, last install with its log tail, effective update schedules |
 | `GET /api/updates` · `POST /api/updates/apply` `{hostIds}` | R · A | per-host update counts across the fleet · "install now" on several hosts |
 | `GET /api/hosts/{id}/software` | R | installed packages (version, source package, installed on purpose or as a dependency, protected), each with its update candidate, known CVEs (scan + OSV.dev) and the manual upgrade/remove command; last upgrade/uninstall with its log tail |
 | `POST /api/hosts/{id}/software/plan` `{op, package}` · `GET …/software/plan/{commandId}` | A · R | ask the agent for a dry run of `upgrade` or `remove` (a `package-plan` command) · its result |
 | `POST /api/hosts/{id}/software/{upgrade\|remove}` `{package}` | A | upgrade or uninstall one package (a `package-action` command, audited) |
 | `GET /api/software?all` · `GET /api/software/{name}/hosts` · `POST /api/software/upgrade` `{package, hostIds}` | R · R · A | packages across the fleet with version spread, outdated and vulnerable host counts · the hosts that have one · upgrade it on several hosts |
+| `GET /api/hosts/{id}/storage` | R | filesystems, the folder tree, the biggest files, the cleanups that apply (with size, risk and the command to run by hand), the last cleanup and one still running |
+| `POST /api/hosts/{id}/storage/cleanup` `{cleanup, confirm?}` | A | run one cleanup by id (a `storage-cleanup` command, audited); destructive ones need `confirm` = the host name |
+| `GET /api/storage` · `POST /api/storage/cleanup` `{cleanup, hostIds, confirm?}` | R · A | every host by root disk usage with what it can free, plus the cleanup catalog · one cleanup on every selected host it applies to (destructive: `confirm` = `delete`) |
 | `GET /api/hosts/{id}/vulnerabilities` | R | every finding (package, installed → fixed, severity, CVSS, KEV flag, accepted), scanner and database info, ignored-package counts |
 | `GET /api/vulnerabilities?minSeverity&fixable&kev&q&limit` | R | fleet view: open CVEs ranked KEV → severity → hosts affected, per-host counts, database mirror status |
 | `GET /api/vulnerabilities/db` · `POST /api/vulnerabilities/db/{trivy\|grype}/refresh` | R · A | mirror status · check upstream now |
@@ -238,6 +241,7 @@ times, so the editor can show `0 4 * * 1-5` as "Mon 04:00, Tue 04:00, …".
 | `baseline.checkSchedule` | `every 1h` | ≥1m | security baseline checks; also run at agent start, after policy changes, and on "Re-check now" |
 | `updates.checkSchedule` | `every 6h` | ≥1m | refresh package lists and count pending (security) updates; also at agent start and on "Check now" |
 | `updates.applySchedule` | `off` | ≥1m | install security updates automatically, e.g. `0 4 * * *`; `off` = report only plus "Install now" |
+| `storage.scanSchedule` | `every 12h` | ≥1m | disk usage scan (§5c-2); also at agent start and after every cleanup |
 | `updates.inventorySchedule` | `every 6h` | ≥1m | software inventory (§5c-1); also at agent start, after every upgrade or uninstall, and on "Refresh inventory" |
 | `vulnerabilities.scanSchedule` | `0 3 * * *` | ≥1m | Trivy/Grype scan of installed packages; also at agent start and on "Scan now" |
 | `hardening.auditSchedule` | `0 5 * * 0` | ≥1m | Lynis audit (§5e) |
@@ -420,6 +424,32 @@ server is unreachable. The server stores the latest report per host and kind, pl
   the agent re-checks the dry run and refuses any removal that would take one along, whatever the server asked.
   apt's own "Yes, do as I say!" guard for essential packages stays in place (`-y` never answers it). There is no
   bulk uninstall. Events: `software.upgraded`, `software.removed`, `software.failed`.
+
+## 5c-2. Storage: disk usage and cleanups
+
+* **Scan (`storage.scan`)**, on `storage.scanSchedule` (every 12 h), at first start and after every cleanup, under
+  `nice -n 19 ionice -c 3` when those exist. Filesystems from `df -PTk` and `df -Pi` (memory, overlay and snap mounts
+  left out; BusyBox `df -Pk` without types as a fallback). For each local disk mount (ext*, xfs, btrfs, zfs, …, at most
+  8): `du -xk -d 3` for the folder tree, pruned to the 15 biggest children per folder of 25 MB or more (400 in all), and
+  `find -xdev -type f -size +100M -printf` for the 50 biggest files (`-exec stat` on BusyBox). The report is stored as
+  a `HostReports` row of kind `storage`; no extra tables.
+* **Cleanups** (`StorageCleanups`): a fixed catalog, each with a risk (`Safe`, `Caution`, `Destructive`) and the
+  command to run by hand. The agent measures every one that applies with the tool it belongs to: `du` of the package
+  caches (`apt-get clean`, `dnf clean all`, `apk cache clean`), `journalctl --disk-usage` above 200 MB
+  (`--vacuum-size=200M`), rotated logs under `/var/log` (`find … -delete`), `docker system df` (build cache, stopped
+  containers, unused images, unused volumes: `docker … prune`), container json logs (`truncate -s 0`),
+  `podman system df`, `apt-get -s autoremove` with `dpkg-query` sizes, `dnf --assumeno autoremove`, disabled snap
+  revisions, pip/npm/yarn/Go/Composer caches directly in `/root` and `/home/<user>`, crash dumps, and files in `/tmp`
+  and `/var/tmp` untouched for 10 days. "Can be freed" sums them without the destructive ones.
+* **Running one.** The dashboard sends only the id: `storage-cleanup` `{cleanup}`. The agent acknowledges it, measures
+  that cleanup again, runs exactly its commands (argument lists, never a shell; paths only from its own measurement),
+  compares `df` before and after for the freed space, reports the fresh filesystems and candidates with `lastCleanup`
+  (the scan's folder tree is carried along), and queues a full scan. One cleanup runs at a time. autoremove takes the
+  package-manager lock and is refused when it would remove a protected package or the running kernel (from
+  `/proc/sys/kernel/osrelease`); older kernels may go. Unused Docker volumes delete data, so the server wants the host
+  name typed (`delete` for several hosts). Events: `storage.cleaned` (Info), `storage.cleanup-failed` (Medium).
+* **Disk almost full.** The server watches the root filesystem in every heartbeat: crossing 90% (and 95%) raises
+  `storage.low` (Medium, then High) once, and the `storage.low` issue stays open while it is that full.
 
 ## 5d. Vulnerability scans (Trivy / Grype)
 
@@ -608,11 +638,11 @@ score, CVE counts, pending updates, SSH exposure, …). Two server-side views si
 * **Issues** (`Issues`): `IssueRules` turns a host's current state into the problems open right now: host offline,
   failed policy apply, a tool down or with a refused or hand-edited config, SSH reachable from the internet, password SSH
   on a public host, known-exploited (KEV) CVEs, critical CVEs, malware, failing high or critical baseline checks,
-  pending security updates and a required reboot. `IssueService` diffs that against the stored rows after every report,
+  pending security updates, a required reboot and a root filesystem 90% full (High from 95%). `IssueService` diffs that against the stored rows after every report,
   after a heartbeat that changed tool health, on presence changes, after policy saves (which can accept a risk) and
   hourly. A cleared condition resolves its issue; one that comes back reopens the same row with a new occurrence and
   without its acknowledgement. Every one of these conditions already raises its own alerting event when it starts
-  (`host.offline`, `exposure.detected`, `vulnerabilities.exploited`, `baseline.failed`, …), so issues don't notify
+  (`host.offline`, `exposure.detected`, `vulnerabilities.exploited`, `baseline.failed`, `storage.low`, …), so issues don't notify
   again: opening and resolving are recorded as Info events (`issue.opened`, `issue.resolved`) on the timeline. Resolved
   issues are pruned with events.
 

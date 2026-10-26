@@ -26,6 +26,7 @@ public static class IssueRules
         ["host.offline"] = "Host offline",
         ["policy.failed"] = "Policy apply failed",
         ["tool.problem"] = "Tool problem",
+        ["storage.low"] = "Disk almost full",
         ["ssh.public"] = "SSH reachable from the internet",
         ["ssh.password-public"] = "Password SSH logins on a public host",
         ["service.public"] = "Unexpected public service",
@@ -52,6 +53,11 @@ public static class IssueRules
                 "The agent rolled back to the previous working configuration.", "policy"));
         foreach (var t in h.Tools.Where(Dto.HasProblem).OrderBy(t => t.ToolId, StringComparer.Ordinal))
             open.Add(new("tool.problem", t.ToolId, Severity.Medium, $"{t.ToolId}: {ToolProblem(t)}", t.LastError ?? t.UnavailableReason, "overview"));
+
+        if (DiskLevel(h) > 0)
+            open.Add(new("storage.low", "", DiskLevel(h) > 1 ? Severity.High : Severity.Medium,
+                $"The root filesystem is {Dto.Percent(h.DiskUsedBytes, h.DiskTotalBytes):0}% full",
+                $"{Core.Storage.StorageIntegration.Format(h.DiskTotalBytes - h.DiskUsedBytes)} free of {Core.Storage.StorageIntegration.Format(h.DiskTotalBytes)}. The Storage tab shows what uses the space and what can be cleaned up.", "storage"));
 
         if (h.NetworkCheckedAt is not null && PostureService.IsPublicSsh(h))
         {
@@ -110,6 +116,17 @@ public static class IssueRules
         if (h.RebootRequired)
             open.Add(new("updates.reboot", "", Severity.Low, "A reboot is required", "Updated packages (often the kernel) only take effect after a reboot.", "updates"));
         return open;
+    }
+
+    public const double LowDiskPercent = 90;
+    public const double CriticalDiskPercent = 95;
+
+    /// <summary>How full the root filesystem is: 0 below <see cref="LowDiskPercent"/>, 1 below <see cref="CriticalDiskPercent"/>, else 2.</summary>
+    public static int DiskLevel(ManagedHost h)
+    {
+        if (h.DiskTotalBytes <= 0) return 0;
+        var pct = Dto.Percent(h.DiskUsedBytes, h.DiskTotalBytes);
+        return pct >= CriticalDiskPercent ? 2 : pct >= LowDiskPercent ? 1 : 0;
     }
 
     private static string ToolProblem(HostToolStatus t) =>

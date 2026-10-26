@@ -26,6 +26,7 @@ public static class ToolCatalog
         new(Blocklists.BlocklistIntegration.Info, Implemented: true, OptIn: false),
         new(Updates.UpdatesIntegration.Info, Implemented: true, OptIn: false),
         new(Software.SoftwareIntegration.Info, Implemented: true, OptIn: false),
+        new(Storage.StorageIntegration.Info, Implemented: true, OptIn: false),
         new(Vulnerabilities.VulnerabilityIntegration.Info, Implemented: true, OptIn: false),
         new(Hardening.HardeningIntegration.Info, Implemented: true, OptIn: false),
         new(Network.NetworkIntegration.Info, Implemented: true, OptIn: true),

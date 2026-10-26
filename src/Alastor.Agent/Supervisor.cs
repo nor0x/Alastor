@@ -12,6 +12,7 @@ using Alastor.Core.Net;
 using Alastor.Core.Platform;
 using Alastor.Core.Policy;
 using Alastor.Core.Software;
+using Alastor.Core.Storage;
 using System.Text.Json;
 
 namespace Alastor.Agent;
@@ -383,6 +384,8 @@ public sealed class Supervisor(
                 return new(true, "Baseline checks ran");
             case AgentCommandTypes.PackagePlan or AgentCommandTypes.PackageAction:
                 return await PackageCommandAsync(cmd, ct);
+            case AgentCommandTypes.StorageCleanup:
+                return StorageCleanup(cmd, ct);
             case AgentCommandTypes.Reboot:
                 return await RebootAsync(cmd, ct);
             default:
@@ -436,6 +439,42 @@ public sealed class Supervisor(
             }
         }, ct);
         return new(true, $"{(op == PackageOps.Upgrade ? "Upgrading" : "Uninstalling")} {package} started; the result follows as a report");
+    }
+
+    /// <summary>
+    /// A cleanup can take minutes (docker image prune, apt autoremove), so like a package action it runs off the heartbeat
+    /// loop and its outcome follows as a storage report; afterwards a fresh scan shows where the space went.
+    /// </summary>
+    private CommandOutcome StorageCleanup(AgentCommand cmd, CancellationToken ct)
+    {
+        var storage = _tools.OfType<StorageIntegration>().FirstOrDefault();
+        if (storage is null) return new(false, $"This agent has no storage cleanup (agent {AgentInfo.Version})");
+        var id = cmd.Payload.GetValueOrDefault("cleanup") ?? "";
+        if (StorageCleanups.Find(id) is not { } cleanup) return new(false, $"Unknown cleanup '{id}' (agent {AgentInfo.Version})");
+        if (!_runningJobs.TryAdd(StorageIntegration.CleanupJob, true)) return new(false, "Another cleanup is still running");
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                AgentReport report;
+                try { report = await storage.RunCleanupAsync(id, ct); }
+                catch (Exception ex) when (ex is not OperationCanceledException)
+                {
+                    logger.LogError(ex, "Storage cleanup {Cleanup} failed", id);
+                    var now = time.GetUtcNow().UtcDateTime;
+                    report = new AgentReport(StorageIntegration.CleanupJob, now, now, false, ex.Message);
+                }
+                _pendingReports.Enqueue(report);
+                _jobRequests.Writer.TryWrite(""); // deliver now
+                if (report.Success) _jobRequests.Writer.TryWrite(StorageIntegration.ScanJob);
+                Wake("report");
+            }
+            finally
+            {
+                _runningJobs.TryRemove(StorageIntegration.CleanupJob, out _);
+            }
+        }, ct);
+        return new(true, $"{cleanup.Title}: cleanup started; the result follows as a report");
     }
 
     /// <summary>
