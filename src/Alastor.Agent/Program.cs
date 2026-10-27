@@ -206,7 +206,7 @@ internal sealed record PlatformServices(OsInfo Os, ICommandRunner Runner, IFileS
         new(Runner, Fs, State, Os, logger, TimeProvider.System);
 
     public Alastor.Core.Storage.StorageIntegration CreateStorage(ILogger<Alastor.Core.Storage.StorageIntegration> logger) =>
-        new(Runner, Fs, State, Os, logger, TimeProvider.System);
+        new(Runner, Fs, State, Os, StateDir, logger, TimeProvider.System);
 
     public HardeningIntegration CreateHardening(ILogger<HardeningIntegration> logger) =>
         new(Runner, Fs, PackageManagers.For(Os.Family, Runner), State, StateDir, logger, TimeProvider.System);

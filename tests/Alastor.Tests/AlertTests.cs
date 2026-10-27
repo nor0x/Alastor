@@ -168,6 +168,7 @@ public sealed class AlertApiTests : IDisposable
             builder.UseSetting("SecureCookies", "false");
             builder.UseSetting("ThreatFeedEnabled", "false");
             builder.UseSetting("OsvEnabled", "false");
+            builder.UseSetting("UpdateCheckEnabled", "false"); // no GitHub calls in tests; UpdateCheckTests drive the check itself
             builder.UseSetting("BlocklistsEnabled", "false"); // no list downloads in tests; BlocklistApiTests drives them itself
             builder.UseSetting("PublicUrl", "https://alastor.example.com");
             builder.ConfigureTestServices(s =>

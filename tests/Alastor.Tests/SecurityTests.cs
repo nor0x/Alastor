@@ -157,6 +157,7 @@ public sealed class AuthSecurityTests : IClassFixture<AuthSecurityTests.Factory>
             builder.UseSetting("SecureCookies", "false");
             builder.UseSetting("ThreatFeedEnabled", "false");
             builder.UseSetting("OsvEnabled", "false");
+            builder.UseSetting("UpdateCheckEnabled", "false"); // no GitHub calls in tests; UpdateCheckTests drive the check itself
             builder.UseSetting("BlocklistsEnabled", "false");
             builder.UseSetting("VulnDbEnabled", "false");
             builder.UseSetting("AuthRateLimitPerMinute", "1000");

@@ -28,6 +28,11 @@ public static class StorageCleanups
     public const string DevCaches = "dev.caches";
     public const string CrashDumps = "crash.dumps";
     public const string OldTempFiles = "tmp.old";
+    public const string AlastorScannerDbs = "alastor.scanner-dbs";
+    public const string AlastorImageCache = "alastor.image-cache";
+    public const string AlastorClamAv = "alastor.clamav";
+    public const string AlastorAide = "alastor.aide";
+    public const string AlastorLeftovers = "alastor.leftovers";
 
     /// <summary>What <see cref="JournalVacuum"/> shrinks the systemd journal to.</summary>
     public const string JournalKeep = "200M";
@@ -61,6 +66,18 @@ public static class StorageCleanups
         new(CrashDumps, "Crash reports and core dumps",
             "Dumps of programs that crashed (/var/crash, systemd-coredump). Only useful while debugging that crash.",
             CleanupRisk.Safe, "sudo find /var/crash /var/lib/systemd/coredump -xdev -type f -delete"),
+        new(AlastorScannerDbs, "Unused CVE scanner databases",
+            "The Trivy or Grype database of a scanner the policy no longer uses (both while CVE scans are off), and an old Trivy database left from an update. The agent downloads one from the server again when it needs it.",
+            CleanupRisk.Safe, "sudo find /var/lib/alastor-agent/vulndb/grype /var/lib/alastor-agent/vulndb/trivy/db.old -xdev -delete  # the folder of each scanner the policy doesn't use"),
+        new(AlastorImageCache, "Trivy scan cache",
+            "What Trivy keeps from earlier scans (container image layers, analysis results). The database stays; the next image scan is slower.",
+            CleanupRisk.Safe, "sudo find /var/lib/alastor-agent/vulndb/trivy/fanal -xdev -delete  # every folder in vulndb/trivy except db"),
+        new(AlastorClamAv, "Unused ClamAV signatures",
+            "The signature databases of ClamAV while malware.scanSchedule is off. The agent downloads them from the server again when scans are turned on.",
+            CleanupRisk.Safe, "sudo find /var/lib/alastor-agent/clamav -xdev -delete"),
+        new(AlastorLeftovers, "Alastor agent leftovers",
+            "Half-finished downloads, scan output and temporary files the agent left behind when it stopped mid-way, once untouched for an hour.",
+            CleanupRisk.Safe, @"sudo find /var/lib/alastor-agent -xdev -type f \( -name '*.part' -o -name 'scan-*.json' -o -name '.*.tmp' \) -mmin +60 -delete"),
         new(DockerContainers, "Stopped Docker containers",
             "Containers that have exited, with their writable layers. Anything a container wrote outside a volume is lost.",
             CleanupRisk.Caution, "sudo docker container prune -f"),
@@ -79,6 +96,9 @@ public static class StorageCleanups
         new(DnfAutoremove, "Packages nothing needs any more",
             "Dependencies left behind by removed packages.",
             CleanupRisk.Caution, "sudo dnf autoremove"),
+        new(AlastorAide, "Unused AIDE baseline",
+            "The file integrity baseline while integrity.checkSchedule is off. Turning checks on again records a new baseline, so changes made in between aren't reported.",
+            CleanupRisk.Caution, "sudo find /var/lib/alastor-agent/aide -xdev -delete"),
         new(OldTempFiles, "Old temporary files",
             "Files in /tmp and /var/tmp nobody has read or changed for 10 days. A program could still expect one, so check the biggest first.",
             CleanupRisk.Caution, "sudo find /tmp /var/tmp -xdev -type f -mtime +10 -atime +10 -delete"),

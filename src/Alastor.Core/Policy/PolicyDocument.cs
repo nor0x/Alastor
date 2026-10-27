@@ -75,7 +75,7 @@ public sealed class BlocklistsPolicy
     public string? RefreshSchedule { get; set; }
 }
 
-// Schedules for capabilities that land in later deliverables. Every recurring action has a Schedule-typed key
+// Per-capability sections: updates, scans, audits and checks. Every recurring action has a Schedule-typed key
 // ("every 6h", "0 3 * * *", or "off"); see Schedule.cs. Feature-specific settings join these sections with their integration.
 
 public sealed class UpdatesPolicy

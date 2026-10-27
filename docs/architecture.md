@@ -273,6 +273,8 @@ times, so the editor can show `0 4 * * 1-5` as "Mon 04:00, Tue 04:00, …".
 | `ALASTOR_THREATFEEDINTERVAL` | `20m` | per-source refetch after a success (5m–1d) |
 | `ALASTOR_THREATFEEDRETENTION` | `30d` | feed items older than this are pruned and not fetched |
 | `ALASTOR_NVDAPIKEY` | – | optional; raises NVD's rate limit from 5 to 50 requests / 30 s |
+| `ALASTOR_UPDATECHECKENABLED` | `true` | `UpdateCheckWorker` asks GitHub for the latest release at startup and every 12 h; the sidebar shows a notice when it's newer |
+| `ALASTOR_UPDATEREPOSITORY` | `nor0x/Alastor` | `owner/name` whose releases the update check reads (404, e.g. a private repo, means no notice) |
 
 All values are validated: an invalid policy is rejected with the key's path, and invalid server config stops
 startup with a message naming the variable. Deliberately **not** knobs: retry backoffs, tool command timeouts
@@ -750,8 +752,8 @@ package refers to, and partial mirror downloads. SQLite is compacted (`VACUUM`) 
 quarter of the file and 50 MB, or on demand in *Settings → Alastor data*, which also deletes mirrored databases no agent
 has asked for in 30 days and extraction folders of older server versions.
 
-Agents refuse plain HTTP unless enrolled with `--insecure`, and support certificate pinning (`--pin <sha256>`)
-for self-signed servers. Manual bans refuse ranges wider than /8 (v4) or /32 (v6), anything overlapping the
+Agents refuse plain HTTP unless enrolled with `--insecure` (except loopback, `100.64.0.0/10`, `fd7a:115c:a1e0::/48`
+and `*.ts.net`), and support certificate pinning (`--pin <sha256>`) for self-signed servers. Manual bans refuse ranges wider than /8 (v4) or /32 (v6), anything overlapping the
 allowlist, and the operator's own address.
 
 **Not yet.** The agent's systemd unit runs as root without a sandbox (it installs packages and manages the firewall, so

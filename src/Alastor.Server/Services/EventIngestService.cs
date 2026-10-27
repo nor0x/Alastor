@@ -6,7 +6,7 @@ namespace Alastor.Server.Services;
 
 /// <summary>
 /// The entry point of the alert pipeline: normalized events go in, are stored idempotently (by agent-assigned
-/// id), and are broadcast. Deliverable 4 adds leaky-bucket dedup and channel routing behind <see cref="IEventSink"/>.
+/// id), and are broadcast. <see cref="Alerts.AlertPipeline"/> adds leaky-bucket dedup and channel routing behind <see cref="IEventSink"/>.
 /// </summary>
 public sealed class EventIngestService(AlastorDbContext db, DashboardNotifier notifier, IEnumerable<IEventSink> sinks, TimeProvider time)
 {

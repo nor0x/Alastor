@@ -432,6 +432,18 @@ export interface About {
   notes: string[];
 }
 
+/** The newest Alastor release the server's update check has seen on GitHub. */
+export interface UpdateStatus {
+  enabled: boolean;
+  current: string;
+  latest: string | null;
+  /** The release page on GitHub. */
+  url: string | null;
+  publishedAt: string | null;
+  checkedAt: string | null;
+  available: boolean;
+}
+
 /** Error text for a failed write: validation problems list their fields, conflicts carry `error`. */
 export interface PendingUpdate {
   name: string;
