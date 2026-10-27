@@ -44,12 +44,19 @@
     <EmbeddedResource Include="..\..\install\alastor.sh" LogicalName="Alastor.Server.install.alastor.sh" Condition="Exists('..\..\install\alastor.sh')" />
   </ItemGroup>
 
+  <!-- Reinstalls node_modules whenever the lockfile is newer than npm's record of the installed tree, so a checkout
+       that pulled new dependencies doesn't build against a stale node_modules. -->
+  <Target Name="RestoreWeb" Inputs="$(WebDir)package.json;$(WebDir)package-lock.json" Outputs="$(WebDir)node_modules\.package-lock.json">
+    <Exec Command="npm ci --no-audit --no-fund" WorkingDirectory="$(WebDir)" />
+  </Target>
+
   <!-- Builds the Svelte SPA into wwwroot before publishing (skip with -p:SkipWebBuild=true). -->
-  <Target Name="BuildWeb" BeforeTargets="BeforeBuild" Condition="'$(Configuration)' == 'Release' AND '$(SkipWebBuild)' != 'true' AND Exists('$(WebDir)package.json')">
-    <Exec Command="npm ci --no-audit --no-fund" WorkingDirectory="$(WebDir)" Condition="!Exists('$(WebDir)node_modules')" />
+  <Target Name="BuildWeb" BeforeTargets="BeforeBuild" DependsOnTargets="RestoreWeb" Condition="'$(Configuration)' == 'Release' AND '$(SkipWebBuild)' != 'true' AND Exists('$(WebDir)package.json')">
     <Exec Command="npm run build" WorkingDirectory="$(WebDir)" />
+    <!-- Vite replaces the hashed bundles, so drop the wwwroot items captured at evaluation time and pick up what's there now. -->
     <ItemGroup>
-      <EmbeddedResource Include="wwwroot\**" Exclude="@(EmbeddedResource)" />
+      <EmbeddedResource Remove="@(EmbeddedResource)" Condition="$([System.String]::Copy('%(Identity)').StartsWith('wwwroot'))" />
+      <EmbeddedResource Include="wwwroot\**" />
     </ItemGroup>
   </Target>
 
