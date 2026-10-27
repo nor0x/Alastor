@@ -14,6 +14,10 @@ central server, one dashboard.
 > Named after Alastor "Mad-Eye" Moody, the auror whose magical eye never stops watching. Alastor keeps an eye on
 > every machine you run, so you don't have to SSH into each one to see what's going on. *Constant vigilance!*
 
+![The Alastor dashboard: fleet health, posture and events across nine hosts](docs/screenshots/overview.png)
+
+More screenshots (hosts, issues, CVEs, bans, storage, …) are in [docs/screenshots](docs/screenshots).
+
 ## Why Alastor
 
 Good open-source security tools already exist: fail2ban and CrowdSec ban attackers, Trivy and Grype find CVEs, Lynis
