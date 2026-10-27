@@ -125,6 +125,7 @@ public static class AdminEndpoints
                 S("General", nameof(o.DataDir), o.DataDir, "Database, signing and data-protection keys."),
                 S("General", nameof(o.AgentDownloadDir), o.AgentDownloadDir, "Agent binaries served to hosts at /install/agent/."),
                 S("General", nameof(o.SecureCookies), o.SecureCookies ? "true" : "false", "Secure flag on the session cookie."),
+                S("General", nameof(o.ControlDir), o.ControlDir is "" ? "(off)" : o.ControlDir, "Start/stop requests from the dashboard, carried out by the installer's alastor-control unit."),
                 S("Access", nameof(o.DashboardAllowFrom), o.DashboardAllowFrom, "Networks that may reach the dashboard (any, loopback, private, tailnet, CIDRs)."),
                 S("Access", nameof(o.AgentAllowFrom), o.AgentAllowFrom, "Networks that may reach the agent API and installers."),
                 S("Agents", nameof(o.HeartbeatInterval), o.HeartbeatInterval, "Default heartbeat when the policy sets no agent.heartbeatInterval."),

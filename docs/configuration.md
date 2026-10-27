@@ -18,6 +18,7 @@ The server reads environment variables. With the installer they live in `/etc/al
 | `ALASTOR_SECURECOOKIES` | `true` | set `false` only for plain-HTTP local dev |
 | `ALASTOR_DASHBOARDALLOWFROM` | `loopback,private,tailnet` | who may reach the dashboard: `any`, `loopback`, `private`, `tailnet` and CIDRs. Everyone else gets a bare 404 before sign-in |
 | `ALASTOR_AGENTALLOWFROM` | `loopback,private,tailnet` | the same for the agent API and installers (`/api/agent`, `/hubs/agent`, `/install`) |
+| `ALASTOR_CONTROLDIR` | – | where the dashboard drops start/stop requests for its own machine; the installer's unit sets it to `/var/lib/alastor/control`. Empty turns *Settings → Server → This machine* read-only |
 | `ALASTOR_AUDITRETENTION` / `ALASTOR_LOGINSOURCERETENTION` / `ALASTOR_POLICYVERSIONSKEEP` | `365d` / `365d` / `50` | retention for the audit log, known SSH login sources and policy history (see *Settings → Alastor data*) |
 | `ALASTOR_BLOCKLISTSENABLED` / `ALASTOR_BLOCKLISTREFRESHINTERVAL` | `true` / `4h` | public IP blocklists the server pulls and merges per host (*Bans → Blocklists*) |
 | `ALASTOR_OSVENABLED` | `true` | look up installed package versions on OSV.dev for the *Software* view; `false` for air-gapped servers |

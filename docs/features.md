@@ -61,7 +61,9 @@ dashboard. Live updates use SignalR, with polling when the hub is unreachable.
   unused images and volumes, old kernels, snap revisions, dev caches. A fleet view sorted by disk usage cleans several
   hosts at once, and a host whose root filesystem passes 90% gets an issue and an alert.
 - **Settings and About:** groups, enrollment tokens, API keys, audit log, and tool licenses.
-- **Installers:** one-line installers for the server and the agent, and a Docker image with compose for the server.
+- **Installers:** one-line installers for the server and the agent that open nothing new by default (tailnet or
+  loopback), an `alastor` command and a dashboard card to start and stop them on the server's machine, and a Docker
+  image with compose for the server.
   See [install.md](install.md).
 
 The tools behind each feature are listed in [tools.md](tools.md); how each one is wired up is in

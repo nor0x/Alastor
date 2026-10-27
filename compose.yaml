@@ -2,9 +2,11 @@
 #
 #   ALASTOR_ADMINPASSWORD='a long passphrase' ALASTOR_PUBLICURL=https://alastor.example.com docker compose up -d
 #
-# Put a TLS-terminating reverse proxy (Caddy, Traefik, nginx) in front of port 8080: agents refuse plain HTTP
-# unless enrolled with --insecure. For PostgreSQL instead of the built-in SQLite, start with --profile postgres
-# and set ALASTOR_DATABASEPROVIDER=postgres (see below).
+# The port is published on the host's loopback only (Docker's published ports bypass ufw). For remote browsers and
+# agents, put HTTPS in front of 127.0.0.1:8080: a TLS-terminating reverse proxy on the host (Caddy, nginx), or
+# `tailscale serve --bg --https=443 http://127.0.0.1:8080` for your tailnet. Agents refuse plain HTTP outside
+# loopback and Tailscale unless enrolled with --insecure. For PostgreSQL instead of the built-in SQLite, start with
+# --profile postgres and set ALASTOR_DATABASEPROVIDER=postgres (see below).
 
 services:
   alastor:
@@ -12,7 +14,8 @@ services:
     image: alastor:latest
     restart: unless-stopped
     ports:
-      - "8080:8080"
+      # Loopback only: reach it through a TLS proxy or `tailscale serve` on this host (see the top of this file).
+      - "127.0.0.1:8080:8080"
     volumes:
       - alastor-data:/data
     environment:

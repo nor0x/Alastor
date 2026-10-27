@@ -177,7 +177,7 @@ Cookie-authenticated writes must also send `X-Alastor-Request: 1` (CSRF guard on
 | `GET /api/blocklists` · `GET /api/blocklists/lookup?ip=` | R | list health and usage, per-host enforcement (backend, entries, dropped packets) · which lists contain an address |
 | `POST /api/blocklists/{id}/refresh` | A | fetch one list now |
 | `GET /api/audit` | A | audit log |
-| `GET /api/about` · `GET /healthz` · `GET /install/{agent.sh,server.sh}` · `GET /install/agent/{alastor-agent-linux-x64,…-arm64,SHA256SUMS}` | – | licenses · liveness · installers · agent binaries |
+| `GET /api/about` · `GET /healthz` · `GET /install/{agent.sh,server.sh,alastor.sh}` · `GET /install/agent/{alastor-agent-linux-x64,…-arm64,SHA256SUMS}` | – | licenses · liveness · installers · agent binaries |
 | `POST /api/agent/enroll` | – (token) | consume single-use token → `{agentId, agentSecret}` |
 | `POST /api/agent/heartbeat` | Ag | metrics + tool statuses + last apply report → `{desiredRevision, pendingCommands}` |
 | `GET /api/agent/desired-state` | Ag | effective policy + revision |
@@ -752,8 +752,8 @@ package refers to, and partial mirror downloads. SQLite is compacted (`VACUUM`) 
 quarter of the file and 50 MB, or on demand in *Settings → Alastor data*, which also deletes mirrored databases no agent
 has asked for in 30 days and extraction folders of older server versions.
 
-Agents refuse plain HTTP unless enrolled with `--insecure`, and support certificate pinning (`--pin <sha256>`)
-for self-signed servers. Manual bans refuse ranges wider than /8 (v4) or /32 (v6), anything overlapping the
+Agents refuse plain HTTP unless enrolled with `--insecure` (except loopback, `100.64.0.0/10`, `fd7a:115c:a1e0::/48`
+and `*.ts.net`), and support certificate pinning (`--pin <sha256>`) for self-signed servers. Manual bans refuse ranges wider than /8 (v4) or /32 (v6), anything overlapping the
 allowlist, and the operator's own address.
 
 **Not yet.** The agent's systemd unit runs as root without a sandbox (it installs packages and manages the firewall, so

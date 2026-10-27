@@ -65,16 +65,17 @@ server and handed out, so your hosts need no other outbound access. More in [how
 On the machine that will run the dashboard, as root:
 
 ```bash
-# VPS with a domain pointing at it: HTTPS through Caddy, and protect this server too
-curl -fsSL https://raw.githubusercontent.com/nor0x/Alastor/main/install/install.sh | sudo bash -s -- --domain alastor.example.com --with-agent
+# With Tailscale running: the dashboard is on your tailnet only. Without it: this machine only (SSH tunnel).
+curl -fsSL https://raw.githubusercontent.com/nor0x/Alastor/main/install/install.sh | sudo bash -s -- --with-agent
 
-# local machine or LAN, plain HTTP on :8080
-curl -fsSL https://raw.githubusercontent.com/nor0x/Alastor/main/install/install.sh | sudo bash
+# VPS with a domain pointing at it: HTTPS on the internet through Caddy
+curl -fsSL https://raw.githubusercontent.com/nor0x/Alastor/main/install/install.sh | sudo bash -s -- --domain alastor.example.com --with-agent
 ```
 
 It prints the dashboard URL and an admin password. To add a server, open **Settings → Enrollment → New token** and
-run the command it shows on that server. Docker, installing from a clone and upgrades are covered in the
-[install guide](docs/install.md).
+run the command it shows on that server. `alastor status`, `sudo alastor stop` and `sudo alastor start` control it on
+that machine, as does **Settings → Server** in the dashboard. Access modes, Docker, installing from a clone and
+upgrades are covered in the [install guide](docs/install.md).
 
 Runs on x86_64 and arm64 Linux with systemd (Debian, Ubuntu, RHEL/Alma/Rocky, Fedora). The server is
 [secure by default](docs/security.md): loopback only, private and tailnet networks only, optional two-factor sign-in.

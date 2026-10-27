@@ -20,8 +20,9 @@ Alastor shouldn't add exposure to the machine it runs on.
 - **Its own data, kept tidy.** *Settings → Alastor data* shows what the database and mirrors take up, removes old rows
   and unused mirrors, and compacts SQLite.
 
-Agents refuse plain HTTP unless enrolled with `--insecure`, and support certificate pinning (`--pin <sha256>`) for
-self-signed servers.
+Agents refuse plain HTTP unless enrolled with `--insecure` (loopback and Tailscale addresses excepted: WireGuard
+already encrypts those), and support certificate pinning (`--pin <sha256>`) for self-signed servers. The installer
+opens nothing new by default; see [who can reach it](install.md#who-can-reach-it).
 
 How each secret is stored (passwords, sessions, enrollment tokens, agent credentials, API keys), the exact headers,
 and what isn't hardened yet are in [architecture.md](architecture.md#6-security-model).

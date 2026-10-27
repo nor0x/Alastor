@@ -35,7 +35,7 @@ curl -b cj -X POST localhost:8080/api/enrollment-tokens -H 'content-type: applic
   -H 'X-Alastor-Request: 1' -d '{"note":"my vps"}'
 
 # on the target host (root): enroll, then run
-sudo ./alastor-agent enroll --server http://SERVER:8080 --token sve_... --insecure   # https:// in production
+sudo ./alastor-agent enroll --server http://SERVER:8080 --token sve_... --insecure   # no --insecure for loopback or Tailscale; https:// in production
 sudo ./alastor-agent run
 ```
 

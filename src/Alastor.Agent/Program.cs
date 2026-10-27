@@ -22,6 +22,17 @@ using Serilog;
 var command = args.FirstOrDefault(a => !a.StartsWith('-')) ?? "run";
 string? Arg(string name) { var i = Array.IndexOf(args, name); return i >= 0 && i + 1 < args.Length ? args[i + 1] : null; }
 bool Flag(string name) => args.Contains(name);
+// Plain HTTP needs no --insecure when it never leaves this machine or travels inside Tailscale's WireGuard tunnel.
+static bool IsPrivateTransport(string url)
+{
+    if (!Uri.TryCreate(url, UriKind.Absolute, out var uri)) return false;
+    var host = uri.DnsSafeHost.TrimEnd('.');
+    if (host.Equals("localhost", StringComparison.OrdinalIgnoreCase) || host.EndsWith(".ts.net", StringComparison.OrdinalIgnoreCase)) return true;
+    if (!System.Net.IPAddress.TryParse(host, out var ip)) return false;
+    return System.Net.IPAddress.IsLoopback(ip)
+        || System.Net.IPNetwork.Parse("100.64.0.0/10").Contains(ip)
+        || System.Net.IPNetwork.Parse("fd7a:115c:a1e0::/48").Contains(ip);
+}
 var configPath = Arg("--config") ?? AgentConfig.DefaultPath;
 var stateDir = Arg("--state-dir") ?? AgentConfig.DefaultStateDir;
 
@@ -50,9 +61,9 @@ if (config is null)
     return 3;
 }
 
-if (config.ServerUrl.StartsWith("http://", StringComparison.OrdinalIgnoreCase) && !config.AllowInsecureHttp)
+if (config.ServerUrl.StartsWith("http://", StringComparison.OrdinalIgnoreCase) && !config.AllowInsecureHttp && !IsPrivateTransport(config.ServerUrl))
 {
-    Console.Error.WriteLine("Server URL is plain HTTP but allowInsecureHttp is false. Refusing to send credentials unencrypted.");
+    Console.Error.WriteLine("Server URL is plain HTTP to a host outside loopback and Tailscale, but allowInsecureHttp is false. Refusing to send credentials unencrypted.");
     return 3;
 }
 
@@ -110,9 +121,9 @@ async Task<int> EnrollAsync()
         return 0;
     }
     var insecure = Flag("--insecure");
-    if (serverUrl.StartsWith("http://", StringComparison.OrdinalIgnoreCase) && !insecure)
+    if (serverUrl.StartsWith("http://", StringComparison.OrdinalIgnoreCase) && !insecure && !IsPrivateTransport(serverUrl))
     {
-        Console.Error.WriteLine("Refusing plain HTTP. Use https:// or pass --insecure for local testing.");
+        Console.Error.WriteLine("Refusing plain HTTP outside loopback and Tailscale. Use https:// or pass --insecure on a trusted network.");
         return 2;
     }
     var pin = Arg("--pin");

@@ -3,7 +3,7 @@
 # repositories) for the ClamAV signature mirror. Agents still run on the hosts themselves, under systemd.
 #
 #   docker build -t alastor .
-#   docker run -d -p 8080:8080 -v alastor-data:/data -e ALASTOR_ADMINPASSWORD=… -e ALASTOR_PUBLICURL=https://… alastor
+#   docker run -d -p 127.0.0.1:8080:8080 -v alastor-data:/data -e ALASTOR_ADMINPASSWORD=… -e ALASTOR_PUBLICURL=https://… alastor
 #
 # Build args:
 #   WITH_AGENT=false   skip the Native AOT agent build (faster; hosts then download the agent from GitHub releases)
@@ -58,7 +58,10 @@ RUN apt-get update -q \
  && useradd --system --uid 10001 --home-dir /data --shell /usr/sbin/nologin alastor \
  && mkdir -p /data && chown alastor:alastor /data
 COPY --from=build /out/server/ /app/
-ENV ALASTOR_DATADIR=/data \
+# Inside the container every interface is fine: publish the port on the host's loopback (see compose.yaml).
+# ALASTOR_DASHBOARDALLOWFROM / ALASTOR_AGENTALLOWFROM default to loopback,private,tailnet.
+ENV ASPNETCORE_URLS=http://0.0.0.0:8080 \
+    ALASTOR_DATADIR=/data \
     ALASTOR_AGENTDOWNLOADDIR=/app/agent \
     DOTNET_gcServer=0
 USER alastor

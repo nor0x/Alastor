@@ -41,6 +41,7 @@
     <EmbeddedResource Include="..\..\policy\default.yaml" LogicalName="Alastor.Server.policy.default.yaml" />
     <EmbeddedResource Include="..\..\install\agent-install.sh" LogicalName="Alastor.Server.install.agent-install.sh" Condition="Exists('..\..\install\agent-install.sh')" />
     <EmbeddedResource Include="..\..\install\install.sh" LogicalName="Alastor.Server.install.install.sh" Condition="Exists('..\..\install\install.sh')" />
+    <EmbeddedResource Include="..\..\install\alastor.sh" LogicalName="Alastor.Server.install.alastor.sh" Condition="Exists('..\..\install\alastor.sh')" />
   </ItemGroup>
 
   <!-- Builds the Svelte SPA into wwwroot before publishing (skip with -p:SkipWebBuild=true). -->

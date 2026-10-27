@@ -86,6 +86,25 @@ export interface ServerData {
   retention: { key: string; value: string; description: string }[];
 }
 
+/** An Alastor service on the server's own machine; state is systemd's ActiveState. */
+export interface MachineService {
+  installed: boolean;
+  state: string;
+  startsAtBoot: boolean;
+}
+
+/** The machine the server runs on (/api/system/machine). */
+export interface LocalMachine {
+  hostname: string;
+  controllable: boolean;
+  serverStartedAt: string;
+  server: MachineService;
+  agent: MachineService;
+  agentHostId: string | null;
+  agentHostName: string | null;
+  agentOnline: boolean | null;
+}
+
 export interface FeedItem {
   id: string;
   source: string;

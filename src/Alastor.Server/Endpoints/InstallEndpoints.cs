@@ -19,6 +19,7 @@ public static class InstallEndpoints
             {
                 "agent.sh" => "Alastor.Server.install.agent-install.sh",
                 "server.sh" => "Alastor.Server.install.install.sh",
+                "alastor.sh" => "Alastor.Server.install.alastor.sh",
                 _ => null,
             };
             var stream = resource is null ? null : Assembly.GetExecutingAssembly().GetManifestResourceStream(resource);
