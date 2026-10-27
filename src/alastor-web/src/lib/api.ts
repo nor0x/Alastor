@@ -1241,3 +1241,48 @@ export interface FleetStorage {
   catalog: CleanupDefinition[];
   hosts: FleetStorageRow[];
 }
+
+export interface AuthorizedKey {
+  file: string;
+  line: number;
+  type: string;
+  typeName: string;
+  fingerprint: string;
+  bits: number | null;
+  comment: string;
+  options: string;
+  weakness: string | null;
+}
+
+export interface KeyAccount {
+  user: string;
+  uid: number;
+  home: string;
+  admin: boolean;
+  /** The authorized_keys files sshd reads for this account; a new key goes into the first. */
+  files: string[];
+  keys: AuthorizedKey[];
+}
+
+export interface PendingKeyChange {
+  commandId: string;
+  op: 'add' | 'remove';
+  user: string;
+  fingerprint: string | null;
+  createdAt: string;
+}
+
+export interface HostSshKeys {
+  hostId: string;
+  name: string;
+  online: boolean;
+  scannedAt: string | null;
+  success: boolean | null;
+  error: string | null;
+  keysCommand: boolean;
+  passwordLogin: boolean | null;
+  accounts: KeyAccount[];
+  pending: PendingKeyChange[];
+  notes: string[];
+  schedules: { key: string; value: string; isDefault: boolean }[];
+}

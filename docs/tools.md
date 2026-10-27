@@ -16,6 +16,7 @@ installs itself). `GET /api/about` and the dashboard's About page list the same 
 | [unattended-upgrades](https://wiki.debian.org/UnattendedUpgrades), dnf, apk | Updates | counts pending security updates, installs them on schedule or on demand, flags required reboots | GPL-2.0 | ✅ |
 | [needrestart](https://github.com/liske/needrestart), dnf `needs-restarting` | Updates | adopted, never installed: after each check lists services still running replaced libraries (`needrestart -b -r l`, list only) and a pending kernel | GPL-2.0 | ✅ |
 | SSH login monitor (built in) | Access | reads sshd's `Accepted …` messages from the journal (or auth.log / secure); the server alerts on new (user, address) pairs | MIT | ✅ |
+| SSH authorized keys (built in) | Access | lists every account's authorized_keys, adds and removes keys from the dashboard, alerts on keys added outside it | MIT | ✅ |
 | [Trivy](https://github.com/aquasecurity/trivy) or [Grype](https://github.com/anchore/grype) | Vulnerabilities | offline CVE scans of OS and language packages against a server-mirrored database | Apache-2.0 | ✅ |
 | [Lynis](https://cisofy.com/lynis/) | Hardening | scheduled audits; hardening index, warnings and suggestions as a checklist | GPL-3.0 | ✅ |
 | Exposure inventory (built in) | Network | every listening service from `ss -tulpn` (iproute2), its systemd unit and `systemd-analyze security` score, judged against ufw/nft; flags public ports outside `network.allowPublicPorts` | MIT | ✅ |

@@ -6,7 +6,11 @@ namespace Alastor.Core.Baseline;
 /// <summary>A fact the probe could not read, with the reason (shown as "unknown" instead of guessing).</summary>
 public sealed record Unreadable(string Reason);
 
-public sealed record AccountInfo(string Name, int Uid, string Home, string Shell);
+public sealed record AccountInfo(string Name, int Uid, string Home, string Shell)
+{
+    /// <summary>The primary group id, or -1 when the passwd line didn't have one.</summary>
+    public int Gid { get; init; } = -1;
+}
 
 /// <summary>Everything the baseline checks look at, gathered in one pass. Pure data, so evaluation is unit testable.</summary>
 public sealed record BaselineFacts
@@ -179,7 +183,10 @@ public static class BaselineParsers
         output.Split('\n')
             .Select(l => l.Split(':'))
             .Where(f => f.Length >= 7 && int.TryParse(f[2], out _))
-            .Select(f => new AccountInfo(f[0], int.Parse(f[2], System.Globalization.CultureInfo.InvariantCulture), f[5], f[6]))
+            .Select(f => new AccountInfo(f[0], int.Parse(f[2], System.Globalization.CultureInfo.InvariantCulture), f[5], f[6].Trim())
+            {
+                Gid = int.TryParse(f[3], System.Globalization.CultureInfo.InvariantCulture, out var gid) ? gid : -1,
+            })
             .ToList();
 
     /// <summary><c>getent group sudo wheel admin</c>: "name:x:gid:member,member".</summary>
@@ -205,6 +212,7 @@ public static class BaselineParsers
     {
         var p = pattern.Replace("%%", "\0", StringComparison.Ordinal).Replace("%h", account.Home, StringComparison.Ordinal)
             .Replace("%u", account.Name, StringComparison.Ordinal).Replace("\0", "%", StringComparison.Ordinal);
-        return p.StartsWith('/') ? p : Path.Combine(account.Home, p);
+        // Host paths are always POSIX, also when tests run on Windows (Path.Combine would join with '\').
+        return p.StartsWith('/') ? p : $"{account.Home.TrimEnd('/')}/{p}";
     }
 }

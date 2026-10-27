@@ -88,6 +88,7 @@ public sealed record AgentReport(string JobId, DateTime StartedAtUtc, DateTime F
     public Alastor.Core.Malware.RootkitReport? Rootkit { get; init; }
     public Alastor.Core.Software.SoftwareReport? Software { get; init; }
     public Alastor.Core.Storage.StorageReport? Storage { get; init; }
+    public Alastor.Core.Access.SshKeysReport? SshKeys { get; init; }
 }
 
 public static class AgentCommandTypes
@@ -117,6 +118,12 @@ public static class AgentCommandTypes
 
     /// <summary>Run one storage cleanup. Payload: <c>cleanup</c> = a <see cref="Alastor.Core.Storage.StorageCleanups"/> id. Acknowledged at once; the outcome follows as a storage report.</summary>
     public const string StorageCleanup = "storage-cleanup";
+
+    /// <summary>
+    /// Authorize or remove one SSH key. Payload: <c>op</c> (add|remove), <c>user</c>, and <c>key</c> (a public key line, for add)
+    /// or <c>fingerprint</c> ("SHA256:…", for remove). Runs inline; a fresh key scan follows as a report.
+    /// </summary>
+    public const string SshKey = "ssh-key";
 
     /// <summary>Reboot the host in one minute (<c>shutdown -r +1</c>). Acknowledged before the host goes down; a redelivered copy is ignored.</summary>
     public const string Reboot = "reboot";

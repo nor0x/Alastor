@@ -96,6 +96,8 @@ logins:
   monitor: true              # report successful SSH logins (journald, or auth.log / secure); read-only
   alertOnNewSource: true     # alert on a user's first login from an address (High; Critical for root)
   trustedSources: []         # addresses/CIDRs logins are expected from (office, VPN): never alerted; merged across layers
+  keysSchedule: every 1h     # read every account's authorized_keys for the SSH keys tab; also after each key change
+  alertOnNewKey: true        # alert when a key appears that wasn't added from the dashboard (High; Critical for root)
 
 # ---- Security baseline ----
 

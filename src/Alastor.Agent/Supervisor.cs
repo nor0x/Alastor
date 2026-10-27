@@ -3,6 +3,7 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Channels;
 using System.Net;
+using Alastor.Core.Access;
 using Alastor.Core.Baseline;
 using Alastor.Core.Blocklists;
 using Alastor.Core.Contracts;
@@ -386,6 +387,8 @@ public sealed class Supervisor(
                 return await PackageCommandAsync(cmd, ct);
             case AgentCommandTypes.StorageCleanup:
                 return StorageCleanup(cmd, ct);
+            case AgentCommandTypes.SshKey:
+                return await SshKeyAsync(cmd, ct);
             case AgentCommandTypes.Reboot:
                 return await RebootAsync(cmd, ct);
             default:
@@ -475,6 +478,22 @@ public sealed class Supervisor(
             }
         }, ct);
         return new(true, $"{cleanup.Title}: cleanup started; the result follows as a report");
+    }
+
+    /// <summary>A key change takes a second, so it answers inline; a fresh key scan follows as a report so the dashboard shows the result.</summary>
+    private async Task<CommandOutcome> SshKeyAsync(AgentCommand cmd, CancellationToken ct)
+    {
+        var keys = _tools.OfType<SshKeysIntegration>().FirstOrDefault();
+        if (keys is null) return new(false, $"This agent can't manage SSH keys (agent {AgentInfo.Version})");
+        var user = cmd.Payload.GetValueOrDefault("user") ?? "";
+        var result = cmd.Payload.GetValueOrDefault("op") switch
+        {
+            "add" => await keys.AddAsync(user, cmd.Payload.GetValueOrDefault("key") ?? "", ct),
+            "remove" => await keys.RemoveAsync(user, cmd.Payload.GetValueOrDefault("fingerprint") ?? "", ct),
+            _ => new SshKeysIntegration.KeyChangeResult(false, false, "Invalid operation"),
+        };
+        _jobRequests.Writer.TryWrite(SshKeysIntegration.ScanJob);
+        return new(result.Success, result.Message);
     }
 
     /// <summary>

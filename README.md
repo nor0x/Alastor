@@ -40,6 +40,8 @@ closet or fifty VPSes.
 - **Exposure:** every listening service and whether the internet can reach it, with a warning for public SSH.
 - **Malware and tampering:** ClamAV scans, rootkit checks and file integrity monitoring.
 - **Who logged in:** an alert on a user's first SSH login from a new address.
+- **Who can log in:** every account's SSH keys, added and removed from the dashboard, with an alert when one appears
+  behind your back.
 - **Alerts that don't spam:** email, webhook or ntfy, deduplicated, with digests.
 - **Housekeeping:** a software inventory across the fleet, disk usage and one-click cleanups.
 

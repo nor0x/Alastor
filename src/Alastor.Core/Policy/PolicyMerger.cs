@@ -59,6 +59,8 @@ public static class PolicyMerger
         {
             Monitor = overlay.Logins?.Monitor ?? baseDoc.Logins?.Monitor,
             AlertOnNewSource = overlay.Logins?.AlertOnNewSource ?? baseDoc.Logins?.AlertOnNewSource,
+            KeysSchedule = overlay.Logins?.KeysSchedule ?? baseDoc.Logins?.KeysSchedule,
+            AlertOnNewKey = overlay.Logins?.AlertOnNewKey ?? baseDoc.Logins?.AlertOnNewKey,
             TrustedSources = baseDoc.Logins?.TrustedSources is null && overlay.Logins?.TrustedSources is null ? null
                 : (baseDoc.Logins?.TrustedSources ?? []).Concat(overlay.Logins?.TrustedSources ?? []).Distinct(StringComparer.Ordinal).ToList(),
         },

@@ -120,6 +120,7 @@ public static partial class PolicyYaml
         CheckSchedule("integrity.checkSchedule", doc.Integrity?.CheckSchedule);
         CheckSchedule("malware.rootkitSchedule", doc.Malware?.RootkitSchedule);
         CheckSchedule("storage.scanSchedule", doc.Storage?.ScanSchedule);
+        CheckSchedule("logins.keysSchedule", doc.Logins?.KeysSchedule);
         foreach (var (list, key) in new[] { (doc.Integrity?.Paths, "paths"), (doc.Integrity?.Exclude, "exclude") })
             foreach (var (path, i) in (list ?? []).Select((p, i) => (p, i)))
                 if (!path.StartsWith('/') || path.Contains("..", StringComparison.Ordinal) || path.Any(char.IsWhiteSpace))

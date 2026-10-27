@@ -153,6 +153,8 @@ Cookie-authenticated writes must also send `X-Alastor-Request: 1` (CSRF guard on
 | `GET /api/network` | R | fleet view: per-host SSH exposure, password logins, firewall verdict, Tailscale state |
 | `GET /api/hosts/{id}/integrity` | R | latest AIDE run (mode, entries, each changed path with what changed and whether it's critical, watched paths) and rkhunter check (warnings with details, severity and whether `rootkitIgnore` matches), with schedules and tool state |
 | `GET /api/hosts/{id}/logins` | R | SSH login sources learned for the host (user, address, first/last seen, count, whether it alerted), the latest login events and the effective `logins` policy |
+| `GET /api/hosts/{id}/ssh-keys` | R | latest key scan: every account that can log in (or has keys) with its authorized_keys files and keys (type, size, SHA256 fingerprint, comment, options, weakness), password login on/off, `AuthorizedKeysCommand`, queued key changes and the scan schedule |
+| `POST /api/hosts/{id}/ssh-keys` `{user, key}` · `POST /api/hosts/{id}/ssh-keys/remove` `{user, fingerprint}` | A | authorize or remove one key (queues an `ssh-key` command); refused up front for unknown accounts, private/PEM/optioned/weak keys, duplicates and the last admin key on a key-only host |
 | `GET /api/hosts/{id}/malware` | R | latest ClamAV scan: findings (path, signature), files scanned, unreadable paths, signature versions, scan settings, ClamAV status and the server mirror's state |
 | `GET /api/malware`, `GET /api/malware/db` | R | fleet view (scans on, findings per host) and the ClamAV signature mirror |
 | `GET /api/hardening?limit` | R | fleet view: average index, per-host index and counts, warnings and suggestions ranked by hosts affected (accepted excluded) |
@@ -699,6 +701,33 @@ Policy: `logins: {monitor, alertOnNewSource, trustedSources}`.
   the ones that alerted. `GET /api/hosts/{id}/logins`.
 * **Why built:** fail2ban and CrowdSec look at *failed* logins; nothing bundled reports the successful ones, which
   are what matters after a key or password leaks. sshd's own messages and the journal do the work.
+
+### SSH authorized keys
+
+Code: `src/Alastor.Core/Access/SshKeys*.cs`, `src/Alastor.Server/Services/Access/SshKeysService.cs`, `AccessEndpoints.cs`.
+Policy: `logins: {keysSchedule, alertOnNewKey}`.
+
+* **Agent.** A built-in integration (`ssh-keys`, capability `Access`) runs `access.keys` on `logins.keysSchedule`
+  (every hour by default), on start and after every change. It takes `AuthorizedKeysFile`, `AuthorizedKeysCommand` and
+  the password settings from `sshd -T`, lists accounts with `getent passwd` (root and uid ≥ 1000 with a login shell,
+  plus any account that already has keys) and admins from `getent group sudo wheel admin`, and parses each file
+  itself: options, type, blob and comment, with the SHA256 fingerprint and key size computed from the blob, the way
+  `ssh-keygen -lf` prints them. Lines it can't read (certificates, newer key types) are counted in the notes and never
+  touched.
+* **Out-of-band changes.** The agent keeps the (user, fingerprint) pairs of the last scan. A pair that appears without
+  going through the dashboard raises `auth.key-appeared` (High, Critical for root): an attacker's usual way to keep
+  access. One that disappears raises Info `auth.key-disappeared`. The first scan learns silently; dashboard changes
+  update only their own entry, so they never hide a key someone else added in between.
+* **Changes.** `ssh-key` commands name an account and a key line (add) or fingerprint (remove); the agent re-checks
+  everything. A key must be one plain line (no options such as `command=`), not a private or PEM key, and not weak
+  (DSA, RSA under 2048 bits). It goes into the account's first `AuthorizedKeysFile`; under the home directory the agent
+  creates `~/.ssh` (0700) and the file (0600) owned by the account, writes atomically, never writes through a symbolic
+  link, and `chown -h`s the result. Removing rewrites every file holding that fingerprint and keeps everything else
+  verbatim. The lockout guard refuses to remove the last key of any admin account when sshd takes no passwords (or
+  that's unknown) and has no `AuthorizedKeysCommand`. Changes raise Info `auth.key-added` / `auth.key-removed` and an
+  audit entry on the server.
+* **Dashboard:** the host's *SSH keys* tab lists accounts and keys, flags weak and restricted (optioned) keys, and
+  has *Add key* and *Remove* for admins.
 
 ## 5l. Firewall (ufw, opt-in)
 

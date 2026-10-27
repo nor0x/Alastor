@@ -32,6 +32,9 @@ dashboard. Live updates use SignalR, with polling when the hub is unreachable.
   `network.allowPublicPorts`, and Tailscale detection.
 - **SSH logins:** successful logins from the journal or auth.log, with an alert on a user's first login from a new
   address (Critical for root) and trusted sources that never alert.
+- **SSH keys:** every account's authorized keys with fingerprints and weak keys flagged; add and remove keys from the
+  dashboard (with a guard against removing the last admin key), and an alert when a key appears that nobody added
+  through Alastor.
 
 ## Patching and vulnerabilities
 

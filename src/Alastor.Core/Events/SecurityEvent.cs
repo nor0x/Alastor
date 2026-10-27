@@ -103,6 +103,16 @@ public static class EventKinds
     /// <summary>Raised by the server: the first login of a user from an address on this host.</summary>
     public const string LoginNewSource = "auth.login-new-source";
 
+    // Access (SSH authorized keys)
+    /// <summary>A key was authorized for an account from the dashboard.</summary>
+    public const string KeyAdded = "auth.key-added";
+    /// <summary>A key was removed from an account from the dashboard.</summary>
+    public const string KeyRemoved = "auth.key-removed";
+    /// <summary>A key showed up in an authorized_keys file without going through the dashboard. High; Critical for root.</summary>
+    public const string KeyAppeared = "auth.key-appeared";
+    /// <summary>A key disappeared from an authorized_keys file without going through the dashboard.</summary>
+    public const string KeyDisappeared = "auth.key-disappeared";
+
     // Tool and agent lifecycle
     public const string ToolError = "tool.error";
     public const string ToolInstalled = "tool.installed";

@@ -18,6 +18,7 @@ public static class ScheduleDefaults
     public const string IntegrityCheck = "off";
     public const string RootkitScan = "off";
     public const string StorageScan = "every 12h";
+    public const string SshKeysScan = "every 1h";
 
     /// <summary>Every schedule key, with its effective value and whether that value came from the built-in default.</summary>
     public static IReadOnlyList<(string Path, string Value, bool IsDefault)> Resolve(PolicyDocument doc) =>
@@ -34,6 +35,7 @@ public static class ScheduleDefaults
         Pick("integrity.checkSchedule", doc.Integrity?.CheckSchedule, IntegrityCheck),
         Pick("malware.rootkitSchedule", doc.Malware?.RootkitSchedule, RootkitScan),
         Pick("storage.scanSchedule", doc.Storage?.ScanSchedule, StorageScan),
+        Pick("logins.keysSchedule", doc.Logins?.KeysSchedule, SshKeysScan),
     ];
 
     public static Schedule For(PolicyDocument doc, string path) =>

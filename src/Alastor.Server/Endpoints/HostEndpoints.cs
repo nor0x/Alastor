@@ -102,6 +102,7 @@ public static class HostEndpoints
                 "apply-updates" => (AgentCommandTypes.RunJob, "updates.apply"),
                 "collect-software" => (AgentCommandTypes.RunJob, Alastor.Core.Software.SoftwareIntegration.InventoryJob),
                 "scan-storage" => (AgentCommandTypes.RunJob, Alastor.Core.Storage.StorageIntegration.ScanJob),
+                "scan-ssh-keys" => (AgentCommandTypes.RunJob, Alastor.Core.Access.SshKeysIntegration.ScanJob),
                 "scan-vulnerabilities" => (AgentCommandTypes.RunJob, Alastor.Core.Vulnerabilities.VulnerabilityIntegration.ScanJob),
                 "run-audit" => (AgentCommandTypes.RunJob, Alastor.Core.Hardening.HardeningIntegration.AuditJob),
                 "check-network" => (AgentCommandTypes.RunJob, Alastor.Core.Network.NetworkIntegration.CheckJob),

@@ -32,6 +32,7 @@ public static class ToolCatalog
         new(Network.NetworkIntegration.Info, Implemented: true, OptIn: true),
         new(Malware.ClamAvIntegration.Info, Implemented: true, OptIn: true),
         new(Access.LoginIntegration.Info, Implemented: true, OptIn: false),
+        new(Access.SshKeysIntegration.Info, Implemented: true, OptIn: false),
         new(Integrity.AideIntegration.Info, Implemented: true, OptIn: true),
         new(Malware.RkhunterIntegration.Info, Implemented: true, OptIn: true),
     ];

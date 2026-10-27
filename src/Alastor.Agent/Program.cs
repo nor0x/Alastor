@@ -94,6 +94,7 @@ builder.Services.AddSingleton<IToolIntegration>(sp => platform.CreateStorage(sp.
 builder.Services.AddSingleton<IToolIntegration>(sp => platform.CreateHardening(sp.GetRequiredService<ILogger<HardeningIntegration>>()));
 builder.Services.AddSingleton<IToolIntegration>(sp => platform.CreateNetwork(sp.GetRequiredService<ILogger<NetworkIntegration>>()));
 builder.Services.AddSingleton<IToolIntegration>(sp => platform.CreateLogins(sp.GetRequiredService<ILogger<Alastor.Core.Access.LoginIntegration>>()));
+builder.Services.AddSingleton<IToolIntegration>(sp => platform.CreateSshKeys(sp.GetRequiredService<ILogger<Alastor.Core.Access.SshKeysIntegration>>()));
 builder.Services.AddSingleton<IToolIntegration>(sp => platform.CreateUfw(sp.GetRequiredService<ILogger<Alastor.Core.Firewall.UfwIntegration>>()));
 builder.Services.AddSingleton<IToolIntegration>(sp => platform.CreateAide(sp.GetRequiredService<ILogger<Alastor.Core.Integrity.AideIntegration>>()));
 builder.Services.AddSingleton<IToolIntegration>(sp => platform.CreateRkhunter(sp.GetRequiredService<ILogger<RkhunterIntegration>>()));
@@ -218,6 +219,7 @@ internal sealed record PlatformServices(OsInfo Os, ICommandRunner Runner, IFileS
         new(Runner, PackageManagers.For(Os.Family, Runner), Os, logger, TimeProvider.System);
     public RkhunterIntegration CreateRkhunter(ILogger<RkhunterIntegration> logger) => new(Runner, PackageManagers.For(Os.Family, Runner), State, logger, TimeProvider.System);
     public Alastor.Core.Access.LoginIntegration CreateLogins(ILogger<Alastor.Core.Access.LoginIntegration> logger) => new(Runner, Fs, State, logger, TimeProvider.System);
+    public Alastor.Core.Access.SshKeysIntegration CreateSshKeys(ILogger<Alastor.Core.Access.SshKeysIntegration> logger) => new(Runner, Fs, State, logger, TimeProvider.System);
 
     public VulnerabilityIntegration CreateVulnerabilities(IVulnDbSource? dbSource, ILogger<VulnerabilityIntegration> logger) =>
         new(Runner, PackageManagers.For(Os.Family, Runner), State, Os, StateDir, dbSource ?? NoVulnDb.Instance, logger, TimeProvider.System);

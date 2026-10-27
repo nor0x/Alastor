@@ -65,6 +65,9 @@ public sealed class FakeFileSystem : IFileSystem
 
     public Dictionary<string, UnixFileMode> Modes { get; } = new(StringComparer.Ordinal);
     public UnixFileMode? GetUnixFileMode(string path) => Modes.TryGetValue(path, out var m) ? m : Files.ContainsKey(path) ? (UnixFileMode)0b110_100_100 : null;
+
+    public HashSet<string> Links { get; } = new(StringComparer.Ordinal);
+    public bool IsSymbolicLink(string path) => Links.Contains(path);
 }
 
 public static class Fixture

@@ -20,6 +20,9 @@ public interface IFileSystem
 
     /// <summary>Permission bits of a file, or null if it doesn't exist.</summary>
     UnixFileMode? GetUnixFileMode(string path);
+
+    /// <summary>The path itself (not what it points to) is a symbolic link.</summary>
+    bool IsSymbolicLink(string path);
 }
 
 public sealed class PhysicalFileSystem : IFileSystem
@@ -74,4 +77,7 @@ public sealed class PhysicalFileSystem : IFileSystem
 
     public UnixFileMode? GetUnixFileMode(string path) =>
         File.Exists(path) && !OperatingSystem.IsWindows() ? File.GetUnixFileMode(path) : null;
+
+    // lstat-based: true for a dangling link too, and for a link to a directory.
+    public bool IsSymbolicLink(string path) => new FileInfo(path).LinkTarget is not null;
 }

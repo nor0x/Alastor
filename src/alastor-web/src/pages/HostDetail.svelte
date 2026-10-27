@@ -21,6 +21,7 @@
   import HostNetwork from '../lib/HostNetwork.svelte';
   import HostMalware from '../lib/HostMalware.svelte';
   import HostLogins from '../lib/HostLogins.svelte';
+  import HostSshKeys from '../lib/HostSshKeys.svelte';
   import HostIntegrity from '../lib/HostIntegrity.svelte';
   import { exposureLook, isExposed } from '../lib/network';
   import { indexTone } from '../lib/hardening';
@@ -40,8 +41,8 @@
 
   let { id }: { id: string } = $props();
 
-  type Tab = 'overview' | 'baseline' | 'hardening' | 'network' | 'updates' | 'software' | 'storage' | 'vulnerabilities' | 'malware' | 'integrity' | 'events' | 'bans' | 'policy' | 'commands';
-  const tabs: [Tab, string][] = [['overview', 'Overview'], ['baseline', 'Baseline'], ['hardening', 'Hardening'], ['network', 'Network'], ['updates', 'Updates'], ['software', 'Software'], ['storage', 'Storage'], ['vulnerabilities', 'CVEs'], ['malware', 'Malware'], ['integrity', 'Integrity'], ['events', 'Events'], ['bans', 'Bans'], ['policy', 'Policy'], ['commands', 'Commands']];
+  type Tab = 'overview' | 'baseline' | 'hardening' | 'network' | 'keys' | 'updates' | 'software' | 'storage' | 'vulnerabilities' | 'malware' | 'integrity' | 'events' | 'bans' | 'policy' | 'commands';
+  const tabs: [Tab, string][] = [['overview', 'Overview'], ['baseline', 'Baseline'], ['hardening', 'Hardening'], ['network', 'Network'], ['keys', 'SSH keys'], ['updates', 'Updates'], ['software', 'Software'], ['storage', 'Storage'], ['vulnerabilities', 'CVEs'], ['malware', 'Malware'], ['integrity', 'Integrity'], ['events', 'Events'], ['bans', 'Bans'], ['policy', 'Policy'], ['commands', 'Commands']];
   const tab = $derived((new URLSearchParams(route.search).get('tab') as Tab) || 'overview');
 
   let host = $state<HostDetail | null>(null);
@@ -450,6 +451,8 @@
   {:else if tab === 'network'}
     <HostNetwork hostId={id} isOnline={s.isOnline} />
     <div class="logins"><HostLogins hostId={id} /></div>
+  {:else if tab === 'keys'}
+    <HostSshKeys hostId={id} hostName={s.name} isOnline={s.isOnline} />
   {:else if tab === 'integrity'}
     <HostIntegrity hostId={id} isOnline={s.isOnline} />
   {:else if tab === 'updates'}

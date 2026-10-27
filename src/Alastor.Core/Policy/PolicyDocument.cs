@@ -182,6 +182,12 @@ public sealed class LoginsPolicy
 
     /// <summary>Addresses or CIDRs logins are expected from (the office, the VPN): never alerted. Merged as a union across layers.</summary>
     public List<string>? TrustedSources { get; set; }
+
+    /// <summary>How often the agent reads every account's authorized_keys files for the SSH keys tab. Also runs after every key change.</summary>
+    public string? KeysSchedule { get; set; }
+
+    /// <summary>Alert when a key appears in an authorized_keys file without being added from the dashboard. High; Critical for root.</summary>
+    public bool? AlertOnNewKey { get; set; }
 }
 
 public sealed class MalwarePolicy
