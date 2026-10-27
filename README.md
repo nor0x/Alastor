@@ -1,6 +1,6 @@
 👁️
 
-<p align="center">
+<p align="left">
   <img src="art/svg/logo.svg" alt="Alastor logo" width="96" height="96">
 </p>
 
