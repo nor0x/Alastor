@@ -6,6 +6,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.Options;
 using Alastor.Core.Contracts;
+using Alastor.Core.Logging;
 using Alastor.Server;
 using Alastor.Server.Auth;
 using Alastor.Server.Data;
@@ -73,6 +74,9 @@ builder.Services.AddSingleton(Options.Create(options));
 if (string.IsNullOrEmpty(builder.Configuration["urls"]) && string.IsNullOrEmpty(Environment.GetEnvironmentVariable("ASPNETCORE_URLS")))
     builder.WebHost.UseUrls("http://127.0.0.1:8080"); // loopback unless told otherwise: put a TLS proxy or the tailnet in front
 
+// The newest lines also stay in memory for Settings → Server log.
+var serverLogs = new LogBuffer(SystemEndpoints.ServerLogLines);
+builder.Services.AddSingleton(serverLogs);
 builder.Host.UseSerilog((ctx, lc) => lc
     // Sensible defaults baked in so the single binary needs no appsettings.json. Serilog config keys still override.
     .MinimumLevel.Information()
@@ -83,7 +87,8 @@ builder.Host.UseSerilog((ctx, lc) => lc
     .MinimumLevel.Override("Microsoft.AspNetCore.DataProtection", Serilog.Events.LogEventLevel.Error)
     .ReadFrom.Configuration(ctx.Configuration)
     .Enrich.FromLogContext()
-    .WriteTo.Console(outputTemplate: "[{Timestamp:HH:mm:ss} {Level:u3}] {SourceContext}: {Message:lj}{NewLine}{Exception}"));
+    .WriteTo.Console(outputTemplate: "[{Timestamp:HH:mm:ss} {Level:u3}] {SourceContext}: {Message:lj}{NewLine}{Exception}")
+    .WriteTo.Sink(new LogBufferSink(serverLogs)));
 
 builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddDataProtection()

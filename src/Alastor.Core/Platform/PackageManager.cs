@@ -57,9 +57,10 @@ public sealed class AptPackageManager(ICommandRunner runner) : IPackageManager
 
     public async Task<PackageInstallResult> InstallAsync(string package, CancellationToken ct)
     {
-        var update = await runner.RunAsync("apt-get", ["update", "-qq"], Install, ct);
+        // Wait for a running apt (apt-daily, unattended-upgrades, an admin) instead of failing on its lock.
+        var update = await runner.RunAsync("apt-get", ["update", "-qq", "-o", "DPkg::Lock::Timeout=300"], Install, ct);
         if (!update.Success) return new(false, $"apt-get update failed: {update.StdErr.Trim()}");
-        var r = await runner.RunAsync("apt-get", ["install", "-y", "-qq", "--no-install-recommends", package], Install, ct);
+        var r = await runner.RunAsync("apt-get", ["install", "-y", "-qq", "--no-install-recommends", "-o", "DPkg::Lock::Timeout=300", package], Install, ct);
         return new(r.Success, r.Success ? null : r.CombinedOutput);
     }
 }

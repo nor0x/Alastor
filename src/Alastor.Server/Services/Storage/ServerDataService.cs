@@ -53,6 +53,7 @@ public sealed class ServerDataService(AlastorDbContext db, VulnDbMirror mirror, 
         var eventsBefore = now - o.EventRetentionValue;
         Add("metrics", await db.MetricSamples.Where(s => s.At < now - o.MetricRetentionValue).ExecuteDeleteAsync(ct));
         Add("events", await db.Events.Where(x => x.OccurredAt < eventsBefore).ExecuteDeleteAsync(ct));
+        Add("agent log lines", await db.HostLogs.Where(x => x.At < eventsBefore).ExecuteDeleteAsync(ct));
         Add("expired bans", await db.Bans.Where(x => x.ExpiresAt != null && x.ExpiresAt < now).ExecuteDeleteAsync(ct));
         Add("commands", await db.Commands.Where(x => x.CompletedAt != null && x.CompletedAt < eventsBefore).ExecuteDeleteAsync(ct));
         Add("feed items", await db.FeedItems.Where(x => x.PublishedAt < now - o.ThreatFeedRetentionValue).ExecuteDeleteAsync(ct));
@@ -170,7 +171,7 @@ public sealed class ServerDataService(AlastorDbContext db, VulnDbMirror mirror, 
             Cleanups(),
             [
                 new("MetricRetention", o.MetricRetention, "Host metrics"),
-                new("EventRetention", o.EventRetention, "Events, finished commands and resolved issues"),
+                new("EventRetention", o.EventRetention, "Events, finished commands, resolved issues and agent log lines"),
                 new("PostureRetention", o.PostureRetention, "Daily posture snapshots (trend charts)"),
                 new("ThreatFeedRetention", o.ThreatFeedRetention, "Threat feed items"),
                 new("AuditRetention", o.AuditRetention, "Audit log"),

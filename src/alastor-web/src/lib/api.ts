@@ -414,6 +414,15 @@ export interface ApiKey {
   createdBy: string;
 }
 
+/** One line of the agent's or the server's own log. */
+export interface LogLine {
+  id: number;
+  at: string;
+  level: 'debug' | 'info' | 'warning' | 'error';
+  source: string;
+  message: string;
+}
+
 export interface AuditEntry {
   id: number;
   at: string;

@@ -154,6 +154,33 @@ public sealed class ServerApiTests : IClassFixture<ServerApiTests.Factory>
     }
 
     [Fact]
+    public async Task Agent_log_lines_arrive_with_heartbeats_and_the_newest_are_kept()
+    {
+        var admin = await AdminAsync();
+        var (hostId, agent) = await EnrollAsync(admin);
+        var start = DateTime.UtcNow;
+        for (var batch = 0; batch < 3; batch++)
+        {
+            var logs = Enumerable.Range(batch * 500, 500)
+                .Select(i => new AgentLogLine(start.AddMilliseconds(i), i == 1499 ? "trace" : "warning", "HardeningIntegration", $"line {i}")).ToList();
+            (await agent.PostAsJsonAsync("/api/agent/heartbeat", new HeartbeatRequest("0.1.0", "web-01", "Ubuntu 26.04", "6.8.0",
+                new HostMetrics(5, 1_000, 500, 1_000, 500, 0.1, 0.2, 0.3, 60), [], null, [], logs), Json)).EnsureSuccessStatusCode();
+        }
+
+        var lines = (await admin.GetFromJsonAsync<JsonElement>($"/api/hosts/{hostId}/logs?limit=5000", Json)).EnumerateArray().ToList();
+        Assert.Equal(1000, lines.Count);
+        Assert.Equal("line 1499", lines[0].GetProperty("message").GetString()); // newest first
+        Assert.Equal("info", lines[0].GetProperty("level").GetString()); // unknown levels are stored as info
+        Assert.Equal("line 500", lines[^1].GetProperty("message").GetString());
+        Assert.Equal(HttpStatusCode.NotFound, (await admin.GetAsync($"/api/hosts/{Guid.NewGuid()}/logs")).StatusCode);
+
+        // The server's own log: in memory, newest first, admin only.
+        var server = (await admin.GetFromJsonAsync<JsonElement>("/api/system/logs", Json)).EnumerateArray().ToList();
+        Assert.Contains(server, l => l.GetProperty("message").GetString()!.StartsWith("Enrolled host web-01 (", StringComparison.Ordinal));
+        Assert.Equal(HttpStatusCode.Unauthorized, (await _factory.CreateClient().GetAsync("/api/system/logs")).StatusCode);
+    }
+
+    [Fact]
     public async Task Summary_carries_uptime_and_reboot_is_only_queued_for_online_hosts()
     {
         var admin = await AdminAsync();

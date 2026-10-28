@@ -9,6 +9,7 @@ using Alastor.Core.Blocklists;
 using Alastor.Core.Contracts;
 using Alastor.Core.Events;
 using Alastor.Core.Integrations;
+using Alastor.Core.Logging;
 using Alastor.Core.Net;
 using Alastor.Core.Platform;
 using Alastor.Core.Policy;
@@ -35,9 +36,11 @@ public sealed class Supervisor(
     OsInfo os,
     AgentConfig config,
     TimeProvider time,
+    LogBuffer logs,
     ILogger<Supervisor> logger) : BackgroundService
 {
     private const int MaxSpooledEvents = 20_000;
+    private const int MaxLogLinesPerHeartbeat = 200;
 
     private readonly IReadOnlyList<IToolIntegration> _tools = integrations.ToList();
     private readonly Channel<string> _wake = Channel.CreateBounded<string>(new BoundedChannelOptions(16) { FullMode = BoundedChannelFullMode.DropOldest });
@@ -52,6 +55,7 @@ public sealed class Supervisor(
     private AgentTimings Timings => AgentTimings.From(_policy, TimeSpan.FromSeconds(config.HeartbeatIntervalSeconds));
     private PolicyApplyReport? _lastReport;
     private DateTime _lastReconcile = DateTime.MinValue;
+    private long _logsSent;
     private DateTime _lastServerContact;
     private DateTime? _lastBaselineRun;
     private bool _baselineDirty = true;
@@ -128,6 +132,7 @@ public sealed class Supervisor(
     private async Task TickAsync(string? wakeReason, CancellationToken ct)
     {
         var statuses = await DetectAllAsync(ct);
+        var newLogs = logs.Since(_logsSent, MaxLogLinesPerHeartbeat);
         var hb = await server.HeartbeatAsync(new HeartbeatRequest(
             AgentInfo.Version,
             Environment.MachineName,
@@ -136,7 +141,10 @@ public sealed class Supervisor(
             await metrics.CollectAsync(ct),
             statuses,
             _lastReport,
-            HostMetricsCollector.IpAddresses()), ct);
+            HostMetricsCollector.IpAddresses(),
+            newLogs.Select(l => new AgentLogLine(l.At, l.Level, l.Source, l.Message)).ToList()), ct);
+        // Only once the server has them: a failed heartbeat sends the same lines again.
+        if (newLogs.Count > 0) _logsSent = newLogs[^1].Seq;
         _lastServerContact = time.GetUtcNow().UtcDateTime;
         if (hb.HeartbeatIntervalSeconds is >= 10 and <= 3600) config.HeartbeatIntervalSeconds = hb.HeartbeatIntervalSeconds;
 
@@ -279,6 +287,9 @@ public sealed class Supervisor(
                 logger.LogWarning("Fetching the blocklist failed, keeping the current one: {Message}", ex.Message);
             }
             var reports = new List<ToolApplyReport>();
+            // Wanted tools the agent could not install. Their report carries the reason, but nothing was applied or
+            // rejected, so they don't fail the apply; the dashboard lists them as unavailable tools instead.
+            var notInstalled = new HashSet<string>(StringComparer.Ordinal);
 
             foreach (var tool in _tools)
             {
@@ -292,6 +303,7 @@ public sealed class Supervisor(
                             $"{tool.Descriptor.DisplayName} {status.Version} {(status.Ownership == Ownership.Managed ? "installed from distro repositories" : "adopted")}", null));
                     if (!status.Installed)
                     {
+                        if (wanted) notInstalled.Add(id);
                         reports.Add(new ToolApplyReport(id, !wanted, wanted ? ConfigState.Unknown : ConfigState.InSync,
                             wanted ? status.UnavailableReason : null, [], []));
                         continue;
@@ -318,7 +330,7 @@ public sealed class Supervisor(
             }
 
             if (_lastReport?.Revision != desired.Revision || reclaim || reports.Any(r => r.Changes.Count > 0)) _baselineDirty = true;
-            _lastReport = new PolicyApplyReport(desired.Revision, reports.All(r => r.Success), time.GetUtcNow().UtcDateTime, reports);
+            _lastReport = new PolicyApplyReport(desired.Revision, reports.All(r => r.Success || notInstalled.Contains(r.ToolId)),time.GetUtcNow().UtcDateTime, reports);
             _lastReconcile = time.GetUtcNow().UtcDateTime;
             // Report the outcome (and fresh tool states) right away instead of waiting a full heartbeat interval.
             Wake("report");

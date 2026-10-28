@@ -1,4 +1,5 @@
 using Alastor.Core.Integrations;
+using Alastor.Core.Logging;
 using Alastor.Core.Net;
 using Alastor.Core.Platform;
 
@@ -75,5 +76,35 @@ public class PlatformTests
 
         fs.Files["/log"] = "rotated first\n"; // logrotate: new file, different head
         Assert.Equal(["rotated first"], await tailer.ReadNewLinesAsync("/log", default));
+    }
+
+    [Fact]
+    public void Log_buffer_keeps_the_newest_lines_and_hands_out_each_once()
+    {
+        var buffer = new LogBuffer(5);
+        Assert.Empty(buffer.Since(0, 10));
+        for (var i = 1; i <= 8; i++) buffer.Add(DateTime.UtcNow, "info", "Test", $"line {i}");
+
+        Assert.Equal(["line 4", "line 5", "line 6", "line 7", "line 8"], buffer.Latest(10).Select(l => l.Message));
+        Assert.Equal(["line 7", "line 8"], buffer.Latest(2).Select(l => l.Message));
+        var sent = buffer.Since(6, 10);
+        Assert.Equal(["line 7", "line 8"], sent.Select(l => l.Message));
+        Assert.Empty(buffer.Since(sent[^1].Seq, 10));
+
+        buffer.Add(DateTime.UtcNow, "error", "Test", new string('x', LogBuffer.MaxMessageLength + 50));
+        Assert.Equal(LogBuffer.MaxMessageLength + 1, buffer.Since(8, 10).Single().Message.Length);
+    }
+
+    [Fact]
+    public async Task Apt_install_waits_for_the_dpkg_lock()
+    {
+        // apt-daily or unattended-upgrades holding the lock must not fail the install outright.
+        var runner = new FakeCommandRunner()
+            .On("apt-get update -qq -o DPkg::Lock::Timeout=300", "")
+            .On("apt-get install -y -qq --no-install-recommends -o DPkg::Lock::Timeout=300 lynis", "");
+
+        var r = await new AptPackageManager(runner).InstallAsync("lynis", default);
+
+        Assert.True(r.Success, r.Error);
     }
 }

@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using Alastor.Core.Logging;
 using Alastor.Server.Auth;
 using Alastor.Server.Data;
 using Alastor.Server.Services;
@@ -15,6 +16,8 @@ public static class SystemEndpoints
 {
     public sealed record CleanupResultDto(bool Ok, string? Error, long FreedBytes);
 
+    public const int ServerLogLines = 2000;
+
     public static void MapSystemEndpoints(this IEndpointRouteBuilder app)
     {
         var g = app.MapGroup("/api/system").WithTags("Settings").RequireAuthorization(AuthPolicies.Admin);
@@ -22,6 +25,11 @@ public static class SystemEndpoints
         g.MapGet("/security", (SelfCheckService checks, CancellationToken ct) => checks.RunAsync(ct));
 
         g.MapGet("/data", (ServerDataService data, CancellationToken ct) => data.OverviewAsync(ct));
+
+        // The server's own log since it started, newest first. Older lines are in the journal (journalctl -u alastor-server).
+        g.MapGet("/logs", (LogBuffer logs, int? limit) =>
+            logs.Latest(Math.Clamp(limit ?? 500, 1, ServerLogLines)).Reverse()
+                .Select(l => new HostEndpoints.LogLineDto(l.Seq, l.At, l.Level, l.Source, l.Message)).ToList());
 
         g.MapPost("/data/prune", async (ServerDataService data, AlastorDbContext db, ClaimsPrincipal user, CancellationToken ct) =>
         {

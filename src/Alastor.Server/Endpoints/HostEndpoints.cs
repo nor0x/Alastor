@@ -13,6 +13,7 @@ public static class HostEndpoints
 {
     public sealed record UpdateHostRequest(string? Name, Guid? GroupId, bool ClearGroup, List<string>? Tags);
     public sealed record MetricPoint(DateTime At, double Cpu, double Memory, double Disk, double Load1);
+    public sealed record LogLineDto(long Id, DateTime At, string Level, string Source, string Message);
 
     public static void MapHostEndpoints(this IEndpointRouteBuilder app)
     {
@@ -46,6 +47,16 @@ public static class HostEndpoints
             // Downsample to about 300 points so a week of minutely samples stays light for the browser.
             var step = Math.Max(1, points.Count / 300);
             return points.Where((_, i) => i % step == 0).ToList();
+        });
+
+        // The agent's own log, newest first: what it installed, applied, skipped and why.
+        g.MapGet("/{id:guid}/logs", async (Guid id, int? limit, AlastorDbContext db, CancellationToken ct) =>
+        {
+            if (!await db.Hosts.AnyAsync(h => h.Id == id, ct)) return Results.NotFound();
+            var lines = await db.HostLogs.AsNoTracking().Where(l => l.HostId == id).OrderByDescending(l => l.Id)
+                .Take(Math.Clamp(limit ?? 500, 1, HostLogLine.KeepPerHost))
+                .Select(l => new LogLineDto(l.Id, l.At, l.Level, l.Source, l.Message)).ToListAsync(ct);
+            return Results.Ok(lines);
         });
 
         g.MapGet("/{id:guid}/effective-policy", async (Guid id, PolicyService policies, CancellationToken ct) =>

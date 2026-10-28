@@ -40,7 +40,11 @@ public sealed record HeartbeatRequest(
     HostMetrics Metrics,
     IReadOnlyList<ToolStatus> Tools,
     PolicyApplyReport? Policy,
-    IReadOnlyList<string> IpAddresses);
+    IReadOnlyList<string> IpAddresses,
+    // Agent log lines logged since the last heartbeat the server accepted. Older agents send none.
+    IReadOnlyList<AgentLogLine>? Logs = null);
+
+public sealed record AgentLogLine(DateTime At, string Level, string Source, string Message);
 
 public sealed record HeartbeatResponse(
     string DesiredRevision,

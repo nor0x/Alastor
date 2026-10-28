@@ -348,6 +348,22 @@ public sealed class HostToolStatus
     public DateTime UpdatedAt { get; set; }
 }
 
+/// <summary>
+/// One line of a host's agent log, sent with its heartbeats so the dashboard can show what the agent did and why
+/// without SSH. Only the newest <see cref="KeepPerHost"/> lines per host are kept; the journal on the host has the rest.
+/// </summary>
+public sealed class HostLogLine
+{
+    public const int KeepPerHost = 1000;
+
+    public long Id { get; set; }
+    public Guid HostId { get; set; }
+    public DateTime At { get; set; }
+    public string Level { get; set; } = "";
+    public string Source { get; set; } = "";
+    public string Message { get; set; } = "";
+}
+
 public sealed class HostMetricSample
 {
     public long Id { get; set; }

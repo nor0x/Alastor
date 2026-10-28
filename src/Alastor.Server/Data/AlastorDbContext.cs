@@ -21,6 +21,7 @@ public abstract class AlastorDbContext(DbContextOptions options) : DbContext(opt
     public DbSet<HostToolStatus> ToolStatuses => Set<HostToolStatus>();
     public DbSet<HostBaselineCheck> BaselineChecks => Set<HostBaselineCheck>();
     public DbSet<HostMetricSample> MetricSamples => Set<HostMetricSample>();
+    public DbSet<HostLogLine> HostLogs => Set<HostLogLine>();
     public DbSet<HostPostureSnapshot> PostureSnapshots => Set<HostPostureSnapshot>();
     public DbSet<HostIssue> Issues => Set<HostIssue>();
     public DbSet<HostLoginSource> LoginSources => Set<HostLoginSource>();
@@ -159,6 +160,13 @@ public abstract class AlastorDbContext(DbContextOptions options) : DbContext(opt
             e.Property(c => c.CheckId).HasMaxLength(64);
             e.HasIndex(c => new { c.CheckId, c.Status });
             e.HasOne<ManagedHost>().WithMany().HasForeignKey(c => c.HostId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        m.Entity<HostLogLine>(e =>
+        {
+            e.HasIndex(l => new { l.HostId, l.Id });
+            e.HasIndex(l => l.At);
+            e.HasOne<ManagedHost>().WithMany().HasForeignKey(l => l.HostId).OnDelete(DeleteBehavior.Cascade);
         });
 
         m.Entity<HostMetricSample>(e =>

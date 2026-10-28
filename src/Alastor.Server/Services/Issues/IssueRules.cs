@@ -50,7 +50,7 @@ public static class IssueRules
                 h.LastSeenAt is { } seen ? $"No heartbeat since {seen:yyyy-MM-dd HH:mm} UTC." : "The agent never sent a heartbeat.", "overview"));
         if (h.PolicyApplySuccess == false)
             open.Add(new("policy.failed", "", Severity.Medium, "The last policy apply failed",
-                "The agent rolled back to the previous working configuration.", "policy"));
+                "A tool could not apply the policy. The Policy tab shows its error.", "policy"));
         foreach (var t in h.Tools.Where(Dto.HasProblem).OrderBy(t => t.ToolId, StringComparer.Ordinal))
             open.Add(new("tool.problem", t.ToolId, Severity.Medium, $"{t.ToolId}: {ToolProblem(t)}", t.LastError ?? t.UnavailableReason, "overview"));
 

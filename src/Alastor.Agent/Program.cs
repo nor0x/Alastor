@@ -11,6 +11,7 @@ using Alastor.Core.Contracts;
 using Alastor.Core.Integrations;
 using Alastor.Core.Integrations.CrowdSec;
 using Alastor.Core.Integrations.Fail2Ban;
+using Alastor.Core.Logging;
 using Alastor.Core.Platform;
 using Serilog;
 
@@ -69,12 +70,16 @@ if (config.ServerUrl.StartsWith("http://", StringComparison.OrdinalIgnoreCase) &
 
 var builder = Host.CreateApplicationBuilder(args);
 builder.Services.AddSystemd();
+// The newest lines also go to the server with each heartbeat, for the host's Agent log tab.
+var logBuffer = new LogBuffer(500);
+builder.Services.AddSingleton(logBuffer);
 builder.Services.AddSerilog((_, lc) => lc
     .MinimumLevel.Is(Enum.TryParse<Serilog.Events.LogEventLevel>(Environment.GetEnvironmentVariable("ALASTOR_AGENT_LOGLEVEL"), true, out var lvl) ? lvl : Serilog.Events.LogEventLevel.Information)
     .MinimumLevel.Override("Microsoft", Serilog.Events.LogEventLevel.Warning)
     .MinimumLevel.Override("System.Net.Http", Serilog.Events.LogEventLevel.Warning)
     // journald adds its own timestamps.
-    .WriteTo.Console(outputTemplate: "{Level:u3} {SourceContext}: {Message:lj}{NewLine}{Exception}"));
+    .WriteTo.Console(outputTemplate: "{Level:u3} {SourceContext}: {Message:lj}{NewLine}{Exception}")
+    .WriteTo.Sink(new LogBufferSink(logBuffer)));
 
 var platform = await PlatformServices.CreateAsync(stateDir);
 builder.Services.AddSingleton(config);

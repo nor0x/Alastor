@@ -23,6 +23,7 @@
   import HostLogins from '../lib/HostLogins.svelte';
   import HostSshKeys from '../lib/HostSshKeys.svelte';
   import HostIntegrity from '../lib/HostIntegrity.svelte';
+  import HostLog from '../lib/HostLog.svelte';
   import { exposureLook, isExposed } from '../lib/network';
   import { indexTone } from '../lib/hardening';
   import { diskTone } from '../lib/storage';
@@ -41,8 +42,8 @@
 
   let { id }: { id: string } = $props();
 
-  type Tab = 'overview' | 'baseline' | 'hardening' | 'network' | 'keys' | 'updates' | 'software' | 'storage' | 'vulnerabilities' | 'malware' | 'integrity' | 'events' | 'bans' | 'policy' | 'commands';
-  const tabs: [Tab, string][] = [['overview', 'Overview'], ['baseline', 'Baseline'], ['hardening', 'Hardening'], ['network', 'Network'], ['keys', 'SSH keys'], ['updates', 'Updates'], ['software', 'Software'], ['storage', 'Storage'], ['vulnerabilities', 'CVEs'], ['malware', 'Malware'], ['integrity', 'Integrity'], ['events', 'Events'], ['bans', 'Bans'], ['policy', 'Policy'], ['commands', 'Commands']];
+  type Tab = 'overview' | 'baseline' | 'hardening' | 'network' | 'keys' | 'updates' | 'software' | 'storage' | 'vulnerabilities' | 'malware' | 'integrity' | 'events' | 'bans' | 'policy' | 'commands' | 'logs';
+  const tabs: [Tab, string][] = [['overview', 'Overview'], ['baseline', 'Baseline'], ['hardening', 'Hardening'], ['network', 'Network'], ['keys', 'SSH keys'], ['updates', 'Updates'], ['software', 'Software'], ['storage', 'Storage'], ['vulnerabilities', 'CVEs'], ['malware', 'Malware'], ['integrity', 'Integrity'], ['events', 'Events'], ['bans', 'Bans'], ['policy', 'Policy'], ['commands', 'Commands'], ['logs', 'Agent log']];
   const tab = $derived((new URLSearchParams(route.search).get('tab') as Tab) || 'overview');
 
   let host = $state<HostDetail | null>(null);
@@ -237,6 +238,9 @@
   const configTone: Record<string, string> = { InSync: 'ok', Pending: 'info', Drifted: 'warn', Conflict: 'warn', Rejected: 'bad', Unknown: 'muted' };
 
   const implemented = $derived(host?.tools.filter((t) => t.implemented) ?? []);
+  const rolledBack = $derived(host?.policyReport?.tools.some((r) => r.state === 'Rejected') ?? false);
+  // A wanted tool the agent could not install reports no success, but nothing was applied or rolled back.
+  const notInstalled = $derived(new Set(host?.tools.filter((t) => !t.installed).map((t) => t.toolId) ?? []));
   const planned = $derived(host?.tools.filter((t) => !t.implemented) ?? []);
   const series = (key: 'cpu' | 'memory' | 'disk' | 'load1') => metrics.map((m) => ({ at: m.at, value: m[key] }));
   const commandTone: Record<string, string> = { Pending: 'muted', Delivered: 'info', Succeeded: 'ok', Failed: 'bad', Expired: 'warn' };
@@ -280,7 +284,11 @@
   {#if host.policyApplySuccess === false}
     <div class="banner bad spaced" role="alert">
       <Icon name="error" />
-      <p><strong>The last policy apply failed.</strong> The agent rolled back to the previous working config. See the Policy tab for the tool’s error.</p>
+      <p>
+        <strong>The last policy apply failed.</strong>
+        {#if rolledBack}A tool rejected its new config and the agent rolled back to the previous working one.{/if}
+        See the Policy tab for the tool’s error.
+      </p>
     </div>
   {/if}
   {#if implemented.some((t) => t.configState === 'Drifted')}
@@ -505,10 +513,16 @@
                 <li>
                   <div class="tool-head">
                     <strong class="mono">{r.toolId}</strong>
-                    <span class="pill {r.success ? configTone[r.state] : 'bad'}">{r.success ? (r.state === 'InSync' ? 'in sync' : r.state.toLowerCase()) : 'failed'}</span>
+                    {#if r.success}
+                      <span class="pill {configTone[r.state]}">{r.state === 'InSync' ? 'in sync' : r.state.toLowerCase()}</span>
+                    {:else if notInstalled.has(r.toolId)}
+                      <span class="pill warn">not installed</span>
+                    {:else}
+                      <span class="pill bad">failed</span>
+                    {/if}
                   </div>
                   {#if r.error}<pre class="code-block err">{r.error}</pre>{/if}
-                  {#if r.changes.length}<ul class="changes small">{#each r.changes as c (c)}<li>{c}</li>{/each}</ul>{:else}<p class="muted small">No changes needed.</p>{/if}
+                  {#if r.changes.length}<ul class="changes small">{#each r.changes as c (c)}<li>{c}</li>{/each}</ul>{:else if r.success}<p class="muted small">No changes needed.</p>{/if}
                   {#each r.warnings as w (w)}<p class="note warn"><Icon name="alert" />{w}</p>{/each}
                 </li>
               {/each}
@@ -565,6 +579,8 @@
         <div class="empty">No commands sent yet.</div>
       {/if}
     </section>
+  {:else if tab === 'logs'}
+    <HostLog hostId={id} online={s.isOnline} />
   {/if}
 
   <BanDialog bind:open={banOpen} hostIds={[id]} />

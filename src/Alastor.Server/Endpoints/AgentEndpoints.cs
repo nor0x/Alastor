@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Alastor.Core.Contracts;
 using Alastor.Core.Events;
+using Alastor.Core.Logging;
 using Alastor.Core.Net;
 using Alastor.Core.Policy;
 using Alastor.Server.Auth;
@@ -16,6 +17,8 @@ namespace Alastor.Server.Endpoints;
 /// <summary>The agent-facing API. Every route except /enroll requires the Agent scheme (per-host secret).</summary>
 public static class AgentEndpoints
 {
+    private const int MaxLogLinesPerHeartbeat = 500;
+
     public static void MapAgentEndpoints(this IEndpointRouteBuilder app)
     {
         var g = app.MapGroup("/api/agent").WithTags("Agent");
@@ -190,6 +193,16 @@ public static class AgentEndpoints
             row.UpdatedAt = now;
         }
 
+        var logs = hb.Logs?.TakeLast(MaxLogLinesPerHeartbeat).ToList() ?? [];
+        db.HostLogs.AddRange(logs.Select(l => new HostLogLine
+        {
+            HostId = hostId,
+            At = l.At.Kind == DateTimeKind.Utc ? l.At : DateTime.SpecifyKind(l.At, DateTimeKind.Utc),
+            Level = l.Level is "debug" or "info" or "warning" or "error" ? l.Level : "info",
+            Source = Clip(l.Source, 128),
+            Message = Clip(l.Message, LogBuffer.MaxMessageLength + 1),
+        }));
+
         db.MetricSamples.Add(new HostMetricSample
         {
             HostId = hostId,
@@ -200,6 +213,14 @@ public static class AgentEndpoints
             Load1 = m.Load1,
         });
         await db.SaveChangesAsync(ct);
+
+        if (logs.Count > 0)
+        {
+            // Keep the newest lines per host. Ids grow with insertion, so this is one indexed range delete.
+            var cutoff = await db.HostLogs.Where(l => l.HostId == hostId).OrderByDescending(l => l.Id)
+                .Skip(HostLogLine.KeepPerHost).Select(l => (long?)l.Id).FirstOrDefaultAsync(ct);
+            if (cutoff is { } c) await db.HostLogs.Where(l => l.HostId == hostId && l.Id <= c).ExecuteDeleteAsync(ct);
+        }
 
         if (wasOffline)
         {

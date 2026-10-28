@@ -9,6 +9,7 @@
   import Notifications from './settings/Notifications.svelte';
   import Security from './settings/Security.svelte';
   import Data from './settings/Data.svelte';
+  import ServerLog from './settings/ServerLog.svelte';
 
   let { section }: { section: string } = $props();
 
@@ -20,6 +21,7 @@
     { id: 'security', label: 'Security', admin: true },
     { id: 'server', label: 'Server', admin: true },
     { id: 'data', label: 'Alastor data', admin: true },
+    { id: 'server-log', label: 'Server log', admin: true },
     { id: 'account', label: 'Account', admin: true },
     { id: 'audit', label: 'Audit log', admin: true },
   ];
@@ -30,7 +32,7 @@
 <div class="page-head">
   <div>
     <h1>Settings</h1>
-    <p class="sub">Groups, enrolling new servers, alert notifications, API access, this server's own security and data, and the audit trail.</p>
+    <p class="sub">Groups, enrolling new servers, alert notifications, API access, this server's own security, data and log, and the audit trail.</p>
   </div>
 </div>
 
@@ -48,6 +50,7 @@
     {:else if current === 'security'}<Security />
     {:else if current === 'server'}<Server />
     {:else if current === 'data'}<Data />
+    {:else if current === 'server-log'}<ServerLog />
     {:else if current === 'account'}<Account />
     {:else if current === 'audit'}<Audit />{/if}
   </div>

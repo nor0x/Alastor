@@ -640,6 +640,39 @@ namespace Alastor.Server.Data.Migrations.Sqlite
                     b.ToTable("Issues");
                 });
 
+            modelBuilder.Entity("Alastor.Server.Data.HostLogLine", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("At")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("HostId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Level")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Message")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Source")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("At");
+
+                    b.HasIndex("HostId", "Id");
+
+                    b.ToTable("HostLogs");
+                });
+
             modelBuilder.Entity("Alastor.Server.Data.HostLoginSource", b =>
                 {
                     b.Property<Guid>("HostId")
@@ -1679,6 +1712,15 @@ namespace Alastor.Server.Data.Migrations.Sqlite
                 });
 
             modelBuilder.Entity("Alastor.Server.Data.HostIssue", b =>
+                {
+                    b.HasOne("Alastor.Server.Data.ManagedHost", null)
+                        .WithMany()
+                        .HasForeignKey("HostId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Alastor.Server.Data.HostLogLine", b =>
                 {
                     b.HasOne("Alastor.Server.Data.ManagedHost", null)
                         .WithMany()
