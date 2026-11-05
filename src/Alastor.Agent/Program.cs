@@ -17,7 +17,8 @@ using Serilog;
 
 // alastor-agent [run]                                        run the supervisor (systemd ExecStart)
 // alastor-agent enroll --server URL --token TOKEN [--pin SHA256] [--insecure] [--force]
-// alastor-agent status                                       print local tool detection
+// alastor-agent set-server --server URL [--pin SHA256] [--insecure]   keep the enrollment, reach the same server at URL
+// alastor-agent status                                      print local tool detection
 // alastor-agent uninstall                                    remove everything the agent manages
 // alastor-agent version
 var command = args.FirstOrDefault(a => !a.StartsWith('-')) ?? "run";
@@ -44,6 +45,8 @@ switch (command)
         return 0;
     case "enroll":
         return await EnrollAsync();
+    case "set-server":
+        return await SetServerAsync();
     case "status":
         return await StatusAsync();
     case "uninstall":
@@ -51,7 +54,7 @@ switch (command)
     case "run":
         break;
     default:
-        Console.Error.WriteLine($"Unknown command '{command}'. Use: run | enroll | status | uninstall | version");
+        Console.Error.WriteLine($"Unknown command '{command}'. Use: run | enroll | set-server | status | uninstall | version");
         return 2;
 }
 
@@ -121,9 +124,9 @@ async Task<int> EnrollAsync()
         Console.Error.WriteLine("Usage: alastor-agent enroll --server https://alastor.example.com --token sve_… [--pin SHA256] [--insecure] [--force]");
         return 2;
     }
-    if (AgentConfig.Load(configPath) is not null && !Flag("--force"))
+    if (AgentConfig.Load(configPath) is { } enrolled && !Flag("--force"))
     {
-        Console.WriteLine($"Already enrolled ({configPath}). Use --force to enroll again as a new host.");
+        Console.WriteLine($"Already enrolled with {enrolled.ServerUrl} ({configPath}). Use --force to enroll again as a new host, or set-server if the same server moved.");
         return 0;
     }
     var insecure = Flag("--insecure");
@@ -156,6 +159,51 @@ async Task<int> EnrollAsync()
         Console.Error.WriteLine(ex.Message);
         return 1;
     }
+}
+
+// For when the server's address changes. Nothing is written unless the server at the new URL accepts this agent's
+// credential, so a typo or a different server can't cut the agent off from the one it reports to.
+async Task<int> SetServerAsync()
+{
+    var serverUrl = Arg("--server")?.TrimEnd('/');
+    if (string.IsNullOrEmpty(serverUrl) || !Uri.TryCreate(serverUrl, UriKind.Absolute, out var parsed) || parsed.Scheme is not ("http" or "https"))
+    {
+        Console.Error.WriteLine("Usage: alastor-agent set-server --server https://alastor.example.com [--pin SHA256] [--insecure]");
+        return 2;
+    }
+    var current = AgentConfig.Load(configPath);
+    if (current is null)
+    {
+        Console.Error.WriteLine($"Not enrolled: {configPath} not found. Run: alastor-agent enroll --server https://… --token …");
+        return 3;
+    }
+    var insecure = Flag("--insecure");
+    if (serverUrl.StartsWith("http://", StringComparison.OrdinalIgnoreCase) && !insecure && !IsPrivateTransport(serverUrl))
+    {
+        Console.Error.WriteLine("Refusing plain HTTP outside loopback and Tailscale. Use https:// or pass --insecure on a trusted network.");
+        return 2;
+    }
+    var pin = Arg("--pin") ?? current.CertificatePin;
+    var client = new ServerClient(ServerClient.CreateHttpClient(serverUrl, current.Credential, pin));
+    try
+    {
+        if (!await client.AcceptsCredentialAsync(CancellationToken.None))
+        {
+            Console.Error.WriteLine($"{serverUrl} does not know this agent, so it is not the server this host enrolled with. To join it as a new host, enroll with a token and --force.");
+            return 1;
+        }
+    }
+    catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException)
+    {
+        Console.Error.WriteLine($"Could not check {serverUrl}: {ex.Message}");
+        return 1;
+    }
+    current.ServerUrl = serverUrl;
+    current.CertificatePin = pin;
+    current.AllowInsecureHttp = insecure;
+    current.Save(configPath);
+    Console.WriteLine($"This agent now reports to {serverUrl}. Restart it to apply: systemctl restart alastor-agent");
+    return 0;
 }
 
 async Task<int> StatusAsync()
