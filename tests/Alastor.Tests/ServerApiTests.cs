@@ -114,6 +114,19 @@ public sealed class ServerApiTests : IClassFixture<ServerApiTests.Factory>
     }
 
     [Fact]
+    [System.Runtime.Versioning.SupportedOSPlatform("linux")] // the agent assembly's marker; ServerClient itself runs anywhere
+    public async Task Agent_only_moves_to_a_server_that_knows_its_credential()
+    {
+        var admin = await AdminAsync();
+        var (_, agent) = await EnrollAsync(admin);
+        Assert.True(await new Alastor.Agent.ServerClient(agent).AcceptsCredentialAsync(default));
+
+        var stranger = _factory.CreateClient();
+        stranger.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", $"{Guid.NewGuid()}.not-enrolled-here");
+        Assert.False(await new Alastor.Agent.ServerClient(stranger).AcceptsCredentialAsync(default));
+    }
+
+    [Fact]
     public async Task Enroll_heartbeat_desired_state_and_events_roundtrip()
     {
         var admin = await AdminAsync();

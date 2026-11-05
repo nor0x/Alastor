@@ -71,6 +71,25 @@ curl -fsSL https://alastor.example.com/install/agent.sh | sudo bash -s -- --serv
 Run either script again to upgrade; settings, data and enrollment are kept. `--uninstall` removes the server or agent
 (`--uninstall --purge` also deletes the server's database). `--help` lists all options.
 
+## Changing the server's address
+
+Agents keep the URL they enrolled with, so changing how the server is reached (`--access`, `--domain`, `--port`,
+`--public-url`) leaves them reporting to the old address. The host then shows as offline while `alastor status` still
+says `active`, because the agent process is running and retrying.
+
+An agent on the same machine as the server is moved by `install.sh` when its old address stops answering. On other
+hosts, run this while they can reach the server's new address:
+
+```bash
+sudo alastor-agent set-server --server https://alastor.example.com
+sudo alastor restart agent
+```
+
+Add `--insecure` for plain HTTP outside loopback and Tailscale. Running the agent installer again with the new
+`--server` does the same and upgrades the agent. The host keeps its enrollment and history, and no token is needed. The
+change is only made if the server at the new URL recognizes the agent. To join a different server, enroll with a new
+token and `--force`, which adds a new host there.
+
 ## Where things live
 
 | Path | |

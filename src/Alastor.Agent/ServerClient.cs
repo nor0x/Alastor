@@ -51,6 +51,18 @@ public sealed class ServerClient(HttpClient http) : IVulnDbSource
     public async Task<DesiredStateResponse> GetDesiredStateAsync(CancellationToken ct) =>
         (await http.GetFromJsonAsync("api/agent/desired-state", Json.DesiredStateResponse, ct))!;
 
+    /// <summary>
+    /// Whether this server knows the agent's credential, i.e. it is the server the agent enrolled with. Throws
+    /// <see cref="HttpRequestException"/> when that can't be told, such as when the server can't be reached.
+    /// </summary>
+    public async Task<bool> AcceptsCredentialAsync(CancellationToken ct)
+    {
+        using var resp = await http.GetAsync("api/agent/desired-state", ct);
+        if (resp.StatusCode is System.Net.HttpStatusCode.Unauthorized or System.Net.HttpStatusCode.Forbidden) return false;
+        resp.EnsureSuccessStatusCode();
+        return true;
+    }
+
     public async Task<EventBatchResult> SendEventsAsync(EventBatch batch, CancellationToken ct)
     {
         using var resp = await http.PostAsJsonAsync("api/agent/events", batch, Json.EventBatch, ct);

@@ -4,10 +4,11 @@
 #
 #   curl -fsSL https://alastor.example.com/install/agent.sh | sudo bash -s -- --server https://alastor.example.com --token sve_…
 #
-# Run it again without --token to upgrade the agent in place; the enrollment is kept.
+# Run it again without --token to upgrade the agent in place; the enrollment is kept. If the server's address has
+# changed, pass the new one with --server: the host keeps its enrollment and history.
 #
 # Options:
-#   --server URL       your Alastor server
+#   --server URL       your Alastor server; on an enrolled host, moves the agent to this address of the same server
 #   --token TOKEN      single-use enrollment token (needed for the first install, or with --force)
 #   --insecure         allow a plain-HTTP server URL (trusted networks and local testing only). Not needed for
 #                      loopback or Tailscale addresses (100.64.0.0/10, fd7a:115c:a1e0::/48, *.ts.net): WireGuard encrypts those
@@ -95,6 +96,18 @@ main() {
   chmod 755 "$TMP/alastor-agent"
   local ver; ver="$("$TMP/alastor-agent" version 2>/dev/null)" || die "The downloaded agent does not run on this machine ($(uname -m), $(ldd --version 2>&1 | head -n1))."
 
+  # An enrolled host keeps its credential, so a new --server only changes where it reports. Done with the new binary
+  # before anything is replaced: when the move fails, the running agent is left as it was.
+  local reports_to=""; [ "$enrolled" -eq 0 ] || reports_to="$(config_server)"
+  if [ "$enroll" -eq 0 ] && [ -n "$server" ] && [ "$server" != "$reports_to" ]; then
+    step "Moving this agent from ${reports_to:-its old address} to $server"
+    local move=(set-server --server "$server")
+    [ "$insecure" -eq 1 ] && move+=(--insecure)
+    [ -n "$pin" ] && move+=(--pin "$pin")
+    "$TMP/alastor-agent" "${move[@]}" >/dev/null \
+      || die "The agent still reports to ${reports_to:-its old address}. To enroll with $server as a new host, add --force and a --token."
+  fi
+
   step "Installing alastor-agent $ver"
   systemctl stop alastor-agent 2>/dev/null || true
   install -m 755 "$TMP/alastor-agent" "$BIN"
@@ -130,7 +143,7 @@ EOF
 
   # The `alastor` command (status, start, stop), from the same server; older servers don't have it.
   local cli_from="$server"
-  [ -n "$cli_from" ] || cli_from="$(sed -n 's/.*"serverUrl": *"\([^"]*\)".*/\1/p' "$CONFIG" 2>/dev/null | head -n1)"
+  [ -n "$cli_from" ] || cli_from="$(config_server)"
   if [ -n "$cli_from" ] && "${CURL[@]}" -o "$TMP/alastor" "$cli_from/install/alastor.sh" 2>/dev/null; then
     install -m 755 "$TMP/alastor" /usr/local/bin/alastor
   fi
@@ -159,6 +172,12 @@ do_uninstall() {
   rm -rf /etc/alastor-agent /var/lib/alastor-agent
   systemctl daemon-reload
   ok "Removed. Delete the host in the dashboard to drop its history."
+}
+
+# The URL this agent reports to, without a trailing slash.
+config_server() {
+  local url; url="$(sed -n 's/.*"serverUrl": *"\([^"]*\)".*/\1/p' "$CONFIG" 2>/dev/null | head -n1)"
+  echo "${url%/}"
 }
 
 check_pin() {

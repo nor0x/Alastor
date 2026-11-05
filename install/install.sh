@@ -50,6 +50,7 @@ main() {
   SERVICE_USER=alastor
   SERVE_MARK='# managed: tailscale-serve'
   CONTROL_UNIT=/etc/systemd/system/alastor-control
+  AGENT_CONFIG=/etc/alastor-agent/agent.json
 
   local access="" domain="" port="" public_url="" version="latest" version_set=0 binary="" agent_dir="" with_agent=0 uninstall=0 purge=0
   while [ $# -gt 0 ]; do
@@ -296,10 +297,12 @@ EOF
   esac
   install_control "$api"
 
+  local agent_url; agent_url="$([ "$mode" = domain ] && echo "$public_url" || echo "$api")"
+  if [ "$upgrade" -eq 1 ]; then repoint_local_agent "$agent_url" "$rid"; fi
   if [ "$with_agent" -eq 1 ]; then
     if [ -n "$password" ]; then
-      install_local_agent "$([ "$mode" = domain ] && echo "$public_url" || echo "$api")" "$api" "$password"
-    else
+      install_local_agent "$agent_url" "$api" "$password"
+    elif [ ! -f "$AGENT_CONFIG" ]; then
       warn "--with-agent on an upgrade needs a token: create one under Settings → Enrollment and run the command it shows."
     fi
   fi
@@ -467,7 +470,30 @@ install_local_agent() {
   local args=(--server "$url" --token "$secret")
   # Agents from before plain HTTP over loopback and the tailnet was accepted still need --insecure for it.
   [ "${url#http://}" != "$url" ] && args+=(--insecure)
-  curl -fsSL "$api/install/agent.sh" | bash -s -- "${args[@]}"
+  # Not fatal: the summary below holds the admin password, shown only once.
+  curl -fsSL "$api/install/agent.sh" | bash -s -- "${args[@]}" \
+    || warn "The agent was not set up; enroll this machine from Settings → Enrollment."
+}
+
+# repoint_local_agent URL RID: an agent on this machine keeps its URL when the server's address changes, and would
+# report to an address nothing answers on any more. Moves it to URL, unless its old address still works. `set-server`
+# only goes through when this server knows the agent, so one enrolled with another server is left alone.
+repoint_local_agent() {
+  local url="$1" old bin="$PREFIX/agent/alastor-agent-$2"
+  [ -f "$AGENT_CONFIG" ] || return 0
+  old="$(sed -n 's/.*"serverUrl": *"\([^"]*\)".*/\1/p' "$AGENT_CONFIG" | head -n1)"
+  old="${old%/}"
+  [ "$old" != "$url" ] || return 0
+  curl -fsS -o /dev/null --max-time 5 "$old/healthz" 2>/dev/null && return 0
+  # The installed agent may predate `set-server`; the one just unpacked for new hosts has it.
+  [ -x "$bin" ] || bin=/usr/local/bin/alastor-agent
+  if "$bin" set-server --server "$url" >/dev/null; then
+    systemctl try-restart alastor-agent
+    ok "The agent on this machine now reports to $url (was $old)."
+  else
+    warn "The agent on this machine reports to $old, which does not answer, and could not be moved to $url."
+    warn "If this is the server it enrolled with, run: sudo alastor-agent set-server --server $url"
+  fi
 }
 
 # ---- building from a checkout ------------------------------------------------------------------
