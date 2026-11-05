@@ -100,18 +100,10 @@ token and `--force`, which adds a new host there.
 | `/usr/local/bin/alastor-agent`, `/etc/alastor-agent/agent.json` | agent binary and enrollment |
 | `/usr/local/bin/alastor` | the start/stop command; `alastor-control.path` and `.service` in `/etc/systemd/system` carry out the dashboard's requests |
 
-## While the repository is private
+## Where the binaries come from
 
-The script and the release binaries need a GitHub token with read access (`gh auth token` prints yours):
-
-```bash
-export GITHUB_TOKEN=$(gh auth token)   # or a fine-grained PAT with Contents: read
-curl -fsSL -H "Authorization: Bearer $GITHUB_TOKEN" https://raw.githubusercontent.com/nor0x/Alastor/main/install/install.sh \
-  | sudo GITHUB_TOKEN="$GITHUB_TOKEN" bash
-```
-
-Agents need no token: they download the agent from your server. Binaries come from GitHub releases, built by
-`.github/workflows/release.yml` when a `v*` tag is pushed. `ALASTOR_DOWNLOAD_BASE=https://…` makes both scripts download
+The server's install script downloads from GitHub releases, built by `.github/workflows/release.yml` when a `v*` tag is
+pushed. Agents download the agent from your server. `ALASTOR_DOWNLOAD_BASE=https://…` makes both scripts download
 `<base>/<version>/<asset>` instead, for a mirror or a future website.
 
 ## From a clone

@@ -33,7 +33,6 @@
 #   --purge              with --uninstall: also delete the database and settings
 #
 # Environment:
-#   GITHUB_TOKEN             read access to the repository while it is private
 #   ALASTOR_REPO             GitHub repository to download releases from (default nor0x/Alastor)
 #   ALASTOR_DOWNLOAD_BASE    download BASE/<version>/<asset> instead of GitHub releases (a mirror or website)
 set -euo pipefail
@@ -580,31 +579,12 @@ download() {
   local name="$1" dest="$2" version="$3"
   if [ -n "${ALASTOR_DOWNLOAD_BASE:-}" ]; then
     curl -fsSL --retry 3 -o "$dest" "${ALASTOR_DOWNLOAD_BASE%/}/$version/$name"
-  elif [ -n "${GITHUB_TOKEN:-}" ]; then
-    # Private repositories: assets are only reachable through the API.
-    local api="https://api.github.com/repos/$REPO/releases" release asset
-    if [ "$version" = latest ]; then release="$api/latest"; else release="$api/tags/$version"; fi
-    if [ ! -f "$TMP/release.json" ]; then
-      curl -fsSL -H "Authorization: Bearer $GITHUB_TOKEN" -H 'Accept: application/vnd.github+json' "$release" -o "$TMP/release.json" \
-        || die "Could not read release '$version' of $REPO. Check GITHUB_TOKEN and that a release exists."
-    fi
-    asset="$(asset_url "$name" < "$TMP/release.json")"
-    [ -n "$asset" ] || return 1
-    curl -fsSL --retry 3 -H "Authorization: Bearer $GITHUB_TOKEN" -H 'Accept: application/octet-stream' -o "$dest" "$asset"
   else
     local base="https://github.com/$REPO/releases"
     if [ "$version" = latest ]; then base="$base/latest/download"; else base="$base/download/$version"; fi
     curl -fsSL --retry 3 -o "$dest" "$base/$name" \
-      || { [ "$name" = SHA256SUMS ] || warn "Download of $name failed. While the repository is private, set GITHUB_TOKEN (see --help)."; return 1; }
+      || { [ "$name" = SHA256SUMS ] || warn "Download of $name failed. Check that $REPO has a release for '$version': https://github.com/$REPO/releases"; return 1; }
   fi
-}
-
-# Reads a GitHub release JSON on stdin and prints the API URL of the asset called $1. Each asset lists
-# its "url" before its "name", so remember the last asset URL and print it when the name matches.
-asset_url() {
-  tr ',' '\n' | awk -v n="\"$1\"" '
-    /"url": *"https:\/\/api\.github\.com\/repos\/.*\/releases\/assets\/[0-9]+"/ { u = $0; sub(/.*"url": *"/, "", u); sub(/".*/, "", u) }
-    /"name":/ { v = $0; sub(/.*"name": */, "", v); sub(/ *}*$/, "", v); if (v == n && u != "") { print u; exit } }'
 }
 
 # ---- access ------------------------------------------------------------------------------------
